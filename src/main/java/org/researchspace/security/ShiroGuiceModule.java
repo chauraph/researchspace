@@ -90,6 +90,12 @@ public class ShiroGuiceModule extends ShiroWebModule {
          */
         addFilterChain("/rest/security/getSaml2SpMetadata", ANON);
 
+        /**
+         * need to be anon access for the IIIF manifest proxy service
+         * Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+         */
+        addFilterChain("/rest/iiifProxy/*", ANON);
+
         configureRealmBindings(config.get());
 
         addFilterChain("/favicon.ico", ANON);

@@ -31,6 +31,7 @@ import org.researchspace.rest.endpoint.AppAdminEndpoint;
 import org.researchspace.rest.endpoint.CacheEndpoint;
 import org.researchspace.rest.endpoint.ConfigurationEndpoint;
 import org.researchspace.rest.endpoint.FieldEndpoint;
+import org.researchspace.rest.endpoint.FederationSupportEndpoint;
 import org.researchspace.rest.endpoint.LogAdminEndpoint;
 import org.researchspace.rest.endpoint.RdfNamespaceEndpoint;
 import org.researchspace.rest.endpoint.RepositoryManagerEndpoint;
@@ -119,6 +120,8 @@ public class RestApplication extends AbstractPlatformApplication {
         register(SystemAdminEndpoint.class);
 
         register(LogAdminEndpoint.class);
+
+        register(FederationSupportEndpoint.class);
 
         // registration using service loader
         for (RestEndpoint endpoint : ServiceLoader.load(RestEndpoint.class)) {
