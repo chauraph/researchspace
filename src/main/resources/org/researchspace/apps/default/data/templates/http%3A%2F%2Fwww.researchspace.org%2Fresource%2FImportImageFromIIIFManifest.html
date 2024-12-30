@@ -1,0 +1,117 @@
+<semantic-search>
+  <semantic-search-query-keyword  domain='<http://www.researchspace.org/ontology/EX_Digital_Image>'
+                                  placeholder="Input IIIF Manifest"
+                                  min-search-term-length=7
+                                  tokenize-lucene-query=false
+                                  escape-lucene-syntax=false
+                                  debounce=500
+                                  query=' PREFIX iiif: <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
+                                        SELECT DISTINCT ?subject ?canvastype ?proxied_manifest ?canvaslabel_v3 ?canvasid_v3 ?imageservice_v3 ?canvaslabel_v2 ?canvasid_v2 ?imageservice_v2 WHERE {
+                                          ?subject iiif:manifest ?__token__ ;
+                                            iiif:canvastype ?canvastype;
+                                            iiif:proxied_manifest ?proxied_manifest;
+                                            iiif:label_v3 ?canvaslabel_v3;
+                                            iiif:canvasid_v3 ?canvasid_v3;
+                                            iiif:imageservice_v3 ?imageservice_v3;
+                                            iiif:label_v2 ?canvaslabel_v2;
+                                            iiif:canvasid_v2 ?canvasid_v2;
+                                            iiif:imageservice_v2 ?imageservice_v2;
+                                         }'
+  ></semantic-search-query-keyword>
+  
+  <semantic-search-result-holder>
+    <div style="margin-top: 25px;">
+      <semantic-search-result>
+        <div class="wikipediaResultsTable">
+          <semantic-context repository='iiif-canvas-extraction'>
+            <semantic-table id='semantic-search-result-table'
+                            query='SELECT DISTINCT ?subject ?canvastype ?proxied_manifest ?canvaslabel_v3 ?canvasid_v3 ?imageservice_v3 ?canvaslabel_v2 ?canvasid_v2 ?imageservice_v2 WHERE {
+                                    BIND(?subject as ?iri) .
+                                  } ORDER BY ?subject'
+
+                            options='{"showFilter":true, "resultsPerPage":6}' 
+                            column-configuration='[
+                                    {"displayName": "IIIF Canvas ID", "cellTemplate": "{{> canvasId}}" },
+                                    {"displayName": "IIIF Canvas Label", "cellTemplate": "{{> canvasLabel}}" },
+                                    {"displayName": "Image", "cellTemplate": "{{> images}}"},
+                                    {"displayName": "Actions", "cellTemplate": "{{> actions}}" }
+                                  ]'   
+            >
+
+              <template id='canvasId'>
+                <div>
+                  {{#if (includes canvastype.value "sc:Canvas")}}
+                    {{canvasid_v2.value}}
+                  {{else}}
+                    {{canvasid_v3.value}}
+                  {{/if}}
+                </div>
+              </template>
+
+              <template id='canvasLabel'>
+                <div>
+                  {{#if (includes canvastype.value "sc:Canvas")}}
+                    {{#if canvaslabel_v2.value}}
+                      {{#if (findDoubleQuoteGroup canvaslabel_v2.value 0)}}
+                        {{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v2.value 0)}}
+                      {{else}}
+                        {{canvaslabel_v2.value}}
+                      {{/if}}
+                    {{/if}}
+                  {{else}}
+                    {{#if canvaslabel_v3.value}}
+                      {{#if (findDoubleQuoteGroup canvaslabel_v3.value 0)}}
+                        {{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v3.value 0)}}
+                      {{else}}
+                        {{canvaslabel_v3.value}}
+                      {{/if}}
+                    {{/if}}
+                  {{/if}}
+                </div>
+              </template>
+
+              <template id='images'>
+                <div>
+                  {{#if (includes canvastype.value "sc:Canvas")}}
+                  {{log (removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v2.value 0))) this}}
+                  <div>                      
+                      <img src="{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v2.value 0))}}/full/250,/0/default.jpg"
+                          width="auto" height="180" style="max-width: 15vw; object-fit: contain;">
+                  </div>
+                  {{else}}
+                  <div>                      
+                    <img src="{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v3.value 0))}}/full/250,/0/default.jpg"
+                        width="auto" height="180" style="max-width: 15vw; object-fit: contain;">
+                  </div>
+                  {{/if}}
+                </div>
+              </template>
+              
+              <template id='actions'>
+                <div>
+          
+                    <mp-event-trigger id='{{viewId}}-select-api-resource-trigger' 
+                                      type='apiResourceSelect' 
+                                      data='{"apiResourceName": "{{#if (includes canvastype.value "sc:Canvas")}}{{#if canvaslabel_v2.value}}{{#if (findDoubleQuoteGroup canvaslabel_v2.value 0)}}{{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v2.value 0)}}{{else}}{{canvaslabel_v2.value}}{{/if}}{{/if}}{{else}}{{#if canvaslabel_v3.value}}{{#if (findDoubleQuoteGroup canvaslabel_v3.value 0)}}{{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v3.value 0)}}{{else}}{{canvaslabel_v3.value}}{{/if}}{{/if}}{{/if}}",
+                                             "apiResourceIIIFManifest": "{{proxied_manifest.value}}",
+                                             "apiResourceIIIFCanvasId": "{{#if (includes canvastype.value "sc:Canvas")}}{{canvasid_v2.value}}{{else}}{{canvasid_v3.value}}{{/if}}",
+                                             "apiResourceIIIFImageService": "{{#if (includes canvastype.value "sc:Canvas")}}{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v2.value 0))}}{{else}}{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v3.value 0))}}{{/if}}",
+                                            {{#if scheme}}"scheme": "{{scheme}}",{{/if}}
+                                            "viewId": "{{viewId}}"
+                                            }' >
+                      <button class="btn btn-action" title="Import place">Import image</button>
+                    </mp-event-trigger>
+
+                </div>
+
+              </template>
+
+            </semantic-table>
+          </semantic-context>
+        </div>
+      </semantic-search-result>
+    </div>
+  </semantic-search-result-holder>
+  
+</semantic-search>
+
