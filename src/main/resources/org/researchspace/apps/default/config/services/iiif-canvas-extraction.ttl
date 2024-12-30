@@ -1,0 +1,147 @@
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX spl: <http://spinrdf.org/spl#>
+PREFIX ephedra: <http://www.researchspace.org/resource/system/ephedra#>
+PREFIX sail: <http://www.openrdf.org/config/sail#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX : <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
+
+:IIIFManifestCanvasExtraction a ephedra:Service;
+	sail:sailType "researchspace:RESTSail" ;
+	rdfs:label "A canvas extractor for IIIF manifest v2/v3";
+	ephedra:hasSPARQLPattern (
+
+    [
+      sp:subject :_results ;
+      sp:predicate :manifest ;
+      sp:object :_manifest
+    ]
+
+    [
+      sp:subject :_results ;
+      sp:predicate :canvastype ;
+      sp:object :_canvastype
+    ]
+
+    [
+      sp:subject :_results ;
+      sp:predicate :proxied_manifest ;
+      sp:object :_proxied_manifest
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :label_v3 ;
+      sp:object :_label_v3
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :canvasid_v3 ;
+      sp:object :_canvasid_v3
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :imageservice_v3 ;
+      sp:object :_imageservice_v3
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :label_v2 ;
+      sp:object :_label_v2
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :canvasid_v2 ;
+      sp:object :_canvasid_v2
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :imageservice_v2 ;
+      sp:object :_imageservice_v2
+    ]
+
+  );
+
+	spin:constraint [
+		a spl:Argument ;
+		rdfs:comment "IIIF manifest url" ;
+		spl:predicate :_manifest ;
+		spl:valueType xsd:string
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Results" ;
+		spl:predicate :_results ;
+		spl:valueType rdfs:Resource;
+		ephedra:jsonPath "$..['items', 'canvases'][?(@.type == 'Canvas' || @['@type'] == 'sc:Canvas')]"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Type of admissible canvases" ;
+		spl:predicate :_canvastype ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['type', '@type']"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "IIIF manifest url" ;
+		spl:predicate :_proxied_manifest ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['_manifest']"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Labels of admissible canvases (API v3)" ;
+		spl:predicate :_label_v3 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.label"
+	] ;
+	
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Canvas ID (API v3)" ;
+		spl:predicate :_canvasid_v3 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['id']"
+	] ;
+	
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Image Services (API v3)" ;
+		spl:predicate :_imageservice_v3 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['items'][?(@.type == 'AnnotationPage')].['items'][?(@.type == 'Annotation' && @.motivation == 'painting')].body..service[*].id"
+	] ;
+	
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Labels of admissible canvases (API v2)" ;
+		spl:predicate :_label_v2 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.label"
+	] ;
+	
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Canvas ID (API v2)" ;
+		spl:predicate :_canvasid_v2 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['@id']"
+	] ;
+	
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Image Services (API v2)" ;
+		spl:predicate :_imageservice_v2 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['images'][?(@['@type'] == 'oa:Annotation' && @.motivation == 'sc:painting')]..service.['@id']"
+	] .
