@@ -2,59 +2,52 @@
 <https://w3id.org/murtenpanorama/pattern/image/iiif_image/image_service/context> {
   <https://w3id.org/murtenpanorama/pattern/image/iiif_image/image_service> a <http://www.researchspace.org/resource/system/fields/Field>,
       <http://www.w3.org/ns/prov#Entity>, <http://www.w3.org/ns/ldp#Resource>;
+    <http://www.researchspace.org/resource/system/fields/selectPattern> _:genid-34100a7d32374ac1adf5b51453bcee99-pckvur;
     <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
     <http://www.researchspace.org/resource/system/fields/minOccurs> "0";
     <http://www.w3.org/2000/01/rdf-schema#label> "IIIF image service";
-    <http://www.researchspace.org/resource/system/fields/deletePattern> _:genid-1d42df3c3251494798823ade96360278-hcl8zm;
+    <http://www.researchspace.org/resource/system/fields/insertPattern> _:genid-34100a7d32374ac1adf5b51453bcee99-88efbi;
     <http://www.researchspace.org/resource/system/fields/domain> <http://www.cidoc-crm.org/cidoc-crm/E36_Visual_Item>;
+    <http://www.researchspace.org/resource/system/fields/deletePattern> _:genid-34100a7d32374ac1adf5b51453bcee99-tr62gc;
     <http://www.researchspace.org/resource/system/fields/maxOccurs> "1";
-    <http://www.researchspace.org/resource/system/fields/selectPattern> _:genid-1d42df3c3251494798823ade96360278-m2hkzo;
-    <http://www.researchspace.org/resource/system/fields/range> <http://iiif.io/api/image#ImageService>;
-    <http://www.researchspace.org/resource/system/fields/insertPattern> _:genid-1d42df3c3251494798823ade96360278-fwvoyo;
     <http://www.w3.org/ns/prov#wasAttributedTo> <http://www.researchspace.org/resource/user/admin>;
-    <http://www.w3.org/ns/prov#generatedAtTime> "2024-12-29T14:40:40.653+01:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+    <http://www.w3.org/ns/prov#generatedAtTime> "2025-01-01T18:14:18.956+01:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
   
-  _:genid-1d42df3c3251494798823ade96360278-hcl8zm a <http://spinrdf.org/sp#Query>;
-    <http://spinrdf.org/sp#text> """DELETE { 
-  ?iiifImage crm:P129i_is_subject_of $value .
-  $value a crmdig:D1_Digital_Object .
-  $value a <http://iiif.io/api/image#ImageService> .
-} WHERE { 
-  $subject crmdig:L60i_is_documented_by ?digitizationProcess .
-  ?digitizationProcess a crmdig:D2_Digitization_Process .    
-  ?digitizationProcess crmdig:L11_had_output ?iiifImage .
-  ?iiifImage a crmdig:D1_Digital_Object .
-  ?iiifImage a <http://iiif.io/api/image> .
-  ?iiifImage crm:P129i_is_subject_of $value .
-      
-  ?value a <http://iiif.io/api/image#ImageService> .
-}""" .
-  
-  _:genid-1d42df3c3251494798823ade96360278-fwvoyo a <http://spinrdf.org/sp#Query>;
+  _:genid-34100a7d32374ac1adf5b51453bcee99-88efbi a <http://spinrdf.org/sp#Query>;
     <http://spinrdf.org/sp#text> """INSERT { 
-  $subject crmdig:L60i_is_documented_by ?digitizationProcess .
-  ?digitizationProcess a crmdig:D2_Digitization_Process .    
-  ?digitizationProcess crmdig:L11_had_output ?iiifImage .
-  ?iiifImage a crmdig:D1_Digital_Object .
-  ?iiifImage a <http://iiif.io/api/image> .
-  ?iiifImage crm:P129i_is_subject_of $value .
+  $subject crm:P129i_is_subject_of ?digital_object .
+  ?digital_object a crmdig:D1_Digital_Object .
+  ?digital_object crm:P2_has_type <http://iiif.io/api/image> .
+  ?digital_object crm:P129i_is_subject_of $value .
   $value a crmdig:D1_Digital_Object .
-  $value a <http://iiif.io/api/image#ImageService> .
+  $value crm:P2_has_type <http://iiif.io/api/image#ImageService> .     
 } WHERE {
-	BIND(URI(CONCAT(str($subject),\"/digitization_process\")) as ?digitizationProcess) .
-    BIND(URI(CONCAT(str($subject),\"/iiif_image\")) as ?iiifImage)
+  BIND(URI(CONCAT(STR($subject),\"/iiif_image\")) as ?digital_object)
 }""" .
   
-  _:genid-1d42df3c3251494798823ade96360278-m2hkzo a <http://spinrdf.org/sp#Query>;
-    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value ?label WHERE {
-  $subject crmdig:L60i_is_documented_by ?digitizationProcess .
-  ?digitizationProcess a crmdig:D2_Digitization_Process .    
-  ?digitizationProcess crmdig:L11_had_output ?iiifImage .
-  ?iiifImage a crmdig:D1_Digital_Object .
-  ?iiifImage a <http://iiif.io/api/image> .
-  ?iiifImage crm:P129i_is_subject_of $value .
-      
-  ?value a <http://iiif.io/api/image#ImageService> .
+  _:genid-34100a7d32374ac1adf5b51453bcee99-tr62gc a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """DELETE { 
+  ?digital_object crm:P129i_is_subject_of $value .
+  $value a crmdig:D1_Digital_Object .
+  $value crm:P2_has_type <http://iiif.io/api/image#ImageService> .     
+} WHERE {
+  $subject crm:P129i_is_subject_of ?digital_object .
+  ?digital_object a crmdig:D1_Digital_Object .
+  ?digital_object crm:P2_has_type <http://iiif.io/api/image> .
+  ?digital_object crm:P129i_is_subject_of $value .
+  $value a crmdig:D1_Digital_Object .
+  
+  ?value crm:P2_has_type <http://iiif.io/api/image#ImageService> .
+}""" .
+  
+  _:genid-34100a7d32374ac1adf5b51453bcee99-pckvur a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value WHERE {
+  $subject crm:P129i_is_subject_of ?digital_object .
+  ?digital_object a crmdig:D1_Digital_Object .
+  ?digital_object crm:P2_has_type <http://iiif.io/api/image> .
+  ?digital_object crm:P129i_is_subject_of $value .
+
+  ?value crm:P2_has_type <http://iiif.io/api/image#ImageService> .
 }""" .
   
   <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
