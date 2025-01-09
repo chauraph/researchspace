@@ -49,6 +49,12 @@ PREFIX : <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
 
 	[
       sp:subject :_results ;
+      sp:predicate :imageserviceprofile_v3 ;
+      sp:object :_imageserviceprofile_v3
+    ]
+
+	[
+      sp:subject :_results ;
       sp:predicate :label_v2 ;
       sp:object :_label_v2
     ]
@@ -63,6 +69,12 @@ PREFIX : <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
       sp:subject :_results ;
       sp:predicate :imageservice_v2 ;
       sp:object :_imageservice_v2
+    ]
+
+	[
+      sp:subject :_results ;
+      sp:predicate :imageserviceprofile_v2 ;
+      sp:object :_imageserviceprofile_v2
     ]
 
   );
@@ -121,6 +133,14 @@ PREFIX : <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
 		spl:valueType xsd:string ;
 		ephedra:jsonPath "$.['items'][?(@.type == 'AnnotationPage')].['items'][?(@.type == 'Annotation' && @.motivation == 'painting')].body..service[*].id"
 	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Image Services Profile (API v3)" ;
+		spl:predicate :_imageserviceprofile_v3 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['items'][?(@.type == 'AnnotationPage')].['items'][?(@.type == 'Annotation' && @.motivation == 'painting')].body..service[*].profile"
+	] ;
 	
 	spin:column [
 		a spin:Column ;
@@ -144,4 +164,12 @@ PREFIX : <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
 		spl:predicate :_imageservice_v2 ;
 		spl:valueType xsd:string ;
 		ephedra:jsonPath "$.['images'][?(@['@type'] == 'oa:Annotation' && @.motivation == 'sc:painting')]..service.['@id']"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Image Services Profile (API v2)" ;
+		spl:predicate :_imageserviceprofile_v2 ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.['images'][?(@['@type'] == 'oa:Annotation' && @.motivation == 'sc:painting')]..service.profile"
 	] .

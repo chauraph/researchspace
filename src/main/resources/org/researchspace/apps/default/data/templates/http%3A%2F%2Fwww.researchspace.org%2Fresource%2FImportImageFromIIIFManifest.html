@@ -5,18 +5,20 @@
                                   tokenize-lucene-query=false
                                   escape-lucene-syntax=false
                                   debounce=500
-                                  query=' PREFIX iiif: <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
-                                        SELECT DISTINCT ?subject ?canvastype ?proxied_manifest ?canvaslabel_v3 ?canvasid_v3 ?imageservice_v3 ?canvaslabel_v2 ?canvasid_v2 ?imageservice_v2 WHERE {
-                                          ?subject iiif:manifest ?__token__ ;
-                                            iiif:canvastype ?canvastype;
-                                            iiif:proxied_manifest ?proxied_manifest;
-                                            iiif:label_v3 ?canvaslabel_v3;
-                                            iiif:canvasid_v3 ?canvasid_v3;
-                                            iiif:imageservice_v3 ?imageservice_v3;
-                                            iiif:label_v2 ?canvaslabel_v2;
-                                            iiif:canvasid_v2 ?canvasid_v2;
-                                            iiif:imageservice_v2 ?imageservice_v2;
-                                         }'
+                                  query='PREFIX iiif: <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
+                                  SELECT DISTINCT ?subject ?canvastype ?proxied_manifest ?canvaslabel_v3 ?canvasid_v3 ?imageservice_v3 ?imageserviceprofile_v3 ?canvaslabel_v2 ?canvasid_v2 ?imageservice_v2 ?imageserviceprofile_v2 WHERE {
+                                    ?subject iiif:manifest ?__token__ ;
+                                      iiif:canvastype ?canvastype;
+                                      iiif:proxied_manifest ?proxied_manifest;
+                                      iiif:label_v3 ?canvaslabel_v3;
+                                      iiif:canvasid_v3 ?canvasid_v3;
+                                      iiif:imageservice_v3 ?imageservice_v3;
+                                      iiif:imageserviceprofile_v3 ?imageserviceprofile_v3;
+                                      iiif:label_v2 ?canvaslabel_v2;
+                                      iiif:canvasid_v2 ?canvasid_v2;
+                                      iiif:imageservice_v2 ?imageservice_v2;
+                                      iiif:imageserviceprofile_v2 ?imageserviceprofile_v2.
+                                    }'
   ></semantic-search-query-keyword>
   
   <semantic-search-result-holder>
@@ -99,7 +101,11 @@
                                             {{#if scheme}}"scheme": "{{scheme}}",{{/if}}
                                             "viewId": "{{viewId}}"
                                             }' >
+                    {{#ifCond (includes imageserviceprofile_v3.value "level2") "||" (includes imageserviceprofile_v2.value "level2")}}                        
                       <button class="btn btn-action" title="Import image">Import image</button>
+                    {{else}}
+                      <button disabled class="btn btn-action" title="Cannot import IIIF images below Level 2 compliance">Cannot import IIIF images below Level 2 compliance</button>
+                    {{/ifCond}}
                     </mp-event-trigger>
 
                 </div>
