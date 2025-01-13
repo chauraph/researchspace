@@ -92,6 +92,7 @@ export class OpenSeadragonOverlay extends Component<OverlayProps, {}> {
         minZoomImageRatio: 0.6,
         maxZoomPixelRatio: 4,
         tileSources: [this.getImageInformationRequestUri(this.props.metadata.first())],
+        crossOriginPolicy: 'Anonymous' ,
       });
       viewer.addOnceHandler('tile-loaded', this.onFirstImageLoaded);
       this.osd = { viewer, images: [] };
