@@ -80,7 +80,7 @@ export namespace Size {
   export class Absolute extends Rectangular {}
   export class BestFit extends Rectangular {
     toString() {
-      return '!' + super.toString();
+      return super.toString(); // to support iiif service without ! support
     }
   }
   export class Percent extends Size {
