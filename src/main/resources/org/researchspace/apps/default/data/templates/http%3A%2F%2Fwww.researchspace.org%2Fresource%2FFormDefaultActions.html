@@ -257,29 +257,39 @@
             <semantic-query query='SELECT ?node ?file ?viewId WHERE { 
                                     BIND("{{viewId}}" as ?viewId) . 
                                     BIND(<{{node}}> AS ?node) . 
-                                    <{{node}}> crmdig:L60i_is_documented_by/crmdig:L11_had_output ?file . 
+                                    OPTIONAL { <{{node}}> crmdig:L60i_is_documented_by/crmdig:L11_had_output ?file . 
+                                                ?file a <http://www.w3.org/ns/ldp#Resource> . }
                                   } LIMIT 1' 
-                            template='{{> deleteFileTemplate}}'>
+                            template='{{> deleteFileTemplate}}'>              
               
               <template id='deleteFileTemplate'>
-                <semantic-context repository='assets'>
-                  <rs-file-remove id='{{bindings.0.viewId.value}}-file-removal-{{bindings.0.node.value}}' 
-                                  iri='{{bindings.0.file.value}}' 
-                                  storage='[[assetStorage]]'
-                                  name-predicate-iri='http://www.researchspace.org/ontology/PX_has_file_name'
-                                  media-type-predicate-iri='http://www.researchspace.org/ontology/PX_has_media_type'
-                  >
+                {{#if bindings.0.file}}
+                  <semantic-context repository='assets'>
+                    <rs-file-remove id='{{bindings.0.viewId.value}}-file-removal-{{bindings.0.node.value}}' 
+                                    iri='{{bindings.0.file.value}}' 
+                                    storage='[[assetStorage]]'
+                                    name-predicate-iri='http://www.researchspace.org/ontology/PX_has_file_name'
+                                    media-type-predicate-iri='http://www.researchspace.org/ontology/PX_has_media_type'
+                    >
+                      <button class="btn btn-action">Delete</button>
+                    </rs-file-remove>
+                  </semantic-context>
+                    
+                  <mp-event-proxy id='{{bindings.0.viewId.value}}-entity-removal' 
+                                  on-event-source='{{bindings.0.viewId.value}}-file-removal-{{bindings.0.node.value}}' 
+                                  on-event-type='File.Removed'
+                                  proxy-event-type='Form.RemoveResource' 
+                                  data='{"iri": "{{bindings.0.node.value}}"}' 
+                                  proxy-targets='["{{bindings.0.node.value}}-resource-form"]'>
+                  </mp-event-proxy>
+                {{else}}
+                  <mp-event-trigger id='{{bindings.0.viewId.value}}-resource-removal' 
+                                    type='Form.RemoveResource' 
+                                    data='{"iri": "{{bindings.0.node.value}}"}' 
+                                    targets='["{{bindings.0.node.value}}-resource-form"]'>
                     <button class="btn btn-action">Delete</button>
-                  </rs-file-remove>
-                </semantic-context>
-                
-                <mp-event-proxy id='{{bindings.0.viewId.value}}-entity-removal' 
-                                on-event-source='{{bindings.0.viewId.value}}-file-removal-{{bindings.0.node.value}}' 
-                                on-event-type='File.Removed'
-                                proxy-event-type='Form.RemoveResource' 
-                                data='{"iri": "{{bindings.0.node.value}}"}' 
-                                proxy-targets='["{{bindings.0.node.value}}-resource-form"]'
-                ></mp-event-proxy>
+                  </mp-event-trigger>
+                {{/if}}
               </template>
             </semantic-query>
           [[else]]

@@ -98,7 +98,7 @@ export function queryIIIFImageOrRegion(
       
       if (!type || !imageIRI.isIri()) {
         return Kefir.constantError<any>(`Image or region ${imageOrRegion} not found.`);
-      } else if (!imageID || imageID.value.indexOf('/') >= 0) {
+      } else if (!imageID || (imageID.value.indexOf('/') >= 0 && !imageID.isIri())) {
         return Kefir.constantError<any>(
           `Invalid image ID '${imageID.value}' ` + `generated from ${imageIRI} using pattern: ${imageIdPattern}`
         );
@@ -110,7 +110,7 @@ export function queryIIIFImageOrRegion(
           imageId: imageID.value,
           isRegion: false,
           imageIRI: imageIRI,
-          carrierImageIRI: carrierImageIRI.value
+          carrierImageIRI: carrierImageIRI?.value
         });
       } else if (type.value === 'region') {
         const viewport = maybe.fromNullable(binding['viewport']).chain((b) => parseImageSubarea(b.value));

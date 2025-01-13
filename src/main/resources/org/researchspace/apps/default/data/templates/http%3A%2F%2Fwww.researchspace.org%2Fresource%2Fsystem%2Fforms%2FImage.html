@@ -6,7 +6,10 @@
                             inScheme="http://www.researchspace.org/pattern/system/entity/is_listed_in"
                             entity_formRecord="http://www.researchspace.org/pattern/system/entity/formRecord"
                             
-                            entity_file_identifier="http://www.researchspace.org/pattern/system/entity/file_identifier"
+                            iiif_image_service="https://w3id.org/murtenpanorama/pattern/image/iiif_image/image_service"
+                            iiif_canvas_id="https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/canvas"
+                            iiif_manifest="https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/manifest"
+                            entity_file_identifier="http://www.researchspace.org/pattern/system/entity/file_identifierMin0"
                             entity_primary_appellation="http://www.researchspace.org/pattern/system/entity/primary_appellation"
                             human-made_thing_title="http://www.researchspace.org/pattern/system/human-made_thing/PC102_has_title"
                             image_type="http://www.researchspace.org/pattern/system/image/type"
@@ -73,7 +76,37 @@
                 <div class="form-2column-container">
                     [[> imageUploadSection ]]
                     <div>
-                        <semantic-form-text-input for="entity_primary_appellation" label="Image name" placeholder="Enter image name"></semantic-form-text-input>
+                        {{#if apiResourceIIIFManifest}}
+                            <div class="focused-input-container">
+                                <semantic-form-text-input for="iiif_manifest" default-value='{{apiResourceIIIFManifest}}' label="IIIF manifest" placeholder="Enter IIIF manifest"></semantic-form-text-input>
+                            </div>
+                        {{else}}
+                            <semantic-form-text-input for="iiif_manifest" label="IIIF manifest" placeholder="Enter IIIF manifest"></semantic-form-text-input>
+                        {{/if}}
+
+                        {{#if apiResourceIIIFCanvasId}}
+                            <div class="focused-input-container">
+                                <semantic-form-text-input for="iiif_canvas_id" default-value='{{apiResourceIIIFCanvasId}}' label="IIIF canvas id" placeholder="Enter IIIF canvas id"></semantic-form-text-input>
+                            </div>
+                        {{else}}
+                            <semantic-form-text-input for="iiif_canvas_id" label="IIIF canvas id" placeholder="Enter IIIF canvas id"></semantic-form-text-input>
+                        {{/if}}
+
+                        {{#if apiResourceIIIFImageService}}
+                            <div class="focused-input-container">
+                                <semantic-form-text-input for="iiif_image_service" default-value='{{apiResourceIIIFImageService}}' label="IIIF image service" placeholder="Enter IIIF image service"></semantic-form-text-input>
+                            </div>
+                        {{else}}
+                            <semantic-form-text-input for="iiif_image_service" label="IIIF image service" placeholder="Enter IIIF image service"></semantic-form-text-input>
+                        {{/if}}
+
+                        {{#if apiResourceName}}
+                            <div class="focused-input-container">
+                                <semantic-form-text-input for="entity_primary_appellation" label="Image name" placeholder="Enter image name" default-value="{{sanitizeJsonLikeString apiResourceName}}"></semantic-form-text-input>
+                            </div>
+                        {{else}}
+                            <semantic-form-text-input for="entity_primary_appellation" label="Image name" placeholder="Enter image name"></semantic-form-text-input>
+                        {{/if}}
 
                         <div class="inline-composite-container">
                             <semantic-form-composite-input  for="human-made_thing_title" 

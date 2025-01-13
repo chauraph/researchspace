@@ -46,7 +46,12 @@ export namespace Region {
       return `${this.x},${this.y},${this.width},${this.height}`;
     }
   }
-  export class Absolute extends Rectangular {}
+  export class Absolute extends Rectangular {
+    constructor(x: number, y: number, width: number, height: number) {
+      // Round the values to the nearest integer using Math.round, implemented by Raphael Chau
+      super(Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+    }
+  }
   export class Percent extends Rectangular {
     toString() {
       return 'pct:' + super.toString();
@@ -75,7 +80,7 @@ export namespace Size {
   export class Absolute extends Rectangular {}
   export class BestFit extends Rectangular {
     toString() {
-      return '!' + super.toString();
+      return super.toString(); // to support iiif service without ! support
     }
   }
   export class Percent extends Size {
@@ -123,7 +128,7 @@ export function constructImageUri(serverAndPrefix: string, params: ImageRequestP
   const rotation = params.rotation || Rotation.zero;
   const quality = Quality[params.quality || Quality.Default].toLowerCase();
   const format = params.format;
-  let r = `${serverAndPrefix}/${params.imageId}/${region}/${size}/${rotation}/${quality}`;
+  let r = `${(idIsIIIFImageService(params.imageId)) ? "" : serverAndPrefix + "/"}${params.imageId}/${region}/${size}/${rotation}/${quality}`;
   if (params.format !== 'auto') {
     r = r + '.' + format;
   }
@@ -135,12 +140,16 @@ export function constructInformationRequestUri(serverAndPrefix: string, imageId:
 }
 
 export function constructServiceRequestUri(serverAndPrefix: string, imageId: string) {
-  return serverAndPrefix + '/' + encodeURIComponent(imageId);
+  return (idIsIIIFImageService(imageId)) ? imageId : serverAndPrefix + '/' + encodeURIComponent(imageId);
 }
 
 export interface ImageBounds {
   width: number;
   height: number;
+}
+
+export function idIsIIIFImageService(iiifImageId: String) {
+  return (iiifImageId.indexOf("http") === 0)
 }
 
 export function queryImageBounds(serverAndPrefix: string, imageId: string) {
