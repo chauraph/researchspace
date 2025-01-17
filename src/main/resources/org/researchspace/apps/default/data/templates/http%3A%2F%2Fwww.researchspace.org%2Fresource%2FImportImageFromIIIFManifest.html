@@ -104,7 +104,11 @@
                     {{#ifCond (includes imageserviceprofile_v3.value "level2") "||" (includes imageserviceprofile_v2.value "level2")}}                        
                       <button class="btn btn-action" title="Import image">Import image</button>
                     {{else}}
-                      <button disabled class="btn btn-action" title="Cannot import IIIF images below Level 2 compliance">Cannot import IIIF images below Level 2 compliance</button>
+                      {{#ifCond (includes imageserviceprofile_v3.value "level1") "||" (includes imageserviceprofile_v2.value "level1")}}
+                        <button class="btn btn-action" title="Import image">Import image</button>
+                      {{else}}
+                        <button disabled class="btn btn-action" title="Cannot import IIIF images below Level 1 compliance">Cannot import IIIF images below Level 1 compliance</button>
+                      {{/ifCond}}
                     {{/ifCond}}
                     </mp-event-trigger>
 
