@@ -267,19 +267,66 @@ export function convertAnnotationToCompositeValue(annotation: OARegionAnnotation
       const value = Rdf.literal(textResource.chars);
       values = Immutable.List<Forms.FieldValue>([Forms.FieldValue.fromLabeled({ value })]);
     } else if (field.id === ImageRegionBoundingBox.id) {
+      // map reduce to compute super boundingbox for disjointed masks
+      const imageRegionBoundingBoxes = annotation.on.map((on) => {
+        const value = Rdf.literal(on.selector.default.value);
+        return value;
+      })
+      const superBoundingBox = imageRegionBoundingBoxes.reduce(
+        (acc, row) => {
+          const { x1, y1, x2, y2 } = parseBoundingBox(row.value);
+      
+          return {
+            x1: Math.min(acc.x1, x1),
+            y1: Math.min(acc.y1, y1),
+            x2: Math.max(acc.x2, x2),
+            y2: Math.max(acc.y2, y2),
+            termType: row.termType, 
+            datatype: row.datatype, 
+            language: row.language, 
+          };
+        },
+        { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity, termType: imageRegionBoundingBoxes[0].termType, datatype: imageRegionBoundingBoxes[0].datatype, language: imageRegionBoundingBoxes[0].language }
+      );
+      const reduce = {
+        termType: superBoundingBox.termType,
+        value: `xywh=${superBoundingBox.x1},${superBoundingBox.y1},${superBoundingBox.x2 - superBoundingBox.x1},${superBoundingBox.y2 - superBoundingBox.y1}`,
+        datatype: superBoundingBox.datatype,
+        language: superBoundingBox.language,
+      };
+      /*
       values = Immutable.List<Forms.FieldValue>(
         annotation.on.map((on) => {
           const value = Rdf.literal(on.selector.default.value);
           return Forms.FieldValue.fromLabeled({ value });
         })
-      );
+      );*/
+      values = Immutable.List<Forms.FieldValue>([
+        Forms.FieldValue.fromLabeled({ value: Rdf.literal(reduce.value) })
+      ]);
     } else if (field.id === ImageRegionValue.id) {
+      // map reduce to concatenate SVG paths for disjointed masks
+      const imageRegionValues = annotation.on.map((on) => {
+        const value = Rdf.literal(on.selector.item.value);
+        return value;
+      })
+      const reduce = imageRegionValues.reduce(
+        (acc, curr) => {
+          acc.value += curr.value;
+          return acc;
+        },
+        { ...imageRegionValues[0], value: "" }
+      );
+      reduce.value = reduce.value.replace(/<\/svg><svg xmlns='http:\/\/www.w3.org\/2000\/svg'>/g, "");
+      /*
       values = Immutable.List<Forms.FieldValue>(
         annotation.on.map((on) => {
           const value = Rdf.literal(on.selector.item.value);
           return Forms.FieldValue.fromLabeled({ value });
-        })
-      );
+        })*/
+      values = Immutable.List<Forms.FieldValue>([
+        Forms.FieldValue.fromLabeled({ value: Rdf.literal(reduce.value) })
+      ]);
     } else if (field.id === ImageRegionViewport.id) {
       const value = Rdf.literal(annotation[rso.viewport.value]);
       values = Immutable.List<Forms.FieldValue>([Forms.FieldValue.fromLabeled({ value })]);
@@ -321,6 +368,12 @@ function fetchInitialAnnotationModel(annotationIri: Rdf.Iri): Kefir.Property<For
     })
     .toProperty();
 }
+
+// Helper function to parse `xywh` value into normalized coordinates
+const parseBoundingBox = (value) => {
+  const [x, y, width, height] = value.split("xywh=")[1].split(",").map(Number);
+  return { x1: x, y1: y, x2: x + width, y2: y + height };
+};
 
 export const LdpRegionService = new LdpRegionServiceClass(rso.ImageRegionContainer.value);
 export default LdpRegionService;
