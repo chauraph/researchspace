@@ -140,6 +140,7 @@ declare namespace OpenSeadragon {
     navImages?: any;
     showNavigationControl?: boolean;
     debugMode?: boolean;
+    crossOriginPolicy?: string;
 	}
 
   type CompositeOperation =

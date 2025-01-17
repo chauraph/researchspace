@@ -1,2 +1,3 @@
 config.proxy.IIIF.targetUri=http://digilib:8080/digilib/Scaler/IIIF
 config.proxy.IIIF.preserveHost=true
+config.proxy.segmentation.targetUri=http://localhost:7860

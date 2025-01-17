@@ -580,7 +580,7 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
           endpoint: this.annotationEndpoint,
         },
       },
-      availableAnnotationDrawingTools: ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin'],
+      availableAnnotationDrawingTools: ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam'],
       windowObjects,
       annotationBodyEditor: {
         module: 'researchspaceAnnotationBodyEditor',

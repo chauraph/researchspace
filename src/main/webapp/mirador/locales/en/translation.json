@@ -81,6 +81,7 @@
   "rotateLeftTooltip": "Rotate 90&deg; left",
   "rotateRightTooltip": "Rotate 90&deg; right",
   "saturationTooltip": "Adjust saturation",
+  "samTooltip": "Segment Anything (experimental)",
   "save": "Save",
   "scrollView": "Scroll View",
   "searchLabelSelect": "Select Search Service",
