@@ -16,7 +16,7 @@
       sr:sailImpl [
           sail:sailType "researchspace:RESTSail";
           ephedra:serviceURL "http://localhost:10214/rest/iiifProxy/?processForImageImport=true&";
-          ephedra:implementsService <https://w3id.org/murtenpanorama/resource/system/service/iiif/IIIFManifestCanvasExtraction>;
+          ephedra:implementsService <https://w3id.org/dsanno/platform/services/iiif/IIIFManifestCanvasExtraction>;
           ephedra:httpMethod "GET";
           ephedra:inputFormat "JSON";
           ephedra:mediaType "application/json"

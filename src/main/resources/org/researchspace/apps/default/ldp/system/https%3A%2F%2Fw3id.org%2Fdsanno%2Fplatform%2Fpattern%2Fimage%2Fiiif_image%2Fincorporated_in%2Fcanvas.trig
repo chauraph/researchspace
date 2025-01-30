@@ -1,5 +1,5 @@
 
-<https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/canvas/context> {
+<https://w3id.org/dsanno/platform/pattern/image/iiif_image/incorporated_in/canvas/context> {
   _:genid-d961acc187c341d7b1cc837e016cd04b-9s2ps a <http://spinrdf.org/sp#Query>;
     <http://spinrdf.org/sp#text> """DELETE { 
   ?digital_object crm:P165i_is_incorporated_in $value .
@@ -15,7 +15,7 @@
   ?value crm:P2_has_type <http://iiif.io/api/presentation#Canvas> .
 }""" .
   
-  <https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/canvas>
+  <https://w3id.org/dsanno/platform/pattern/image/iiif_image/incorporated_in/canvas>
     a <http://www.researchspace.org/resource/system/fields/Field>, <http://www.w3.org/ns/prov#Entity>,
       <http://www.w3.org/ns/ldp#Resource>;
     <http://www.researchspace.org/resource/system/fields/deletePattern> _:genid-d961acc187c341d7b1cc837e016cd04b-9s2ps;
@@ -54,5 +54,5 @@
 }""" .
   
   <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
-      <https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/canvas> .
+      <https://w3id.org/dsanno/platform/pattern/image/iiif_image/incorporated_in/canvas> .
 }

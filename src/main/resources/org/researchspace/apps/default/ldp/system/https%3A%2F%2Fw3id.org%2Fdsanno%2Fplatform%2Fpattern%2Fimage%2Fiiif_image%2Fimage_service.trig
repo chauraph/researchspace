@@ -1,6 +1,6 @@
 
-<https://w3id.org/murtenpanorama/pattern/image/iiif_image/image_service/context> {
-  <https://w3id.org/murtenpanorama/pattern/image/iiif_image/image_service> a <http://www.researchspace.org/resource/system/fields/Field>,
+<https://w3id.org/dsanno/platform/pattern/image/iiif_image/image_service/context> {
+  <https://w3id.org/dsanno/platform/pattern/image/iiif_image/image_service> a <http://www.researchspace.org/resource/system/fields/Field>,
       <http://www.w3.org/ns/prov#Entity>, <http://www.w3.org/ns/ldp#Resource>;
     <http://www.researchspace.org/resource/system/fields/selectPattern> _:genid-34100a7d32374ac1adf5b51453bcee99-pckvur;
     <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
@@ -51,5 +51,5 @@
 }""" .
   
   <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
-      <https://w3id.org/murtenpanorama/pattern/image/iiif_image/image_service> .
+      <https://w3id.org/dsanno/platform/pattern/image/iiif_image/image_service> .
 }

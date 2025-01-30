@@ -1,6 +1,6 @@
 
-<https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/manifest/context> {
-  <https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/manifest>
+<https://w3id.org/dsanno/platform/pattern/image/iiif_image/incorporated_in/manifest/context> {
+  <https://w3id.org/dsanno/platform/pattern/image/iiif_image/incorporated_in/manifest>
     a <http://www.researchspace.org/resource/system/fields/Field>, <http://www.w3.org/ns/prov#Entity>,
       <http://www.w3.org/ns/ldp#Resource>;
     <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
@@ -54,5 +54,5 @@
 }""" .
   
   <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
-      <https://w3id.org/murtenpanorama/pattern/image/iiif_image/incorporated_in/manifest> .
+      <https://w3id.org/dsanno/platform/pattern/image/iiif_image/incorporated_in/manifest> .
 }
