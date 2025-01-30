@@ -4,7 +4,7 @@ PREFIX spl: <http://spinrdf.org/spl#>
 PREFIX ephedra: <http://www.researchspace.org/resource/system/ephedra#>
 PREFIX sail: <http://www.openrdf.org/config/sail#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX : <https://w3id.org/murtenpanorama/resource/system/service/iiif/>
+PREFIX : <https://w3id.org/dsanno/platform/services/iiif/>
 
 :IIIFManifestCanvasExtraction a ephedra:Service;
 	sail:sailType "researchspace:RESTSail" ;
