@@ -319,12 +319,34 @@ namespace TemporaryFileSchema {
     }
     const bufferString = encoded.value.substring(SCHEMA_PREFIX.length);
     const [encodedMediaType, encodedName] = bufferString.split('/');
-    if (!(encodedMediaType && encodedName)) {
+    if (!encodedName) {
       throw new Error(`Failed to decode temporary file IRI: ${encoded}`);
     }
+    
+    const fileName = decodeURIComponent(encodedName);
+    
+    // Extract file extension from fileName and hardcode glb. glb is not yet recognized by attr-accept (https://github.com/okonet/attr-accept)
+    if (!encodedMediaType) {
+      
+      const extension = fileName.split('.').pop()?.toLowerCase();
+      
+      if (extension) {
+        const extensionMap: Record<string, string> = {
+          'glb': 'model/gltf-binary',
+        };
+        
+        return {
+          mediaType: extensionMap[extension] || 'application/octet-stream',
+          fileName
+        };
+      }
+      
+      throw new Error(`Cannot determine media type for file without extension: ${fileName}`);
+    }
+    
     return {
       mediaType: decodeURIComponent(encodedMediaType),
-      fileName: decodeURIComponent(encodedName),
+      fileName
     };
   }
 }

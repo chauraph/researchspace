@@ -77,7 +77,7 @@
                     <div class="FileUploader-container" style="flex: 1;">
                         <semantic-form-file-input   for='entity_file_identifier' 
                                                     label='3D model file'
-                                                    accept-pattern='application/*,image/*' 
+                                                    accept-pattern='model/*,.glb' 
                                                     storage='images'
                                                     temp-storage='tmp'
                                                     name-predicate-iri='http://www.researchspace.org/ontology/PX_has_file_name'
@@ -97,7 +97,7 @@
                             <div className='placeholder-item'>
                                 <rs-icon icon-type='rounded' icon-name='upload' class='upload_icon' symbol='true'></rs-icon>
                                 <p>Drag file <span>or </span><span class='text-link'>click to upload</span></p>
-                                <div>Supported format: .pdf .doc .xml .ppt .pptx .json .rdf .zip .jpeg .jpg .tiff .bmp .png .svg+xml</div>
+                                <div>Supported format: .obj .glb</div>
                             </div>
                         </semantic-form-file-input>
                     </div>
