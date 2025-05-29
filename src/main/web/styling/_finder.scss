@@ -34,9 +34,12 @@
  // column-gap: 30px;
   row-gap: 3vh;
 
-  grid-template-areas: '. favourites .'
+  grid-template-areas: '. sources .'
+                        '. entities .'
+                        //'. favourites .'
+                        '. explore .'
                         '. libraries .'
-                        '. insystem .'
+                        //'. insystem .'
                         '. settings .';
 }
 
@@ -46,23 +49,44 @@
 
   grid-template-rows: auto;
   grid-template-columns: max-content;
-  grid-template-areas: 'favourites'
-                        'libraries'
-                        'insystem';
-
+  grid-template-areas: '. sources .'
+                        '. entities .'
+                        //'. favourites .'
+                        '. explore .'
+                        '. libraries .'
+                        //'. insystem .'
+                        '. settings .';
 }
 
+
+.finder-section-sources-container {
+  grid-area: sources;
+}
+
+.finder-section-entities-container {
+  grid-area: entities;
+}
+/*
 .finder-section-favourites-container {
   grid-area: favourites;
 }
+*/
+
+.finder-section-explore-container {
+  grid-area: explore;
+}
+
+
 
 .finder-section-libraries-container {
   grid-area: libraries;
 }
-
+  
+/*
 .finder-section-system-container {
   grid-area: insystem;
 }
+  */
 
 .finder-section-settings-container {
   grid-area: settings;

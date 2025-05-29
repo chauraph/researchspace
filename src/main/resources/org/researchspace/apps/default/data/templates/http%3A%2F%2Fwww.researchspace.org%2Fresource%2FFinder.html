@@ -2,10 +2,27 @@
   <template id='finder'>
     <div class="finder-container {{#if finderPreview}}finderPreview-container{{/if}}">
 
+      <div class="finder-section finder-section-sources-container">
+        <div class="finder-section-name">Sources</div>
+        [[> finderSemanticTree finderSection='http://www.researchspace.org/resource/system/vocab/navigation_menu_section/sources']]
+      </div>
+
+      <div class="finder-section finder-section-entities-container">
+        <div class="finder-section-name">Entities</div>
+        [[> finderSemanticTree finderSection='http://www.researchspace.org/resource/system/vocab/navigation_menu_section/entities']]
+      </div>
+
+      <div class="finder-section finder-section-explore-container">
+        <div class="finder-section-name">Explore</div>
+        [[> finderSemanticTree finderSection='http://www.researchspace.org/resource/system/vocab/navigation_menu_section/explore']]
+      </div>
+
+      [[!--
       <div class="finder-section finder-section-favourites-container">
         <div class="finder-section-name">Favourites</div>
         [[> finderSemanticTree finderSection='http://www.researchspace.org/resource/system/vocab/navigation_menu_section/favourites']]
       </div>
+      --]]
 
       <div class="finder-section finder-section-libraries-container">
         <div class="finder-section-name">Libraries</div>
@@ -13,10 +30,12 @@
 
       </div>
 
+      [[!--
       <div class="finder-section finder-section-system-container">
         <div class="finder-section-name">System</div>
         [[> finderSemanticTree finderSection='http://www.researchspace.org/resource/system/vocab/navigation_menu_section/system']]
       </div>
+      --]]
 
       [[#*inline "finderSemanticTree"]]
         <div class="finder-semantic-tree-container">
