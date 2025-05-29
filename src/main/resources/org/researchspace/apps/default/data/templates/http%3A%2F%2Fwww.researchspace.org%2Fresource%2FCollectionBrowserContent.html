@@ -81,7 +81,8 @@
           asSKOS=bindings.0.asSKOS.value
           useOpaqueURL=bindings.0.useOpaqueURL.value
           mode=mode 
-          iri=iri}}
+          iri=iri
+          label=label}}
       {{else}}
         [[!-- if there is no authority configuration for the current authority then we can only guess how to edit it, 
               so we can offer here for user to associate a config with it --]]
@@ -102,6 +103,8 @@
           resourceIcon=bindings.0.resourceIcon.value
           asSKOS=bindings.0.asSKOS.value
           useOpaqueURL=bindings.0.useOpaqueURL.value
+          selectedEntity=selectedEntity
+          label=label}}
       {{/ifCond}}
     </template>
     <template id='noResultTemplate'>

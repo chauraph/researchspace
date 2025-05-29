@@ -557,7 +557,8 @@
                                                 {{#if data.additional_data}}"additional-data":{{{stringify data.additional_data}}},{{/if}}
                                                 "editable": {{editable}},
                                                 "mode": "{{mode}}",
-                                                "viewId": "{{#if iri}}{{iri}}{{else}}{{viewId}}{{/if}}",                                           
+                                                "viewId": "{{#if iri}}{{iri}}{{else}}{{viewId}}{{/if}}",    
+                                                "label": "{{#if label}}{{label}}{{/if}}",                                           
                                                 {{#if resourceLabelPattern}}"resourceLabelPattern": "{{resourceLabelPattern}}",{{/if}} 
                                                 {{#if selectedApiResource}}
                                                   {{#if apiResourceURI}}"apiResourceURI": "{{apiResourceURI}}",{{/if}}
