@@ -101,6 +101,10 @@ public class FieldDefinitionSource {
         options.hash.forEach((alias, iri) -> {
             aliasMap.put(alias, vf.createIRI(iri.toString()));
         });
+
+        // add default field definition for dsannop
+        aliasMap.put("owl_sameAs", vf.createIRI("http://www.w3.org/2002/07/owl#sameAs"));
+
         return this.generateFieldDefinitions(aliasMap.isEmpty() ? null : aliasMap, options);
     }
 

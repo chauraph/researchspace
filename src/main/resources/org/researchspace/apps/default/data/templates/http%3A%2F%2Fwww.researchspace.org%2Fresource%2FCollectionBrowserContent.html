@@ -4,6 +4,8 @@
                                 ?resourceRestrictionPattern ?resourceLabelPattern 
                                 ?resourceIcon
                                  ?managedByResourceConfig
+                                ?asSKOS
+                                ?useOpaqueURL
                             
                         WHERE {
 
@@ -45,6 +47,18 @@
                             OPTIONAL {
                               ?resourceConfiguration <http://www.researchspace.org/pattern/system/resource_configuration/resource_card_icon> ?resourceIcon .
                             }
+                            OPTIONAL { 
+                              <{{configOrScheme}}> a crm:E32_Authority_Document ;
+                              crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/skos> .
+                              BIND(<{{configOrScheme}}> AS ?refersToAsSKOS)
+                              }
+                              BIND(BOUND(?refersToAsSKOS) AS ?asSKOS)
+                            OPTIONAL { 
+                              <{{configOrScheme}}> a crm:E32_Authority_Document ;
+                              crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/opaque_url>.
+                              BIND(<{{configOrScheme}}> AS ?refersToUseOpaqueURL)
+                              }
+                              BIND(BOUND(?refersToUseOpaqueURL) AS ?useOpaqueURL)
                           } LIMIT 1'
   >
     <template id='template'>
@@ -64,6 +78,8 @@
           resourceBroaderProperty=bindings.0.resourceBroaderProperty.value 
           resourceOrderPattern=bindings.0.resourceOrderPattern.value 
           resourceIcon=bindings.0.resourceIcon.value
+          asSKOS=bindings.0.asSKOS.value
+          useOpaqueURL=bindings.0.useOpaqueURL.value
           mode=mode 
           iri=iri}}
       {{else}}
@@ -84,7 +100,8 @@
           resourceBroaderProperty=bindings.0.resourceBroaderProperty.value 
           resourceOrderPattern=bindings.0.resourceOrderPattern.value 
           resourceIcon=bindings.0.resourceIcon.value
-          selectedEntity=selectedEntity}}
+          asSKOS=bindings.0.asSKOS.value
+          useOpaqueURL=bindings.0.useOpaqueURL.value
       {{/ifCond}}
     </template>
     <template id='noResultTemplate'>

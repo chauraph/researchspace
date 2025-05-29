@@ -1,5 +1,26 @@
 [[> rsp:FormEntityRecord]]
 
+
+{{#ifCond resourceConfig "!==" "http://www.researchspace.org/resource/system/resource_configurations_container/data/Feature_authority"}}
+    <rs-tab event-key="externalAuthority" title="External Authority">
+        [[!-- {{#if asSKOS}} 
+        <semantic-form-hidden-input for="classtype" default-value='http://www.w3.org/2004/02/skos/core#Concept'></semantic-form-hidden-input>
+        --]]
+
+        {{#if (or (eq resourceOntologyClass "http://www.cidoc-crm.org/cidoc-crm/E55_Type") asSKOS)}}
+            <semantic-form-text-input for="skos_closeMatch" label="Close Match" placeholder="Enter close match URL"></semantic-form-text-input>
+            <semantic-form-text-input for="skos_exactMatch" label="Exact Match" placeholder="Enter exact match URL"></semantic-form-text-input>
+            <semantic-form-text-input for="skos_broadMatch" label="Broad Match" placeholder="Enter broad match URL"></semantic-form-text-input>
+            <semantic-form-text-input for="skos_narrowMatch" label="Narrow Match" placeholder="Enter narrow match URL"></semantic-form-text-input>
+            <semantic-form-text-input for="skos_relatedMatch" label="Related Match" placeholder="Enter related match URL"></semantic-form-text-input>
+        {{else}}
+            <semantic-form-text-input for="owl_sameAs" label="OWL Same As" placeholder="Enter OWL sameAs URL"></semantic-form-text-input>
+        {{/if}}
+
+    </rs-tab>
+{{/ifCond}}
+
+
 {{#ifCond mode "!==" "new"}}
     {{#if node}}
         <bs-tab event-key="metadata" title="Metadata" tab-class-name="tab-right">

@@ -578,7 +578,10 @@
                                                   {{#if apiResourceIIIFCanvasId}}"apiResourceIIIFCanvasId": "{{apiResourceIIIFCanvasId}}",{{/if}}
                                                   {{#if apiResourceIIIFImageService}}"apiResourceIIIFImageService": "{{apiResourceIIIFImageService}}",{{/if}}
                                                 {{/if}}
-                                                "resourceBroaderProperty": {{#if resourceBroaderProperty}}"{{resourceBroaderProperty}}"{{else}}null{{/if}}
+                                                "resourceBroaderProperty": {{#if resourceBroaderProperty}}"{{resourceBroaderProperty}}"{{else}}null{{/if}},
+                                                "asSKOS": {{asSKOS}},
+                                                "useOpaqueURL": {{useOpaqueURL}},
+                                                {{#if resourceOntologyClass}}"resourceOntologyClass": "{{resourceOntologyClass}}"{{/if}}
                                         }'>
                       </inline-template>
 
