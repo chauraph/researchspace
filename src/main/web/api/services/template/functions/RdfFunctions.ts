@@ -18,6 +18,11 @@
  */
 
 import { Rdf } from 'platform/api/rdf';
+import { SparqlUtil } from 'platform/api/sparql';
+import { SparqlClient } from 'platform/api/sparql';
+import * as _ from 'lodash';
+import * as SparqlJs from 'sparqljs';
+import * as Kefir from 'kefir';
 
 export const RdfFunctions = {
   isIri: function (value: Rdf.Node) {
@@ -109,3 +114,5 @@ getNodeTypes: function (value: Rdf.Node): string {
   // Return HTML with a placeholder that will be updated when data arrives
   return `<span id="${elementId}"></span>`;
 },
+
+};
