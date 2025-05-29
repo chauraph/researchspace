@@ -37,9 +37,11 @@ export type ImagesInfoByIri = Map<string, ImageOrRegionInfo>;
 
 export class LdpAnnotationEndpoint implements AnnotationEndpoint {
   private readonly imagesInfo: ImagesInfoByIri;
+  private readonly currentLevel: string;
 
-  constructor(options: { imagesInfo?: ImagesInfoByIri }) {
+  constructor(options: { imagesInfo?: ImagesInfoByIri; currentLevel?: string }) {
     this.imagesInfo = options.imagesInfo || new Map<string, ImageOrRegionInfo>();
+    this.currentLevel = options.currentLevel || '';
   }
 
   search(canvasIri: Rdf.Iri) {
@@ -57,7 +59,7 @@ export class LdpAnnotationEndpoint implements AnnotationEndpoint {
   }
 
   create(annotation: OARegionAnnotation) {
-    return LdpRegionService.addRegion({ annotation });
+    return LdpRegionService.addRegion({ annotation }, this.currentLevel);
   }
 
   update(annotation: OARegionAnnotation) {

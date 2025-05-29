@@ -1,0 +1,364 @@
+
+<rs-tab event-key="visualObservation" title="Visual Observation">
+    {{#if node}}
+        <semantic-table id='{{viewId}}-representation-table'
+                        class-name="table-fixed-header table-scrollable-content table-expanded search-table-container table-with-checkbox"
+                        query='SELECT DISTINCT ?subject ?iri ?annotationName ?description ?type_label WHERE {
+                                    BIND(?subject as ?iri) .
+                                    
+                                    ?subject crm:P138_represents|rs:PX_main_represents <{{node}}> .
+
+                                    OPTIONAL {
+                                        ?subject a ?type .
+                                        FILTER(?type IN (rso:EX_Digital_Image, rso:EX_Digital_Image_Region)) .
+                                        ?type rdfs:label ?type_label .
+                                    }
+
+
+
+                                    OPTIONAL {
+                                        ?subject crm:P190_has_symbolic_content ?annotationName .
+                                    }
+
+                                    OPTIONAL {
+                                        ?subject crm:P190_has_symbolic_content ?annotationName .
+                                        ?subject crm:P67i_is_referred_to_by ?information_object  .
+                                        ?information_object crm:P2_has_type <http://www.researchspace.org/resource/vocab/text_type/description> .
+                                        ?information_object crm:P1_is_identified_by ?descriptionAppellation . 
+                                        ?descriptionAppellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> . 
+                                        ?descriptionAppellation crm:P190_has_symbolic_content ?description .
+                                    }
+
+                                } ORDER BY ?annotationName'
+                    
+                        options='{"showFilter":false,
+                                    "resultsPerPage":100,
+                                    "useFixedHeader":true}'
+
+                        no-result-template='<div class="table-no-results">
+                                                <div class="no-results-container">
+                                                <rs-icon icon-type="rounded" icon-name="search_off" symbol="true" class="no-results-icon"></rs-icon>
+                                                <div class="no-results-text">No digital representation</div>
+                                                </div>
+                                            </div>'
+
+                        column-configuration='[
+                                                {"variableName": "subject", "displayName": "", "cellTemplate": "{{> selectionCheckbox}}" },
+                                                {"variableName": "annotationName", "displayName": "Digital representation","cellTemplate": "{{> details}}"},
+                                                {"displayName": "","cellTemplate": "{{> obs}}"},
+                                                {"displayName": "", "cellTemplate": "{{> actions}}" }
+                                            ]'>
+            <template id='selectionCheckbox'>
+                [[!--
+                <div>
+                    <mp-selection-toggle selection="item-selection-aggregator" tag="{{subject.value}}"></mp-selection-toggle>
+                </div>
+                --]]
+            </template>
+
+            <template id='details'>  
+                <div>
+                    <div style="display: flex; align-items: center; gap: 15px;">                                 
+                        <mp-overlay-dialog  id="{{subject.value}}-resource-preview-dialog"  
+                                            type="modal" 
+                                            class="modal-xlSize preview_modal"
+                                            title="Preview">
+                            <mp-overlay-dialog-trigger>
+                                <div>
+                                    <mp-draggable iri='{{subject.value}}'>
+                                        <div class="resource-thumbnail-small-container">
+                                            <rs-iiif-image-thumbnail height='40' width='auto' class='resource-thumbnail-small'
+                                                                        image-or-region='{{subject.value}}' 
+                                                                        [[> rsp:IIIFConfig]]>
+                                            </rs-iiif-image-thumbnail>     
+                                        </div>
+                                    </mp-draggable>
+                                </div>
+                            </mp-overlay-dialog-trigger>
+                            <mp-overlay-dialog-content>
+                                <inline-template template-iri='[[resolvePrefix "rsp:ResourcePreview"]]' 
+                                                options='{"resource": "{{subject.value}}", 
+                                                            "resourceConfig": "http://www.researchspace.org/resource/system/resource_configurations_container/data/Image_annotation", 
+                                                            "resourceConfigLabel": "Image annotation",
+                                                            "resourceDescription": "{{description.value}}",
+                                                            "resourceDetailSection": true
+                                                        }' >
+                                </inline-template> 
+                            </mp-overlay-dialog-content>
+                        </mp-overlay-dialog>
+                        <div>
+                            <mp-draggable iri='{{subject.value}}'>
+                                <div>
+                                    <semantic-link  iri='http://www.researchspace.org/resource/ThinkingFrames'
+                                                    urlqueryparam-view='resource-editor'
+                                                    urlqueryparam-resource='{{subject.value}}'>
+                                        <mp-label iri='{{subject.value}}' class="text-link text-truncate-line1"></mp-label>
+                                    </semantic-link>
+                                </div>
+                            </mp-draggable>
+                            <div class="color-secondary-light text-font-size__xsmall">{{type_label.value}}</div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <template id='type'>
+                <semantic-query query='SELECT ?annotationType WHERE {
+                                        <{{subject.value}}> crm:P2_has_type ?type.
+                                        ?type crm:P71i_is_listed_in <http://www.researchspace.org/resource/vocab/image_annotation_type> .
+                                        ?type skos:prefLabel ?annotationType .
+                                    } ORDER BY ?annotationType'
+                                template='{{> template}}'>
+                    <template id='template'>
+                        <div>
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            {{#each bindings}}
+                                <span class="badge badge--secondary">{{annotationType.value}}</span>
+                            {{/each}}
+                            </div>
+                        </div>
+                    </template>
+                </semantic-query>
+            </template>
+
+            <template id='imageOf'>
+                <semantic-query query='SELECT ?entity WHERE {
+                                        <{{subject.value}}> rs:PX_main_represents|crm:P138_represents ?entity .
+                                    }'
+                                template='{{> template}}'>
+                    <template id='template'>
+                        <div>
+                            {{#each bindings}}
+                                <mp-draggable iri='{{entity.value}}'>
+                                    <semantic-link-container    uri='http://www.researchspace.org/resource/ThinkingFrames'
+                                                                urlqueryparam-view="resource-editor"
+                                                                urlqueryparam-resource-iri='{{entity.value}}'>
+                                        <mp-label iri='{{entity.value}}' class="text-link"></mp-label>
+                                    </semantic-link-container>
+                                </mp-draggable>
+                                <span>{{#if @last}}{{else}}, {{/if}}</span>
+                            {{/each}}
+                        </div>
+                    </template>
+                </semantic-query>
+            </template>
+
+            <template id='obs'>
+                <div>
+                    <mp-event-trigger id='{{viewId}}-image-annotation-add-frame-trigger' 
+                                    type='Dashboard.AddFrame' 
+                                    data='{"resourceIri": "{{node}}", 
+                                            "viewId": "image-annotation", 
+                                            "frameId": "{{viewId}}",
+                                            "currentLevel": "{{subject.value}}"}' 
+                                    targets='["thinking-frames"]'>
+                        <button class="btn btn-primary">Observe segment at this level</button>
+                    </mp-event-trigger>
+                </div>
+            </template>
+
+            <template id='actions'>
+                <div>
+                    <div style="display: flex; align-items: stretch; gap: 1px;">
+                        <mp-draggable iri='{{subject.value}}' drag-style="cursor: grab;">
+                            <button class="btn btn-default border-none" title="drag image annotation" style="cursor: grab;">
+                            <rs-icon icon-type="rounded" icon-name="drag_pan" symbol="true"></rs-icon>
+                            </button>
+                        </mp-draggable>
+                        <mp-event-trigger id='{{viewId}}-image-annotation-add-frame-trigger' 
+                                        type='Dashboard.AddFrame' 
+                                        data='{"resourceIri": "{{node}}", 
+                                                "viewId": "image-annotation", 
+                                                "frameId": "{{viewId}}",
+                                                "currentLevel": "{{subject.value}}"}' 
+                                        targets='["thinking-frames"]'>
+                            <button class="btn btn-default border-none" title="segment observation" >
+                                <rs-icon icon-type="rounded" icon-name="photo_size_select_large" class="icon-left" symbol="true"></rs-icon>
+                            </button>
+                        </mp-event-trigger>
+                    </div>
+                </div>
+            </template>
+
+        </semantic-table>  
+
+
+        
+        <div>
+            <mp-event-target-template-render id='{{viewId}}-symbolicObject-componentsView' template='{{> symbolicObjectComponents}}'>
+                <template id='symbolicObjectComponents'>
+                    <div class="page__section-container formHierarchyView-container">
+                        <div class="form-header-withButtons">
+                            <h4>Image region hierarchy</h4>
+                            {{#if node}}
+                                <div class="btn-form-actions"> 
+                                    <mp-event-trigger id='{{viewId}}-symbolicObject-componentsView-refresh-trigger' 
+                                                        type='Component.TemplateUpdate' 
+                                                        targets='["{{viewId}}-symbolicObject-componentsView"]'
+                                                        >
+                                        <button class="btn btn-sm btn-default btn-textAndIcon" title="Refresh view">
+                                            <rs-icon icon-type="rounded" icon-name="refresh" symbol="true"></rs-icon>
+                                        </button>
+                                    </mp-event-trigger>
+                                </div>
+                            {{/if}}
+                        </div>
+                        <div style="flex: 1; padding: 18px 2px;" class="tree-tableView segment-observation-treeView">
+                            {{#if node}}
+                                {{#bind symbolicObject=node }}
+                                    <semantic-tree query='SELECT DISTINCT ?node ?parent
+                                                        WHERE {
+                                                        ?areaOrDigitalObject (crm:P138_represents|rso:PX_main_represents) <{{node}}>.
+                                                        OPTIONAL {
+                                                            ?areaOrDigitalObject  crmdig:L49_is_primary_area_of ?digitalObject.
+                                                        }
+                                                        BIND(COALESCE(?digitalObject, ?areaOrDigitalObject) as ?repr).
+                                                        ?node crmdig:L49_is_primary_area_of ?repr .
+                                                        ?parent crm:P140i_was_attributed_by ?segobs.
+                                                        ?segobs crm:P141_assigned ?node.
+                                                        ?segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>.
+                                                        }' 
+                                            tuple-template='{{> nodeTemplate}}'>                
+                                        <template id='nodeTemplate'>
+                                            <semantic-query query='SELECT ?node ?nodeLabel ?representation ?segObs ?childObs ?featObs WHERE {
+                                                                    BIND (<{{node.value}}> as ?node)
+
+                                                                    OPTIONAL {
+                                                                    ?node crm:P138i_has_representation ?representation .
+                                                                    }
+
+                                                                    OPTIONAL {
+                                                                    ?node crm:P141i_was_assigned_by ?segObs .
+                                                                    ?segObs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation> .
+                                                                    }
+
+                                                                    OPTIONAL {
+                                                                    ?node crm:P140i_was_attributed_by ?featObs .
+                                                                    ?featObs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition> .
+                                                                    }
+
+                                                                    OPTIONAL {
+                                                                    ?node crm:P140i_was_attributed_by ?childObs .
+                                                                    ?childObs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation> .
+                                                                    }
+                                                                    
+                                                                    { 
+                                                                        ?node crm:P1_is_identified_by ?appellation .
+                                                                        ?appellation a crm:E41_Appellation .
+                                                                        ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> . 
+                                                                        ?appellation crm:P190_has_symbolic_content ?nodeLabel .
+                                                                    } UNION {
+                                                                        ?node crm:P190_has_symbolic_content ?nodeLabel .
+                                                                    }
+                                                                } LIMIT 1'
+                                                        template='{{> template}}'>
+                                                <template id='template'>
+                                                    <div>
+                                                        {{#ifCond bindings.0.node.value "===" symbolicObject}}
+                                                            <span class="Tree--itemLink active" style="font-weight: 600;">{{bindings.0.nodeLabel.value}}</span>
+                                                        {{else}}
+                                                            <semantic-link  iri="http://www.researchspace.org/resource/ThinkingFrames"
+                                                                            urlqueryparam-view='resource-editor' 
+                                                                            urlqueryparam-resource-iri='{{node.value}}'
+                                                                            >
+                                                                <span class="Tree--itemLink" style="font-weight: 600;">{{bindings.0.nodeLabel.value}}</span>
+                                                            </semantic-link>
+                                                        {{/ifCond}}
+                                                    </div>
+
+                                                    <style>
+                                                    .segment-observation-treeView .tree-view_item {
+                                                                                                    display: block;
+                                                                                                    }
+                                                    </style>
+
+                                                    {{#if bindings.0.segObs}}
+                                                        {{#bind node=bindings.0.segObs.value viewId=bindings.0.segObs.value}}
+                                                            <semantic-form  id='{{viewId}}-resource-form' 
+                                                                    post-action="event"
+                                                                        subject="{{viewId}}"
+                                                                    persistence='{"type": "sparql", "targetInsertGraphIri": "{{#if scheme}}{{scheme}}{{else}}http://www.researchspace.org/resource/g/data{{/if}}", "repository":"{{#if scheme}}authorities{{else}}default{{/if}}"}'
+                                                                        fields='[[fieldDefinitions
+                                                                                    classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                                                    inScheme="http://www.researchspace.org/pattern/system/entity/is_listed_in"
+                                                                                    entity_formRecord="http://www.researchspace.org/pattern/system/entity/formRecord"
+
+                                                                                    has_type="http://www.researchspace.org/pattern/system/entity/has_all_types"
+                                                                                    entity_primary_appellation="http://www.researchspace.org/pattern/system/entity/primary_appellation"
+
+                                                                                    segment_observation_assigned_is_composed_of_symbolic_object="https://w3id.org/dsanno/platform/pattern/segment_observation/assigned_is_composed_of/symbolic_object"
+                                                                                    activity_used_specific_object_domain="http://www.researchspace.org/pattern/system/activity/PC16_used_specific_object"
+                                                                                    activity_carried_out_by_domain="http://www.researchspace.org/pattern/system/activity/PC14_carried_out_by"
+
+                                                                                    assigned_attribute_to="http://www.cidoc-crm.org/cidoc-crm/P140_assigned_attribute_to"
+
+                                                                                    activity_carried_out_by="http://www.researchspace.org/pattern/system/activity/carried_out_by"
+                                                                                ]]'>
+                                                                <semantic-form-hidden-input for="classtype" default-values='["https://w3id.org/dsanno/ontology/core#DSA1_Scholarly_Assertion", "http://www.cidoc-crm.org/cidoc-crm/E13_Attribute_Assignment"]'> </semantic-form-hidden-input>
+                                                                <semantic-form-hidden-input for="has_type" default-value='http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation'> </semantic-form-hidden-input>
+                                                                <semantic-form-hidden-input for="entity_primary_appellation" default-value='segment observation'>  </semantic-form-hidden-input>
+                                                                <semantic-form-hidden-input for="assigned_attribute_to" default-value='segment observation'>  </semantic-form-hidden-input>
+
+                                                                <div class="form-inline-inputs">
+                                                                    <div style="display: flex; flex: 1;">
+                                                                        <div style="flex: 1;">
+                                                                            {{log bindings.0.segObs.value}}
+                                                                            <semantic-form-drag-and-drop-input   for='segment_observation_assigned_is_composed_of_symbolic_object' 
+                                                                                                            readonly='true'
+                                                                                                            label="Observed segment"
+                                                                                                            placeholder="Select the observed segment"> 
+                                                                            </semantic-form-drag-and-drop-input>
+                                                                        </div>
+                                                                        <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                                            <div class="btn-form-actions" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                                                                            <semantic-link  iri='http://www.researchspace.org/resource/ThinkingFrames'
+                                                                                            urlqueryparam-view='resource-editor'
+                                                                                            urlqueryparam-resource='{{bindings.0.node.value}}'>
+                                                                                <button class="btn btn-primary">Add feature recognition</button>
+                                                                            </semantic-link>
+
+                                                                            <mp-event-trigger id='{{viewId}}-image-annotation-add-frame-trigger' 
+                                                                                            type='Dashboard.AddFrame' 
+                                                                                            data='{"resourceIri": "{{bindings.0.node.value}}", 
+                                                                                                    "viewId": "image-annotation", 
+                                                                                                    "frameId": "{{viewId}}",
+                                                                                                    "currentLevel": "{{bindings.0.node.value}}"}' 
+                                                                                        targets='["thinking-frames"]'>
+                                                                                <button class="btn btn-primary">Observe segment at this level</button>
+                                                                            </mp-event-trigger>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style="display: flex; flex: 1;">
+                                                                        [[> dsannop:UsedSpecificObject_partial]]
+                                                                    </div>
+                                                                </div>
+
+                                                                {{> rsp:FormEntityRecord}}
+
+                                                                <semantic-form-errors></semantic-form-errors>
+                                                                {{#if bindings.0.childObs}}
+                                                                    [[> rsp:FormDefaultActions formEntity='{{#if entityType}}{{entityType}}{{else}}segment observation{{/if}}' hideDelete=true]] 
+                                                                {{else}}
+                                                                    {{#if bindings.0.featObs}}
+                                                                    [[> rsp:FormDefaultActions formEntity='{{#if entityType}}{{entityType}}{{else}}segment observation{{/if}}' hideDelete=true]] 
+                                                                    {{else}}
+                                                                    [[> rsp:FormDefaultActions formEntity='{{#if entityType}}{{entityType}}{{else}}segment observation{{/if}}' hideDelete=false]] 
+                                                                    {{/if}}
+                                                                {{/if}}
+                                                            </semantic-form>
+                                                        {{/bind}}
+                                                    {{/if}}
+                                                </template>
+                                            </semantic-query>
+                                        </template>  
+                                    </semantic-tree>
+                                {{/bind}}
+                            {{/if}}
+                        </div>
+                    </div>
+                </template>
+            </mp-event-target-template-render>
+        </div>
+    {{/if}}
+</rs-tab>

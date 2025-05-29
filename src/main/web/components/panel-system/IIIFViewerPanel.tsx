@@ -44,6 +44,7 @@ export interface IIIFViewerPanelProps extends ImageRegionEditorConfig {
    * Entities IRIs
    */
   iris: Array<string>;
+  currentLevel? : string;
 }
 
 export interface State {
@@ -141,10 +142,11 @@ export class IIIFViewerPanel extends Component<IIIFViewerPanelProps, State> {
 
   render() {
     const { imageOrRegion } = this.state;
+    const { currentLevel } = this.props;
     if (!imageOrRegion) {
       return null;
     }
-    return <ImageRegionEditorComponentMirador {...this.props} imageOrRegion={imageOrRegion} />;
+    return <ImageRegionEditorComponentMirador {...this.props} imageOrRegion={imageOrRegion} currentLevel={currentLevel} />;
   }
 }
 

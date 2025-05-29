@@ -32,7 +32,7 @@ import * as Forms from 'platform/components/forms';
 import { rso, crmdig } from '../vocabularies/vocabularies';
 
 import {
-  SubjectTemplate,
+  getSubjectTemplate, // Import the async function
   ImageRegionType,
   ImageRegionLabel,
   ImageRegionBoundingBox,
@@ -40,7 +40,10 @@ import {
   ImageRegionViewport,
   ImageRegionIsPrimaryAreaOf,
   ImageRegionFields,
+  ImageRegionAssignedBySegmentObservation,
 } from './ImageRegionSchema';
+
+import * as uuid from 'uuid';
 
 const IIIF_PRESENTATION_CONTEXT = require('./ld-resources/iiif-context.json');
 const ANNOTATION_FRAME = require('./ld-resources/annotation-frame.json');
@@ -75,11 +78,14 @@ export class LdpRegionServiceClass extends LdpService {
   /**
    * Add new annotation
    */
-  public addRegion(region: Region): Kefir.Property<Rdf.Iri> {
-    const currentModel = convertAnnotationToCompositeValue(region.annotation);
+  public addRegion(region: Region, currentLevel?: string): Kefir.Property<Rdf.Iri> {
+    return Kefir.fromPromise(
+      convertAnnotationToCompositeValue(region.annotation, currentLevel)
+    ).flatMap(currentModel => {
     return this.persistence.persist(Forms.FieldValue.empty, currentModel).map(() => {
       return currentModel.subject;
     });
+    }).toProperty();
   }
 
   /*
@@ -88,7 +94,9 @@ export class LdpRegionServiceClass extends LdpService {
   public updateRegion(annotationIri: Rdf.Iri, region: Region): Kefir.Property<Rdf.Iri> {
     return this.isOldRegion(annotationIri)
       .flatMap((isOldRegion) => {
-        const currentModel = convertAnnotationToCompositeValue(region.annotation);
+        return Kefir.fromPromise(
+          convertAnnotationToCompositeValue(region.annotation)
+        ).flatMap(currentModel => {
         if (isOldRegion) {
           return this.deleteResource(annotationIri).flatMap(() => {
             return this.persistence.persist(Forms.FieldValue.empty, currentModel);
@@ -96,6 +104,7 @@ export class LdpRegionServiceClass extends LdpService {
         }
         return fetchInitialAnnotationModel(annotationIri).flatMap((initialModel) => {
           return this.persistence.persist(initialModel, currentModel);
+          });
         });
       })
       .map(() => {
@@ -245,16 +254,30 @@ export function getAnnotationTextResource(annotation: OARegionAnnotation): { cha
   }
 }
 
-export function convertAnnotationToCompositeValue(annotation: OARegionAnnotation): Forms.CompositeValue {
+export async function convertAnnotationToCompositeValue(annotation: OARegionAnnotation, currentLevel?: string): Promise<Forms.CompositeValue> {
+  const SubjectTemplate = await getSubjectTemplate();
+
+  const clonedDefinitions = ImageRegionFields
+    .filter(field => currentLevel || field.id !== ImageRegionAssignedBySegmentObservation.id)
+    .map(field => {
+      if (field.id === ImageRegionAssignedBySegmentObservation.id && currentLevel) {
+        return {
+          ...field,
+          insertPattern: field.insertPattern.replace("{{UUID}}", uuid.v4())
+        };
+      }
+      return field;
+    });
+
   const initial: Forms.CompositeValue = {
     type: Forms.CompositeValue.type,
     subject: Rdf.iri(annotation['@id']),
-    definitions: Immutable.Map<string, Forms.FieldDefinition>(ImageRegionFields.map((field) => [field.id, field])),
+    definitions: Immutable.Map<string, Forms.FieldDefinition>(clonedDefinitions.map((field) => [field.id, field])),
     fields: Immutable.Map<string, Forms.FieldState>(),
     errors: Forms.FieldError.noErrors,
   };
   const textResource = getAnnotationTextResource(annotation);
-  const fieldStates: Array<[string, Forms.FieldState]> = ImageRegionFields.map((field) => {
+  const fieldStates: Array<[string, Forms.FieldState]> = clonedDefinitions.map((field) => {
     let values: Immutable.List<Forms.FieldValue>;
     let fieldState = Forms.FieldState.empty;
     if (field.id === ImageRegionType.id) {
@@ -334,6 +357,14 @@ export function convertAnnotationToCompositeValue(annotation: OARegionAnnotation
       values = Immutable.List<Forms.FieldValue>(
         annotation.on.map((on) => {
           const value = Rdf.iri(on.full);
+          return Forms.FieldValue.fromLabeled({ value });
+        })
+      );
+    } else if (field.id === ImageRegionAssignedBySegmentObservation.id && currentLevel) {
+      values = Immutable.List<Forms.FieldValue>(
+        annotation.on.map((on) => {
+          console.log("currentLevel vs on full", currentLevel, on.full);
+          const value = Rdf.iri(currentLevel.includes("/ImageRegion/") ? currentLevel : on.full);
           return Forms.FieldValue.fromLabeled({ value });
         })
       );

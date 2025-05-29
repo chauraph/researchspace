@@ -10,6 +10,27 @@
                 proxy-targets='["{{viewId}}-image-annotation-area", "{{viewId}}-image-upload-area"]'
 ></mp-event-proxy>
 
+
+
+{{#if data.currentLevel}}
+  <semantic-query query='SELECT ?image ?region WHERE {
+                      <{{data.currentLevel}}> crmdig:L49_is_primary_area_of ?image .
+                      BIND(<{{data.currentLevel}}> as ?region) .
+                        }'
+                  template='{{> template}}'>
+
+    <template id='template'>
+      <mp-event-proxy id='{{viewId}}-zoom-on-render'
+                      on-event-source='{{viewId}}-image-annotation'
+                      on-event-type='IIIFViewer.ManifestUpdated'
+                      proxy-event-type='IIIFViewer.ZoomToRegion'
+                      proxy-targets='["{{viewId}}-image-annotation"]'
+                      data='{"imageIri": "{{bindings.0.image.value}}", "regionIri": "{{bindings.0.region.value}}"}'
+      ></mp-event-proxy>
+    </template>
+  </semantic-query>
+{{/if}}
+
 [[!-- /EVENTS --]]
 
 [[!-- When new region is defined in the IIIF Viewer it triggers `IIIFViewer.RegionCreated`. --]]
@@ -249,7 +270,12 @@
       <div class="imageAnnotation__resourceAnnotation-container">
 
         <div class="imageAnnotation__resourceAnnotation-header">
+          {{#if data.currentLevel}}
+          {{log "currentLevel" currentLevel}}
+            <h6>Segment Observation</h6>
+          {{else}}
           <h6>Image annotations</h6>
+          {{/if}}
         </div>
         
         <div class="imageAnnotation__resourceAnnotation-result">
@@ -269,7 +295,7 @@
 
               <bs-tab-content animation>
                 {{#each resources}}
-                  {{#bind viewId=../viewId insideForm=../insideForm recordType=../recordType}}
+                  {{#bind viewId=../viewId insideForm=../insideForm recordType=../recordType currentLevel=../data.currentLevel}}
                     <bs-tab-pane event-key="{{viewId}}-resource-tab-{{resourceIri}}">
 
                       [[!-- To not fully refresh rendered list of resources when image annotation is created/updated/removed in the IIIF Viewer,
@@ -293,6 +319,168 @@
                       <mp-event-target-template-render id='{{viewId}}-resource-annotation-{{resourceIri}}' template='{{> resourceTemplate}}'>
                         <template id='resourceTemplate'> 
                           <div style="height: 100%;">
+                            {{#if currentLevel}}
+                              <style>
+                                /* Override tree width constraints for this template only */
+                                .imageAnnotation__resourceAnnotation-result-items .tree-view_item {
+                                  margin-bottom: 0px;
+
+                                }
+
+                                .imageAnnotation__resourceAnnotation-result-items .tree-view_children {
+                                  margin-bottom: 0px;
+                                }
+
+                                .imageAnnotation__resourceAnnotation-result-items .tree-view  {
+                                  flex: 1;
+                                }
+
+                                .imageAnnotation__resourceAnnotation-result-items .Tree--treeNode  {
+                                  flex: 1;
+                                }
+
+                                .imageAnnotation__resourceAnnotation-result-items .Tree--leafNode  {
+                                  flex: 1;
+                                  margin-bottom: 0px;
+                                }
+                              </style>
+                                <div class="imageAnnotation__resourceAnnotation-result-items">
+                                  <div class="imageAnnotation__resourceAnnotation-result-items-header">
+                                    <mp-label iri="{{resourceIri}}" class="imageAnnotation__resourceAnnotation-result-items-header-title"></mp-label>
+                                    <div class="imageAnnotation__resourceAnnotation-result-items-header-actions">
+                                      <mp-event-trigger id='{{viewId}}-image-view-trigger-{{resourceIri}}' 
+                                                        type='IIIFViewer.AddImagesForResource' 
+                                                        targets='["{{viewId}}-image-annotation"]'
+                                                        data='{ "resourceIri": "{{resourceIri}}" }'>
+                                        <button class="btn btn-default border-none" title="View resource images in the viewer">
+                                          <rs-icon icon-type="rounded" icon-name="image" symbol="true"></rs-icon>
+                                        </button>
+                                      </mp-event-trigger>
+                                      <rs-resource-dropdown id="{{viewId}}-{{resourceIri}}-item-actions-dropdown" class-name="dropdown-no-caret" toggle-class-name="border-none">
+                                        {{> rsp:ResourceDropdownActions viewId=viewId
+                                                                        iri=resourceIri
+                                                                        hideAnnotations=true
+                                        }}
+                                      </rs-resource-dropdown>
+                                    </div>
+                                  </div>
+                                
+                                  <semantic-tree query='SELECT DISTINCT ?node ?parent
+                                                      WHERE {
+                                                        ?parent crm:P140i_was_attributed_by/crm:P141_assigned ?node .
+                                                        ?node crm:P141i_was_assigned_by ?assignment .
+                                                        ?assignment crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation> .
+                                                        FILTER EXISTS {
+                                                          {{#if (includes currentLevel "/ImageRegion/")}}
+                                                            <{{currentLevel}}> (crm:P140i_was_attributed_by/crm:P141_assigned)+ ?node .
+                                                          {{else}}
+                                                            <{{currentLevel}}> (crm:P138i_has_representation|rs:PX_has_main_representation) ?representation .
+                                                            ?representation (crm:P140i_was_attributed_by/crm:P141_assigned)+ ?node .
+                                                          {{/if}}
+                                                        }
+                                                      }' 
+                                                  tuple-template='{{> nodeTemplate}}'>
+                                  <template id='nodeTemplate'>
+
+                                      <semantic-query query='SELECT ?node ?representation ?region ?regionLabel ?image ?type ?resource_name WHERE {
+                                                              BIND (<{{node.value}}> as ?node)
+                                                              BIND (?node as ?region)
+                                                              OPTIONAL {
+                                                                ?node crm:P138i_has_representation ?representation .
+                                                              }
+                                                              OPTIONAL {
+                                                                ?node crmdig:L49_is_primary_area_of ?image.
+                                                              }
+                                                              OPTIONAL { 
+                                                                ?node a ?type.
+                                                                ?resource <http://www.researchspace.org/pattern/system/resource_configuration/resource_ontology_class> ?type . 
+                                                                ?resource <http://www.researchspace.org/pattern/system/resource_configuration/resource_name> ?resource_name
+                                                              }
+                                                              { 
+                                                                ?node crm:P1_is_identified_by ?appellation .
+                                                                ?appellation a crm:E41_Appellation .
+                                                                ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> . 
+                                                                ?appellation crm:P190_has_symbolic_content ?regionLabel .
+                                                              } UNION {
+                                                                ?node crm:P190_has_symbolic_content ?regionLabel .
+                                                              }
+                                                            }'
+                                                  template='{{> template}}'>
+
+                                        <template id='template'>
+                                          <div class="imageAnnotation__resourceAnnotation-result-item">
+                                              <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                                <mp-draggable iri='{{bindings.0.region.value}}'>
+                                                  <div style="cursor: pointer;">
+                                                    <mp-event-trigger id='{{viewId}}-focus-event-trigger-{{resourceIri}}-{{bindings.0.region.value}}' 
+                                                                      type='IIIFViewer.ZoomToRegion' 
+                                                                      targets='["{{viewId}}-image-annotation"]'
+                                                                      data='{"imageIri": "{{bindings.0.image.value}}","regionIri": "{{bindings.0.region.value}}"}'>
+                                                      <div class="resource-thumbnail-small-container">
+                                                        <rs-iiif-image-thumbnail  height='40' width='auto' style='border-radius: 1.5px;'
+                                                                                  image-or-region='{{bindings.0.region.value}}'      
+                                                                                  [[> rsp:IIIFConfig]]>
+                                                        </rs-iiif-image-thumbnail>
+                                                      </div>
+                                                    </mp-event-trigger>
+                                                  </div>
+                                                </mp-draggable>
+
+                                                <div style="flex: 1;">
+                                                  <mp-draggable iri='{{bindings.0.region.value}}'>
+                                                    <div>
+                                                      [[!--
+                                                      <mp-event-trigger id='{{viewId}}-focus-event-trigger-{{resourceIri}}-{{bindings.0.region.value}}' 
+                                                                        type='IIIFViewer.ZoomToRegion' 
+                                                                        targets='["{{viewId}}-image-annotation"]'
+                                                                        data='{"imageIri": "{{bindings.0.image.value}}","regionIri": "{{bindings.0.region.value}}"}'>
+                                                        <div class="text-link text-truncate-line1">{{bindings.0.regionLabel.value}}</div>
+                                                      </mp-event-trigger>
+                                                      --]]
+                                                      <semantic-link  iri="http://www.researchspace.org/resource/ThinkingFrames"
+                                                                      urlqueryparam-view='resource-editor' 
+                                                                      urlqueryparam-resource-iri='{{node.value}}'
+                                                                      >
+                                                        <div class="text-link text-truncate-line1">{{bindings.0.regionLabel.value}}</div>
+                                                      </semantic-link>
+                                                    </div>
+                                                  </mp-draggable>
+
+                                                   <div class="color-secondary-light text-font-size__xsmall text-truncate-line1">{{bindings.0.resource_name.value}}[[!--Image annotation--]]</div>
+                                                </div>
+                                              </div>
+
+                                              <div class='imageAnnotation__resourceAnnotation-result-item-actions'>
+                                                [[!-- Zoom to the current image region in the IIIF Viewer, 
+                                                creates new slot if the viewer doesn't have active slot with the corresponding image. --]]                                         
+                                                <mp-event-trigger id='{{viewId}}-focus-event-trigger-{{resourceIri}}-{{bindings.0.region.value}}' 
+                                                                  type='IIIFViewer.ZoomToRegion' 
+                                                                  targets='["{{viewId}}-image-annotation"]'
+                                                                  data='{"imageIri": "{{bindings.0.image.value}}","regionIri": "{{bindings.0.region.value}}"}'>
+                                                  <button class="btn btn-default border-none" title="Focus to annotation">
+                                                    <rs-icon icon-type="rounded" icon-name="center_focus_strong" symbol="true"></rs-icon>
+                                                  </button>
+                                                </mp-event-trigger>
+
+                                                [[!--
+                                                <rs-resource-dropdown id="{{viewId}}-{{bindings.0.region.value}}-item-actions-dropdown" class-name="dropdown-no-caret" toggle-class-name="border-none">
+                                                  {{> rsp:ResourceDropdownActions viewId=viewId
+                                                                                  iri=bindings.0.region.value
+                                                                                  resourceConfig="http://www.researchspace.org/resource/system/resource_configurations_container/data/Image_annotation"
+                                                                                  resourceLabel="Image annotation"
+                                                                                  resourceFormIRI="http://www.researchspace.org/resource/system/forms/ImageAnnotation"
+                                                                                  imageAnnotation="true"
+                                                  }}
+                                                </rs-resource-dropdown>
+                                                --]]
+                                              </div>
+                                            </div>
+                                        </template>
+                                      </semantic-query>
+                                  </template>  
+                                </semantic-tree>
+                              {{else}}
+                          
           
                             [[!-- Query and show list of all image annotation for the current resource --]]
                             <semantic-query query='SELECT DISTINCT ?region ?regionLabel ?image {
@@ -312,6 +500,14 @@
                                                     }
                                                     ?region crmdig:L49_is_primary_area_of ?image .
                                                     ?region crm:P190_has_symbolic_content ?regionLabel .
+
+                                                    {{#if currentLevel}}
+                                                      ?region crm:P141i_was_assigned_by $assignment .
+                                                      ?assignment a <http://www.cidoc-crm.org/cidoc-crm/E13_Attribute_Assignment> .
+                                                      ?assignment crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation> .
+                                                      $assignment crm:P140_assigned_attribute_to <{{currentLevel}}> .
+                                                    {{/if}}
+
                                                   } ORDER BY ASC(?regionLabel)'
                                             template='{{> imageAnnotations}}'
                                             no-result-template='{{> noResults}}'>
@@ -485,6 +681,7 @@
                                   </div>
                               </template>
                             </semantic-query>
+                            {{/if}}
                           </div>
                         </template>
                       </mp-event-target-template-render>

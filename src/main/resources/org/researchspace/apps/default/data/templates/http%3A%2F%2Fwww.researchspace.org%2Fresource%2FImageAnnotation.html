@@ -43,6 +43,7 @@
           <template id='template'>
             <rs-iiif-viewer-panel id='{{viewId}}-image-annotation'
                                   iris='{{bindings.0.resources.value}}'
+                                  current-level='{{data.currentLevel}}'
                                   query='SELECT DISTINCT ?image WHERE {
                                           {
                                             ?subject (crm:P138i_has_representation|rs:PX_has_main_representation) ?image .

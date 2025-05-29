@@ -30,7 +30,7 @@ export interface IiifManifestResource {
 
 export interface ImageRegionEditorEventData {
   // trigger
-  'IIIFViewer.ManifestUpdated': {resources?: IiifManifestResource[]}
+  'IIIFViewer.ManifestUpdated': {resources?: IiifManifestResource[], currentLevel?: string}
 
   'IIIFViewer.RegionCreated': {resourceIri: string, imageIri: string, regionIri: string, regionLabel: string}
 

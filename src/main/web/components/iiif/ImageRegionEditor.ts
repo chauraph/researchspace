@@ -61,6 +61,7 @@ export interface ImageRegionEditorConfig {
    * way as platform templates and can't be used with <template> tag
    */
   annotationViewTooltipTemplate?: string;
+  currentLevel? : string;
 }
 
 export interface ImageRegionEditorProps extends ImageRegionEditorConfig {
@@ -134,7 +135,7 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
     trigger({
       eventType: ManifestUpdatedEvent,
       source: this.props.id,
-      data: { resources }
+      data: { resources, currentLevel: this.props.currentLevel }
     });
   }
 
@@ -540,9 +541,10 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
       annotationViewTooltipTemplate,
     } = this.props;
     const imagesInfo = this.state.info as ImagesInfoByIri;
+    const {currentLevel} = this.props;
 
     this.annotationEndpoint = new AnnotationEndpointProxy(
-      annotationEndpoint || new LdpAnnotationEndpoint({ imagesInfo }),
+      annotationEndpoint || new LdpAnnotationEndpoint({ imagesInfo, currentLevel }),
       this.triggerRegionUpdatedEvent(RegionCreatedEvent),
       this.triggerRegionUpdatedEvent(RegionUpdatedEvent),
       this.triggerRegionUpdatedEvent(RegionRemovedEvent),

@@ -469,6 +469,23 @@
                 {{/if}}
               </bs-menu-item>
           </mp-event-trigger>
+          <mp-event-trigger id='{{viewId}}-image-annotation-add-frame-trigger' 
+                            type='Dashboard.AddFrame' 
+                            data='{"resourceIri": "{{iri}}", 
+                                    "viewId": "image-annotation", 
+                                    "frameId": "{{viewId}}", 
+                                    "currentLevel": "{{iri}}"}' 
+                            targets='["thinking-frames"]'>
+              <bs-menu-item>
+                <rs-icon icon-type="rounded" icon-name="photo_size_select_large" class="icon-left" symbol="true"></rs-icon>
+                {{#if (or (eq resourceConfig "http://www.researchspace.org/resource/system/resource_configurations_container/data/Knowledge_map") 
+                          (eq resourceConfig "http://www.researchspace.org/resource/system/resource_configurations_container/data/Set") )}}
+                  <span>Image of resources view / annotations (segment observation)</span>
+                {{else}}
+                  <span>Image view / annotations (segment observation)</span>
+                {{/if}}
+              </bs-menu-item>
+          </mp-event-trigger>
           <hr>
         </template>
       </semantic-if>
@@ -522,6 +539,18 @@
                 <bs-menu-item>
                   <rs-icon icon-type="rounded" icon-name="photo_size_select_large" class="icon-left" symbol="true"></rs-icon>
                     <span>Open in image view / annotations</span>
+                </bs-menu-item>
+            </mp-event-trigger>
+            <mp-event-trigger id='{{viewId}}-image-annotation-add-frame-trigger' 
+                              type='Dashboard.AddFrame' 
+                              data='{"resourceIri": "{{bindings.0.image.value}}", 
+                                      "viewId": "image-annotation", 
+                                      "frameId": "{{viewId}}",
+                                      "currentLevel": "{{iri}}"}' 
+                              targets='["thinking-frames"]'>
+                <bs-menu-item>
+                  <rs-icon icon-type="rounded" icon-name="photo_size_select_large" class="icon-left" symbol="true"></rs-icon>
+                    <span>Open in image view / annotations (segment observation)</span>
                 </bs-menu-item>
             </mp-event-trigger>
             <hr>
