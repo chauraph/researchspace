@@ -73,6 +73,107 @@
     {{#if scheme}}<semantic-form-hidden-input for="inScheme" default-value="{{scheme}}"></semantic-form-hidden-input>{{/if}}
 
     <rs-tabs id="{{viewId}}-form-tabs" class-name="form-tabs"> 
+      <rs-tab event-key="essentials" title="✧ Production">
+        {{#if suggested_entity_primary_appellation}}
+          <div>
+            <div class="documentation-section documentation-section-withIcon" style="margin-top: 5px;">
+              <div class="documentation-section-icon-container">
+                <rs-icon icon-type="rounded" icon-name="priority_high" symbol="true"></rs-icon>
+              </div>
+              <div> 
+                <div class="documentation-section-title">Generated suggested primary appellation!</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="focused-input-container">
+              <semantic-form-text-input for="entity_primary_appellation" default-value='{{suggested_entity_primary_appellation}}' label="Production name" placeholder="Enter production name"></semantic-form-text-input>
+          </div>
+        {{else}}
+          <semantic-form-text-input for="entity_primary_appellation" label="Production name" placeholder="Enter production name"></semantic-form-text-input>
+        {{/if}}
+
+        <div class="inline-composite-container">
+          <semantic-form-composite-input  for="activity_carried_out_by_domain" 
+                                          label="Carried out by"
+                                          new-subject-template="/PC14_carried_out_by/{{{{raw}}}}{{UUID}}{{{{/raw}}}}"
+                                          fields='[[fieldDefinitions
+                                                      classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                      
+                                                      carried_out_by_range="http://www.researchspace.org/pattern/system/carried_out_by/range"
+                                                      role="http://www.researchspace.org/pattern/system/carried_out_by/role"
+                                                  ]]'>
+
+            <semantic-form-hidden-input for="classtype" default-value='http://www.cidoc-crm.org/cidoc-crm/PC14_carried_out_by'> </semantic-form-hidden-input>
+
+            <div class="form-inline-inputs">
+              <div style="flex: 1;">
+                <semantic-form-autocomplete-input for='carried_out_by_range'  
+                                                  render-header="false"
+                                                  placeholder="Select actor" 
+                                                  nested-form-templates='[[> Platform:NestedFormTemplates_actors]]'> 
+                </semantic-form-autocomplete-input> 
+              </div>
+              <div style="flex: 1;">
+                <semantic-form-tree-picker-input  for="role" 
+                                                  label="Role" 
+                                                  render-header="false"
+                                                  placeholder="Select role"
+                                                  close-dropdown-on-selection='true'
+                                                  tree-patterns='{"scheme": "<http://www.researchspace.org/resource/vocab/actor_role>", 
+                                                                  "schemePattern": "?item <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/vocab/actor_role>",
+                                                                  "relationPattern": "?item crm:P127_has_broader_term ?parent"}'
+
+                                                  scheme-page-button-config='{"iri": "http://www.researchspace.org/resource/ThinkingFrames",
+                                                                              "view": "authority-list",
+                                                                              "scheme": "http://www.researchspace.org/resource/vocab/actor_role",
+                                                                              "tooltip": "Open list of roles"
+                                                                            }'
+                                                  
+                                                  nested-form-template='{{{{raw}}}}{{> forms:Type nested=true editable=true mode="new"
+                                                                                        scheme="http://www.researchspace.org/resource/vocab/actor_role"
+                                                                                        entityType="role" }}{{{{/raw}}}}'
+
+                                                  query-item-label='SELECT ?label WHERE {
+                                                                      ?item skos:prefLabel ?label .
+                                                                  }'>
+                </semantic-form-tree-picker-input>
+              </div>
+            </div>
+          </semantic-form-composite-input>
+        </div>
+
+        <semantic-form-autocomplete-input for='temporal_entity_date' 
+                                          label="Timespan/date" 
+                                          placeholder="Select timespan" 
+                                          nested-form-templates='[ 
+                                            {
+                                              "label": "Timespan",
+                                              "nestedForm": "{{{{raw}}}}
+                                                                {{> \"http://www.researchspace.org/resource/system/forms/Timespan\" nested=true editable=true mode=\"new\"}}
+                                                            {{{{/raw}}}}"
+                                            }
+                                          ]'>  
+        </semantic-form-autocomplete-input> 
+
+        {{#if node}}
+          [[> Platform:formTimespanTable]]
+        {{/if}}
+
+[[!--
+        <semantic-form-autocomplete-input   for='expression_creation_has_produced_01Item' 
+                                            label="Produced manuscript" 
+                                            placeholder="Select item produced" 
+                                            nested-form-templates='[ 
+                                            {
+                                                "label": "Item",
+                                                "nestedForm": "{{{{raw}}}}{{> \"https://w3id.org/dsanno/platform/forms/Item\" nested=true editable=true mode=\"new\" }}{{{{/raw}}}}"
+                                            }
+                                        ]'> 
+        </semantic-form-autocomplete-input> 
+--]]
+      </rs-tab>
+
       <rs-tab event-key="detail" title="Details">
         <div class="form-details-container">
           <div style="overflow-x: auto;">
