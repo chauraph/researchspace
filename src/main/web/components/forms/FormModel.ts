@@ -39,11 +39,16 @@ const DEFALUT_SUBJECT_TEMPLATE = '{{UUID}}';
 
 type SubjectReplacer = (placeholder: Placeholder, composite?: CompositeValue) => string;
 
+//{{FIELD_VALUE_LOCAL_NAME fieldName}} placeholder allows to use field value local name in subject template
+//{{FIELD_VALUE_RAW}} placeholder allows to use field value in subject template
+
 const FIELD_VALUE_LOCAL_NAME = 'FIELD_VALUE_LOCAL_NAME';
+const FIELD_VALUE_RAW = 'FIELD_VALUE_RAW';
 type Placeholder =
   | { type: 'UUID' }
   | { type: 'FieldValue'; id: string }
-  | { type: typeof FIELD_VALUE_LOCAL_NAME; id: string };
+  | { type: typeof FIELD_VALUE_LOCAL_NAME; id: string }
+  | { type: typeof FIELD_VALUE_RAW; id: string };
 
 export function generateSubjectByTemplate(
   template: string | undefined,
@@ -64,6 +69,11 @@ export function generateSubjectByTemplate(
       p = {
         type: FIELD_VALUE_LOCAL_NAME,
         id: placeholder.replace(FIELD_VALUE_LOCAL_NAME, '').trim(),
+      };
+    } else if (placeholder.startsWith(FIELD_VALUE_RAW)) {
+      p = {
+        type: FIELD_VALUE_RAW,
+        id: placeholder.replace(FIELD_VALUE_RAW, '').trim(),
       };
     } else {
       p = { type: 'FieldValue', id: placeholder };
@@ -92,6 +102,7 @@ export function wasIriGeneratedByTemplate(
     UUID: uuid.v4(),
     FieldValue: undefined,
     FIELD_VALUE_LOCAL_NAME: undefined,
+    FIELD_VALUE_RAW: undefined,
   };
   const newGeneratedIri = generateSubjectByTemplate(template, ownerSubject, composite, (p, comp) => {
     const escaped = escapeTable[p.type];
@@ -110,14 +121,20 @@ export function makeDefaultSubjectReplacer(): SubjectReplacer {
       return uuid.v4();
     } else if (
       composite &&
-      (placeholder.type === 'FieldValue' || placeholder.type === FIELD_VALUE_LOCAL_NAME) &&
+      (placeholder.type === 'FieldValue' || 
+       placeholder.type === FIELD_VALUE_LOCAL_NAME || 
+       placeholder.type === FIELD_VALUE_RAW) &&
       composite.definitions.has(placeholder.id)
     ) {
       const state = composite.fields.get(placeholder.id);
       const first = (state ? state.values.first() : undefined) || FieldValue.empty;
       const valueContent = FieldValue.isAtomic(first) ? first.value.value : '';
+      
       if (placeholder.type === FIELD_VALUE_LOCAL_NAME && valueContent) {
         return Rdf.getLocalName(valueContent);
+      } else if (placeholder.type === FIELD_VALUE_RAW && valueContent) {
+        // Return raw value without encoding
+        return valueContent;
       } else {
         return encodeIri(valueContent);
       }
