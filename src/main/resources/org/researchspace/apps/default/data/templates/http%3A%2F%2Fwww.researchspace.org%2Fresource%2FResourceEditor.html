@@ -112,7 +112,7 @@
                     {{/ifCond}}
 
                     {{#ifCond bindings.length ">" "0"}}
-                      <semantic-query query='SELECT DISTINCT ?config ?collection WHERE {
+                      <semantic-query query='SELECT DISTINCT ?config ?collection ?label WHERE {
                                               {{#each bindings}}
                                               { 
                                                 BIND(<{{../iri}}> as ?item) .
@@ -131,6 +131,12 @@
                                                 OPTIONAL {
                                                   ?config <http://www.researchspace.org/pattern/system/resource_configuration/resource_broader_property> ?resourceBroaderProperty .
                                                 }                                  
+                                                OPTIONAL {   
+                                                  ?item crm:P1_is_identified_by ?appellation . 
+                                                  ?appellation a crm:E41_Appellation . 
+                                                  ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> . 
+                                                  ?appellation crm:P190_has_symbolic_content ?label .
+                                                }                                  
                                               } {{#if @last}}{{else}}UNION{{/if}}  
                                               {{/each}}
                                             }'
@@ -142,7 +148,7 @@
                           {{/ifCond}}
 
                           {{#ifCond bindings.length "==" "1"}}
-                            {{> rsp:CollectionBrowserContent viewId=viewId configOrScheme=bindings.0.config.value iri=iri mode="edit"}}
+                            {{> rsp:CollectionBrowserContent viewId=viewId configOrScheme=bindings.0.config.value iri=iri mode="edit" label=bindings.0.label.value}}
                           {{/ifCond}}
 
                           {{#ifCond bindings.length ">" "1"}}
