@@ -280,8 +280,12 @@ public class FieldDefinitionManager implements PlatformCache {
         json.put("iri", field.getIri().stringValue());
 
         if (field.getDescription() != null) {
-            json.put("description", field.getDescription().stringValue());
+            String description = field.getDescription().stringValue();
+            if (!description.contains("'")) {
+                json.put("description", description);
+            }
         }
+        
         if (field.getMinOccurs() != null) {
             IRI datatype = field.getMinOccurs().getDatatype();
             try {
