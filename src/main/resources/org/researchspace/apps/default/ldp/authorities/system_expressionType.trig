@@ -1,0 +1,66 @@
+@prefix : <https://w3id.org/murtenpanorama/resource/> .
+@prefix rs: <http://www.researchspace.org/ontology/> .
+@prefix User: <http://www.researchspace.org/resource/user/> .
+@prefix Help: <http://help.researchspace.org/resource/> .
+@prefix Platform: <http://www.researchspace.org/resource/system/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix crmdig: <http://www.ics.forth.gr/isl/CRMdig/> .
+@prefix rsp: <http://www.researchspace.org/resource/> .
+@prefix rshelp: <http://researchspace.org/help/> .
+@prefix crmsci: <http://www.cidoc-crm.org/cidoc-crm/CRMsci/> .
+@prefix crmgeo: <http://www.ics.forth.gr/isl/CRMgeo/> .
+@prefix sp: <http://spinrdf.org/sp#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix crminfluence: <http://www.cidoc-crm.org/cidoc-crm/influence/> .
+@prefix crm: <http://www.cidoc-crm.org/cidoc-crm/> .
+@prefix lrmoo: <http://iflastandards.info/ns/lrm/lrmoo/> .
+@prefix crminf: <http://www.ics.forth.gr/isl/CRMinf/> .
+@prefix Admin: <http://www.researchspace.org/resource/admin/> .
+@prefix bds: <http://www.bigdata.com/rdf/search#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix crmba: <http://www.cidoc-crm.org/cidoc-crm/CRMba/> .
+@prefix fedsail: <http://www.openrdf.org/config/sail/federation#> .
+@prefix ontodia: <http://ontodia.org/schema/v1#> .
+@prefix crmarchaeo: <http://www.cidoc-crm.org/cidoc-crm/CRMarchaeo/> .
+@prefix forms: <http://www.researchspace.org/resource/system/forms/> .
+@prefix frbroo: <http://iflastandards.info/ns/fr/frbr/frbroo/> .
+
+<https://w3id.org/dsanno/platform/resource/vocab/expression_type> {
+  <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>
+    crm:P2i_is_type_of <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>
+    crm:P2i_is_type_of <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record> .
+  
+  <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record>
+    a crmdig:D1_Digital_Object;
+    crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    crmdig:L11i_was_output_of <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record/entity_formRecord_creation>;
+    crm:P129_is_about <https://w3id.org/dsanno/platform/resource/vocab/expression_type> .
+  
+  <https://w3id.org/dsanno/platform/resource/vocab/expression_type/primary_appellation>
+    a crm:E41_Appellation;
+    crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation>;
+    crm:P190_has_symbolic_content "Expression type" .
+  
+  <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record/entity_formRecord_creation>
+    a crmdig:D7_Digital_Machine_Event;
+    crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    crm:P14_carried_out_by User:admin;
+    crmdig:L11_had_output <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record>;
+    crm:P4_has_time-span <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <https://w3id.org/dsanno/platform/resource/vocab/expression_type> a crm:E32_Authority_Document;
+    crm:P129i_is_subject_of <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record>;
+    crm:P1_is_identified_by <https://w3id.org/dsanno/platform/resource/vocab/expression_type/primary_appellation>;
+    crm:P67_refers_to <http://www.researchspace.org/resource/system/resource_configurations_container/data/Type> .
+  
+  <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a crm:E52_Time-Span;
+    crm:P82_at_some_time_within "2025-02-06T20:35:31.000Z"^^xsd:dateTime .
+  
+  User:admin crm:P14i_performed <https://w3id.org/dsanno/platform/resource/vocab/expression_type/entity_form_record/entity_formRecord_creation> .
+}

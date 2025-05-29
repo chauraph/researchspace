@@ -1,0 +1,828 @@
+
+<http://www.researchspace.org/resource/system/vocab/identifier> {
+  <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/issue_number>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "object id" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "loan assessment id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISSN> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "ISSN";
+    <http://www.w3.org/2004/02/skos/core#altLabel> "International Standard Serial Number";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/ISSN>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/ISBN> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/issue_number> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "issue number";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number> a
+      <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "inventory number";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "measurement id";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISBN> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "ISBN";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#altLabel> "International Standard Book Number" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/DOI>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "assessment id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/accession_number>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/accession_number> a
+      <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "accession number" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "condition assessment id" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial> a
+      <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "banknote serial" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "catalogue reference number";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "analysis id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/DOI> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "DOI";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#altLabel> "Digital Object Identifier" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/id> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/edition_number>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/entity_id> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "exhibition id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/edition_number> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "edition number";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "feedback id" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "entity preferred id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "id";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/entity_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "entity id" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "ISO 639-2";
+    <http://www.w3.org/2004/02/skos/core#altLabel> "Codes for the representation of names of languages — Part 2: Alpha-3 code";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/volume_number> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "volume number";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/volume_number>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#altLabel> "Codes for the representation of names of languages—Part 1: Alpha-2 code";
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "ISO 639-1" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/system_id> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2025-01-10T23:14:43.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "treatment id";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/system_id> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "system id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2025-01-10T23:14:54.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>
+    <http://www.cidoc-crm.org/cidoc-crm/P2i_is_type_of> <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/user/admin> <http://www.cidoc-crm.org/cidoc-crm/P14i_performed>
+      <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>
+    <http://www.cidoc-crm.org/cidoc-crm/P2i_is_type_of> <http://www.researchspace.org/resource/system/vocab/identifier/analysis_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/banknote_serial/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/condition_assessment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/edition_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-1/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/loan_assessment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/treatment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_preferred_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/feedback_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/inventory_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISSN/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISO_639-2/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/assessment_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/catalogue_reference_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/DOI/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/measurement_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/system_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/volume_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/accession_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/exhibition_id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/id/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/ISBN/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/issue_number/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record/entity_formRecord_creation>,
+      <http://www.researchspace.org/resource/system/vocab/identifier/entity_id/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier> a <http://www.cidoc-crm.org/cidoc-crm/E32_Authority_Document>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P67_refers_to> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P1_is_identified_by> <http://www.researchspace.org/resource/system/vocab/identifier/primary_appellation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/registration_number>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/object_id>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "object primary id";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record/entity_formRecord_creation/at_some_time_within> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "page number range";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/series_number>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/primary_appellation>
+    a <http://www.cidoc-crm.org/cidoc-crm/E41_Appellation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P190_has_symbolic_content> "Identifier type";
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/object_number>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/object_id/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "page number";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/page_number> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_number> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "object number";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/object_number/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/series_number> a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/series_number/entity_form_record>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "series number" .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/registration_number>
+    a <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.w3.org/2004/02/skos/core#prefLabel> "registration number";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/vocab/identifier> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/registration_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/vocab/identifier/object_primary_id/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+  
+  <http://www.researchspace.org/resource/system/vocab/identifier/page_number_range/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2024-10-22T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
+}
