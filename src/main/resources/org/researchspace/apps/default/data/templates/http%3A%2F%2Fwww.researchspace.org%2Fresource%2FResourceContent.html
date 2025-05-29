@@ -430,6 +430,190 @@
                                         [[currentDateTime format="dd-MM-yyyy"]].</span>
                                 </div>
 
+
+                                <semantic-query query='SELECT ?value ?label ?imgURL ?boundingBox ?fileName WHERE {
+                                    <[[this]]> crm:P141i_was_assigned_by/crm:P140_assigned_attribute_to ?value .
+                                    VALUES ?type { rso:EX_Digital_Image rso:EX_Digital_Image_Region }
+                                    ?value a ?type .
+                                        
+                                    OPTIONAL {
+                                    ?value rdf:type rso:EX_Digital_Image_Region;
+                                        crmdig:L49_is_primary_area_of ?image.
+                                    ?image crm:P1_is_identified_by ?appellation . 
+                                    ?appellation a crm:E41_Appellation . 
+                                    ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> . 
+                                    ?appellation crm:P190_has_symbolic_content ?label . 
+                                    }
+
+                                    # Get image URL for full images
+                                    OPTIONAL {
+                                    ?value a rso:EX_Digital_Image ;
+                                            crmdig:L60i_is_documented_by/crmdig:L11_had_output/rs:PX_has_file_name ?fileName .
+                                    BIND(CONCAT("/proxy/IIIF/", ?fileName, "/full/!320,240/0/default.jpg") AS ?internalImgURL)
+                                    }
+                                    
+                                    # Get image URL for image regions
+                                    OPTIONAL {
+                                    ?value a rso:EX_Digital_Image_Region ;
+                                            crmdig:L49_is_primary_area_of ?image .
+                                    ?image crmdig:L60i_is_documented_by/crmdig:L11_had_output/rs:PX_has_file_name ?fileName .
+                                    ?value rs:boundingBox ?bb .
+                                    BIND(STRAFTER(?bb, "xywh=") AS ?boundingBox)
+                                    }
+                                    
+                                    # Get external IIIF image service
+                                    OPTIONAL {
+                                        ?value crm:P129i_is_subject_of ?externalIIIFImage.
+                                        ?externalIIIFImage rdf:type crmdig:D1_Digital_Object;
+                                        crm:P2_has_type <http://iiif.io/api/image>;
+                                        crm:P129i_is_subject_of ?externalIIIFService.
+                                        ?externalIIIFService rdf:type crmdig:D1_Digital_Object;
+                                        crm:P2_has_type <http://iiif.io/api/image#ImageService>.
+                                        BIND(CONCAT(STR(?externalIIIFService), "/full/!320,240/0/default.jpg") AS ?externalImgURL)
+                                    }
+                                    
+                                    OPTIONAL {
+                                        ?value rdf:type rso:EX_Digital_Image_Region;
+                                            crmdig:L49_is_primary_area_of ?image.
+                                        ?image rdf:type rso:EX_Digital_Image;
+                                            crm:P129i_is_subject_of ?directExternalIIIFImage.
+                                        ?directExternalIIIFImage rdf:type crmdig:D1_Digital_Object;
+                                            crm:P2_has_type <http://iiif.io/api/image>;
+                                            crm:P129i_is_subject_of ?directExternalIIIFService.
+                                        ?directExternalIIIFService rdf:type crmdig:D1_Digital_Object;
+                                            crm:P2_has_type <http://iiif.io/api/image#ImageService>.
+                                        ?value rso:boundingBox ?bb.
+                                        BIND(STRAFTER(?bb, "xywh=") AS ?boundingBox)
+                                        BIND(CONCAT(STR(?directExternalIIIFService), "/", ?boundingBox, "/!320,240/0/default.jpg") AS ?directExternalImgURL)
+                                    }
+                                    
+                                    # Consolidate all possible image URLs
+                                    BIND(COALESCE(?externalImgURL, ?directExternalImgURL, ?internalImgURL, ?regionImgURL) AS ?imgURL)
+                                }'
+                                template='{{> bothSectionsTemplate}}'
+                                no-result-template='{{> noSectionsTemplate}}'>
+
+                                <template id='bothSectionsTemplate'>                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div>
+                                                <hr class="rs-resource-section--headerLine">
+                                                [[#block "attributeViewer"]]
+                                                <span class="h1 rs-resource-section--header">Attribute Contribution</span>
+                                                [[/block]]
+                                            </div>
+                                            <semantic-tree query="
+                                                SELECT DISTINCT ?node_seg ?node ?parent ?repr WHERE {
+                                                {
+                                                BIND(<[[this]]> as ?q_repr)
+                                                
+                                                ?qnode_seg crm:P140i_was_attributed_by ?qnode_featobs.
+                                                ?qnode_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                                    crm:P141_assigned ?q_repr.
+                                                ?qnode_seg crmdig:L49_is_primary_area_of ?repr.
+                                                    
+                                                ?qnode_seg ((crm:P140i_was_attributed_by/crm:P141_assigned)+) ?node_seg.
+                                                ?node_seg crm:P140i_was_attributed_by ?node_featobs.
+                                                ?node_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                                    crm:P141_assigned ?node_repr.
+                                                ?node_seg crmdig:L49_is_primary_area_of ?repr.
+                                                
+                                                ?parent_seg crm:P140i_was_attributed_by ?parent_segobs.
+                                                ?parent_segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>;
+                                                    crm:P141_assigned ?node_seg.
+                                                ?parent_seg crm:P140i_was_attributed_by ?parent_featobs.
+                                                ?parent_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                                    crm:P141_assigned ?parent_repr.
+                                                    
+                                                BIND(?parent_repr AS ?parent)
+                                                BIND(?node_repr AS ?node)
+                                                
+                                                }
+                                                UNION
+                                                {
+                                                    BIND(<[[this]]> as ?q_repr)
+
+                                                    ?qnode_seg crm:P140i_was_attributed_by ?qnode_featobs.
+                                                    ?qnode_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                                    crm:P141_assigned ?q_repr.
+                                                    ?qnode_seg crmdig:L49_is_primary_area_of ?repr.
+
+                                                    OPTIONAL {
+                                                    ?areaOrDigitalObject (crm:P140i_was_attributed_by/crm:P141_assigned)+ ?qnode_seg.
+                                                    values ?areaOrDigitalObjectType { rso:EX_Digital_Image_Region rso:EX_Digital_Image }.
+                                                    ?areaOrDigitalObject a ?areaOrDigitalObjectType.
+                                                    ?areaOrDigitalObject (crm:P138_represents|rso:PX_main_represents) ?source_item.
+                                                    }
+                                                
+                                                    OPTIONAL {
+                                                    ?qnode_seg ((crm:P140i_was_attributed_by/crm:P141_assigned)+) ?node_seg.
+                                                    ?node_seg crm:P140i_was_attributed_by ?node_featobs.
+                                                    ?node_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                                        crm:P141_assigned ?node_repr.
+                                                    ?node_seg crmdig:L49_is_primary_area_of ?repr.
+                                                    
+                                                    OPTIONAL {
+                                                        ?node_seg crm:P140i_was_attributed_by ?node_segobs.
+                                                        ?node_segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>;
+                                                            crm:P141_assigned ?children_seg.
+                                                        }
+                                                    }
+                                                    BIND(!BOUND(?children_seg) AS ?leaf_node)
+                                                    
+                                                    FILTER(?leaf_node)
+                                                    BIND(COALESCE(?node_repr,?q_repr) AS ?parent)
+                                                    BIND(?source_item AS ?node)
+                                                }
+                                                }
+                                                "
+                                                provider='d3-sankey'
+                                                style="height: 300px;">
+                                            </semantic-tree>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div>
+                                                <hr class="rs-resource-section--headerLine">
+                                                [[#block "representationExemplars"]]
+                                                <span class="h1 rs-resource-section--header">Representation Exemplars</span>
+                                                [[/block]]
+                                            </div>
+                                            <div class="row">
+                                                {{#each bindings}}
+                                                    <div class="col-sm-4" style="margin-bottom: 15px;">
+                                                        <div class="panel panel-default" style="height: 100%;">
+                                                            <div class="panel-heading">
+                                                                <h5 class="panel-title">{{#if label.value}}{{label.value}}{{else}}<em>No label</em>{{/if}}</h5>
+                                                            </div>
+                                                            <div class="panel-body" style="text-align: center; padding: 10px;">
+                                                                {{#if imgURL.value}}
+                                                                    <img src="{{imgURL.value}}" alt="{{#if label.value}}{{label.value}}{{else}}Image representation{{/if}}" 
+                                                                        style="max-width: 100%; max-height: 240px; object-fit: contain;">
+                                                                {{else}}
+                                                                    <div style="height: 240px; display: flex; align-items: center; justify-content: center; background-color: #f5f5f5;">
+                                                                        <span><em>No image available</em></span>
+                                                                    </div>
+                                                                {{/if}}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {{else}}
+                                                    <div class="col-xs-12">
+                                                        <div class="alert alert-info">
+                                                            No representation data available
+                                                        </div>
+                                                    </div>
+                                                {{/each}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <template id='noSectionsTemplate'>
+                                    <!-- Empty template - nothing shown when no exemplars exist -->
+                                </template>
+
+                                </semantic-query>
+
                                 <div class="rs-resource-data-table">
                                     <mp-field-visualization subject='[[this]]'
                                                             fields='[[fieldDefinitionsFromQuery (setQueryBindings "SELECT DISTINCT ?field WHERE {?resource ?field ?o . ?field a <http://www.researchspace.org/resource/system/fields/Field> } ORDER BY DESC(?field)" resource=this.iri) ]]'
