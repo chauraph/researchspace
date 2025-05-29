@@ -31,6 +31,13 @@
                               FILTER(?type in (rs:EX_Digital_Image, rs:EX_Digital_Image_Region))
                               BIND(<{{iri}}> as ?resource) .
                             } UNION {
+                              <{{iri}}> crm:P02i_is_range_of ?PC . 
+                              ?PC a crm:PC138_represents .
+                              ?PC crm:P01_has_domain ?image .
+                              ?image a ?type .
+                              FILTER(?type in (rs:EX_Digital_Image, rs:EX_Digital_Image_Region))
+                              BIND(<{{iri}}> as ?resource) .
+                            }  UNION {
                               <{{iri}}> a ?ontologyClass . 
                               FILTER(?ontologyClass in (rs:EX_Digital_Image, rs:EX_Digital_Image_Region))
                               BIND(<{{iri}}> as ?resource) .

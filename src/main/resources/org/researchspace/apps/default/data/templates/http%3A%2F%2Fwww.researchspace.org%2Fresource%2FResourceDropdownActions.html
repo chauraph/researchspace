@@ -447,6 +447,13 @@
                                   } UNION {
                                     <{{iri}}> crm:P138i_has_representation|rs:PX_has_main_representation ?image .
                                   } UNION {
+                                    <{{iri}}> crm:P02i_is_range_of ?PC . 
+                                      ?PC a crm:PC138_represents .
+                                      ?PC crm:P01_has_domain ?image .
+                                      { ?image a rso:EX_Digital_Image. }
+                                          UNION
+                                      { ?image a rso:EX_Digital_Image_Region. }
+                                  } UNION {
                                     <{{iri}}> a rs:EX_Digital_Image .
                                   }
                                 }'
