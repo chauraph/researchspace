@@ -19,10 +19,48 @@
 
 import { vocabularies } from 'platform/api/rdf';
 import { rso } from '../vocabularies';
+import { getRegisteredPrefixes } from 'platform/api/services/namespace';
 
 import * as Forms from 'platform/components/forms';
 
-export const SubjectTemplate = `${rso.ImageRegion.value}/{{UUID}}`;
+// original RS SubjectTemplate definition
+// export const SubjectTemplate = `${rso.ImageRegion.value}/{{UUID}}`;
+
+let resolvedSubjectTemplate: string | null = null;
+let namespaceError: Error | null = null;
+
+const namespacePromise = getRegisteredPrefixes().toPromise().then(prefixes => {
+  const defaultNamespace = prefixes.Default || prefixes[''];
+  if (!defaultNamespace) {
+    throw new Error('No Default namespace found in configuration. Check your namespaces.prop file.');
+  }
+  resolvedSubjectTemplate = `${defaultNamespace}ImageRegion/{{UUID}}`;
+  return resolvedSubjectTemplate;
+}).catch(error => {
+  namespaceError = error;
+  console.error('CRITICAL: Failed to resolve namespace:', error);
+  throw error;
+});
+
+export const getSubjectTemplate = async (): Promise<string> => {
+  if (namespaceError) {
+    throw new Error(`Namespace resolution failed: ${namespaceError.message}`);
+  }
+  
+  if (!resolvedSubjectTemplate) {
+    try {
+      await namespacePromise;
+      if (!resolvedSubjectTemplate) {
+        throw new Error('SubjectTemplate not resolved after namespace loading completed');
+      }
+      return resolvedSubjectTemplate;
+    } catch (error) {
+      throw new Error(`Failed to resolve SubjectTemplate: ${error.message}`);
+    }
+  }
+  
+  return resolvedSubjectTemplate;
+};
 
 export const ImageRegionType = Forms.normalizeFieldDefinition({
   id: 'type',
