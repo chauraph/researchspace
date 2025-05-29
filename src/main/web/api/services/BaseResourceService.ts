@@ -101,5 +101,5 @@ function getRepositoryFromContext(context: QueryContext | undefined): string {
       return context.repository;
     }
   }
-  return 'default';
+  return 'ephedra';
 }
