@@ -5,6 +5,9 @@
                           inScheme="http://www.researchspace.org/pattern/system/entity/is_listed_in"
                           entity_formRecord="http://www.researchspace.org/pattern/system/entity/formRecord"
 
+                          as_skos="https://w3id.org/dsanno/platform/pattern/authority_document/has_type/skos"
+                          opaque_url="https://w3id.org/dsanno/platform/pattern/authority_document/has_type/opaque_url"
+
                           entity_image_main_representation="http://www.researchspace.org/pattern/system/entity/main_image"
                           entity_image="http://www.researchspace.org/pattern/system/entity/images"
                           entity_document="http://www.researchspace.org/pattern/system/entity/documents"
@@ -82,6 +85,18 @@
 
       <rs-tab event-key="detail" title="Details">
         <semantic-form-text-input for="entity_primary_appellation" label="Authority document name" placeholder="Enter authority document name"></semantic-form-text-input>
+        
+        {{#switch resourceOntologyClass}}
+          {{#case "http://www.cidoc-crm.org/cidoc-crm/E55_Type" break=true}}
+            <semantic-form-checklist-input for="as_skos" type="checkbox"  label="Use as SKOS Concept?"></semantic-form-checklist-input>
+            <semantic-form-checklist-input for="opaque_url" type="checkbox"  label="Use opaque URL?"></semantic-form-checklist-input>
+          {{/case}}
+          {{#case "http://www.cidoc-crm.org/cidoc-crm/E36_Visual_Item" break=true}}
+            <semantic-form-checklist-input for="as_skos" type="checkbox"  label="Use as SKOS Concept?"></semantic-form-checklist-input>
+          {{/case}}
+          {{#default}}
+          {{/default}}
+        {{/switch}}
       
         <div class="inline-composite-container">
           <semantic-form-composite-input  for="human-made_thing_title" 
