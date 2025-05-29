@@ -24,7 +24,10 @@
     <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_facet_kpCategory>  <http://www.researchspace.org/resource/system/category/event_search> ;
     <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_listView_column>  
     <http://www.researchspace.org/resource/system/resource_configurations_container/data/Event/resource_search_listView_column/3>,
-    <http://www.researchspace.org/resource/system/resource_configurations_container/data/Event/resource_search_listView_column/4> .
+    <http://www.researchspace.org/resource/system/resource_configurations_container/data/Event/resource_search_listView_column/4>;
+        <http://www.researchspace.org/pattern/system/resource_configuration/resource_list_in_authority> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Event/list_in_authority> ;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_membership_property> crm:P71i_is_listed_in;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_broader_property> crm:P9i_forms_part_of .
 
   <http://www.researchspace.org/resource/system/resource_configurations_container/data/Event/resource_search_listView_column/3> a crm:E1_CRM_Entity ;
     <http://www.researchspace.org/pattern/system/resource_search_listView_column/order> "3";
