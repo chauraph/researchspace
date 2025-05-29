@@ -1,0 +1,293 @@
+@prefix la: <https://linked.art/ns/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+la:context {
+    <http://www.cidoc-crm.org/cidoc-crm/E10_Transfer_of_Custody> a rdfs:Class ;
+        rdfs:subClassOf la:Transfer .
+
+    <http://www.cidoc-crm.org/cidoc-crm/E74_Group> a rdfs:Class ;
+        rdfs:subClassOf <http://www.cidoc-crm.org/cidoc-crm/E39_Actor>,
+            la:Set .
+
+    <http://www.cidoc-crm.org/cidoc-crm/E85_Joining> a rdfs:Class ;
+        rdfs:subClassOf la:Addition .
+
+    <http://www.cidoc-crm.org/cidoc-crm/E86_Leaving> a rdfs:Class ;
+        rdfs:subClassOf la:Removal .
+
+    <http://www.cidoc-crm.org/cidoc-crm/E8_Acquisition> a rdfs:Class ;
+        rdfs:subClassOf la:Transfer .
+
+    <http://www.cidoc-crm.org/cidoc-crm/E9_Move> a rdfs:Class ;
+        rdfs:subClassOf la:Transfer .
+
+    la:Addition a rdfs:Class ;
+        rdfs:label "Addition"@en ;
+        rdfs:comment "The addition of some entity to a Set"@en ;
+        rdfs:subClassOf <http://www.cidoc-crm.org/cidoc-crm/E7_Activity> .
+
+    la:DigitalService a rdfs:Class ;
+        rdfs:label "Digital Service"@en ;
+        rdfs:comment ""@en ;
+        rdfs:subClassOf <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> .
+
+    la:Payment a rdfs:Class ;
+        rdfs:label "Payment"@en ;
+        rdfs:comment "Payment of Money"@en ;
+        rdfs:subClassOf la:Transfer .
+
+    la:Removal a rdfs:Class ;
+        rdfs:label "Removal"@en ;
+        rdfs:comment "The removal of some entity from a Set"@en ;
+        rdfs:subClassOf <http://www.cidoc-crm.org/cidoc-crm/E7_Activity> .
+
+    la:RightAcquisition a rdfs:Class ;
+        rdfs:label "Right Acquisition"@en ;
+        rdfs:comment "The acquiring or establishment of a particular E30 Right over some entity "@en ;
+        rdfs:subClassOf la:Transfer .
+
+    la:Set a rdfs:Class ;
+        rdfs:label "Set"@en ;
+        rdfs:comment ""@en ;
+        rdfs:subClassOf <http://www.cidoc-crm.org/cidoc-crm/E72_Legal_Object>,
+            <http://www.cidoc-crm.org/cidoc-crm/E89_Propositional_Object> .
+
+    la:Transfer a rdfs:Class ;
+        rdfs:label "Transfer"@en ;
+        rdfs:comment "Abstract transferral of something between entities"@en ;
+        rdfs:subClassOf <http://www.cidoc-crm.org/cidoc-crm/E7_Activity> .
+
+    la: a owl:Ontology ;
+        rdfs:label "Linked Art Terms"@en .
+
+    la:access_point a owl:ObjectProperty ;
+        rdfs:label "access point"@en ;
+        rdfs:comment """From an ur- digital object to a single concrete representation.
+        A locator as opposed to an identifier, similar to the approximated_by for Place."""@en ;
+        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> .
+
+    la:equivalent a owl:ObjectProperty ;
+        rdfs:label "has equivalent instance"@en ;
+        rdfs:comment "Similar to skos:exactMatch, the referenced entity is an equivalent instance to the referencing entity. This would not have the same inference issue as exactMatch, whereby the domain and range become skos:Concept, which is equivalent to E55_Type ... and thus everything becomes a Type."@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> .
+
+    la:members_exemplified_by a owl:ObjectProperty ;
+        rdfs:label "members exemplified by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Set ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> .
+
+    la:paid_amount a owl:ObjectProperty ;
+        rdfs:label "Paid Amount"@en ;
+        rdfs:comment "The amount paid"@en ;
+        rdfs:domain la:Payment ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E97_Monetary_Amount> .
+
+    la:paid_from a owl:ObjectProperty ;
+        rdfs:label "Paid From"@en ;
+        rdfs:comment "Who the payment came from"@en ;
+        rdfs:domain la:Payment ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E39_Actor> .
+
+    la:paid_to a owl:ObjectProperty ;
+        rdfs:label "Paid To"@en ;
+        rdfs:comment "Who the payment went to"@en ;
+        rdfs:domain la:Payment ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E39_Actor> .
+
+    la:property_classified_as a owl:ObjectProperty ;
+        rdfs:label "Property Classified As"@en ;
+        rdfs:comment "Record dot one properties via Attribute Assignments"@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E13_Attribute_Assignment> ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E55_Type> .
+
+    la:transferred a owl:ObjectProperty ;
+        rdfs:label "transferred"@en ;
+        rdfs:comment "What was transferred"@en ;
+        rdfs:domain la:Transfer ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> .
+
+    la:transferred_from a owl:ObjectProperty ;
+        rdfs:label "transferred from"@en ;
+        rdfs:comment "Where or with whom did it start"@en ;
+        rdfs:domain la:Transfer ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> .
+
+    la:transferred_to a owl:ObjectProperty ;
+        rdfs:label "transferred to"@en ;
+        rdfs:comment "Where or with whom did it end"@en ;
+        rdfs:domain la:Transfer ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> .
+
+    la:added_member a owl:ObjectProperty ;
+        rdfs:label "added"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Addition ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        owl:inverseOf la:added_member_by .
+
+    la:added_member_by a owl:ObjectProperty ;
+        rdfs:label "added by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        rdfs:range la:Addition ;
+        owl:inverseOf la:added_member .
+
+    la:added_to a owl:ObjectProperty ;
+        rdfs:label "added to"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Addition ;
+        rdfs:range la:Set ;
+        owl:inverseOf la:added_to_by .
+
+    la:added_to_by a owl:ObjectProperty ;
+        rdfs:label "added to by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Set ;
+        rdfs:range la:Addition ;
+        owl:inverseOf la:added_to .
+
+    la:contains_members_of a owl:ObjectProperty ;
+        rdfs:label "contains members of"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E18_Physical_Thing> ;
+        rdfs:range la:Set ;
+        owl:inverseOf la:members_contained_by .
+
+    la:current_permanent_custodian a owl:ObjectProperty ;
+        rdfs:label "Current Permanent Custodian"@en ;
+        rdfs:comment "This property records the normal custodian of the object at the time when the assertion was made. The object may have a temporary custodian, for example when it is loaned to another organization for an exhibition or between departments for conservation or storage."@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E19_Physical_Object> ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E39_Actor> ;
+        owl:inverseOf la:current_permanent_custodian_of .
+
+    la:current_permanent_custodian_of a owl:ObjectProperty ;
+        rdfs:label "Current Permanent Custodian Of"@en ;
+        rdfs:comment "Inverse of Current Permanent Custodian"@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E39_Actor> ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E19_Physical_Object> ;
+        owl:inverseOf la:current_permanent_custodian .
+
+    la:digitally_available_via a owl:ObjectProperty ;
+        rdfs:label "digitally available via"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range la:DigitalService ;
+        owl:inverseOf la:digitally_makes_available .
+
+    la:digitally_carried_by a owl:ObjectProperty ;
+        rdfs:label "digitally carried by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object> ;
+        rdfs:range <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        owl:inverseOf la:digitally_carries .
+
+    la:digitally_carries a owl:ObjectProperty ;
+        rdfs:label "digitally carries"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object> ;
+        owl:inverseOf la:digitally_carried_by .
+
+    la:digitally_makes_available a owl:ObjectProperty ;
+        rdfs:label "digitally makes available"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range la:DigitalService ;
+        owl:inverseOf la:digitally_available_via .
+
+    la:digitally_shown_by a owl:ObjectProperty ;
+        rdfs:label "digitally shown by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E36_Visual_Item> ;
+        rdfs:range <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        owl:inverseOf la:digitally_shows .
+
+    la:digitally_shows a owl:ObjectProperty ;
+        rdfs:label "digitally shows"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E36_Visual_Item> ;
+        owl:inverseOf la:digitally_shown_by .
+
+    la:established_by a owl:ObjectProperty ;
+        rdfs:label "established by"@en ;
+        rdfs:comment "The RightAcquisition that established this Right"@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E30_Right> ;
+        rdfs:range la:RightAcquisition ;
+        owl:inverseOf la:establishes .
+
+    la:establishes a owl:ObjectProperty ;
+        rdfs:label "establishes"@en ;
+        rdfs:comment "The right established by a RightAcquisition"@en ;
+        rdfs:domain la:RightAcquisition ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E30_Right> ;
+        owl:inverseOf la:established_by .
+
+    la:has_member a owl:ObjectProperty ;
+        rdfs:label "has member"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Set ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        owl:inverseOf la:member_of .
+
+    la:invalidated_by a owl:ObjectProperty ;
+        rdfs:label "invalidated by"@en ;
+        rdfs:comment "The RightAcquisition that invalidated this Right"@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E30_Right> ;
+        rdfs:range la:RightAcquisition ;
+        owl:inverseOf la:invalidates .
+
+    la:invalidates a owl:ObjectProperty ;
+        rdfs:label "invalidates"@en ;
+        rdfs:comment "The right which is invalidated by a RightAcquisition"@en ;
+        rdfs:domain la:RightAcquisition ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E30_Right> ;
+        owl:inverseOf la:invalidated_by .
+
+    la:member_of a owl:ObjectProperty ;
+        rdfs:label "member of"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        rdfs:range la:Set ;
+        owl:inverseOf la:has_member .
+
+    la:members_contained_by a owl:ObjectProperty ;
+        rdfs:label "members contained by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Set ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E18_Physical_Thing> ;
+        owl:inverseOf la:contains_members_of .
+
+    la:removed_from a owl:ObjectProperty ;
+        rdfs:label "removed from"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Removal ;
+        rdfs:range la:Set ;
+        owl:inverseOf la:removed_from_by .
+
+    la:removed_from_by a owl:ObjectProperty ;
+        rdfs:label "removed from by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Set ;
+        rdfs:range la:Removal ;
+        owl:inverseOf la:removed_from .
+
+    la:removed_member a owl:ObjectProperty ;
+        rdfs:label "removed"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain la:Removal ;
+        rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        owl:inverseOf la:removed_member_by .
+
+    la:removed_member_by a owl:ObjectProperty ;
+        rdfs:label "removed by"@en ;
+        rdfs:comment ""@en ;
+        rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E1_CRM_Entity> ;
+        rdfs:range la:Removal ;
+        owl:inverseOf la:removed_member .
+}
+
