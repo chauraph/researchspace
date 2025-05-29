@@ -970,9 +970,15 @@
                                                               ?columnTitle1 ?columnTitle2 ?columnTitle3 ?columnTitle4
                                                               ?columnContentType2 ?columnContentType3 ?columnContentType4
                                                               ?columnContentSparqlPattern2 ?columnContentSparqlPattern3 ?columnContentSparqlPattern4 
+                                                              ?resourceOntologyClass
                                               WHERE {
                                                 BIND(<[[urlParam "resourceconfig" escape=false]]> as ?resourceConfig)
-                                                ?resourceConfig <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_listView_column> ?customListViewColumn .
+                                                OPTIONAL {
+                                                  ?resourceConfig <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_listView_column> ?customListViewColumn .
+                                                }
+                                                OPTIONAL {
+                                                  ?resourceConfig <http://www.researchspace.org/pattern/system/resource_configuration/resource_ontology_class> ?resourceOntologyClass.
+                                                }
 
                                                 OPTIONAL {
                                                   ?resourceConfig <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_listView_column> ?customListViewColumn1 .
@@ -1130,7 +1136,8 @@
                                                               targets='["thinking-frames"]'>
                                               <div><mp-label iri='{{iri.value}}' class="text-link text-truncate-line1"></mp-label></div>
                                             </mp-event-trigger>
-                                          {{else if (eq bindings.0.resourceConfig.value "http://www.researchspace.org/resource/system/resource_configurations_container/data/Authority_document")}}
+                                          {{else if (eq bindings.0.resourceOntologyClass.value "http://www.cidoc-crm.org/cidoc-crm/E32_Authority_Document")}}
+                                          [[!-- {{else if (eq bindings.0.resourceConfig.value "http://www.researchspace.org/resource/system/resource_configurations_container/data/Authority_document")}} --]]
                                             <semantic-link  iri='http://www.researchspace.org/resource/ThinkingFrames'
                                                             urlqueryparam-view='authority-list'
                                                             urlqueryparam-resource='{{iri.value}}'>
