@@ -21,6 +21,7 @@
  $material-symbols-font-path: '~material-symbols/';
 
 @import './basic.scss';
+@import './overrides.scss';
 @import url($web-font-path);
 @import './bootstrap.scss';
 @import 'material-symbols';
