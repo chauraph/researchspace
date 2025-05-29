@@ -276,9 +276,12 @@ function parseDirectPredicate(patterns: SparqlJs.Pattern[]): string | undefined 
           const isPredicateTriple =
             /^[?$]subject$/.test(t.subject) && /^[?$]value$/.test(t.object) && isIri(t.predicate);
           const isLabelTriple = /^[?$]label$/.test(t.object);
+          const isIdentifiedByAppellationTriple = /^[?$]value$/.test(t.subject)  && /^[?$]appellation$/.test(t.object) && isIri(t.predicate);
+          const isAppellationTriple = t.object.includes("http://www.cidoc-crm.org/cidoc-crm/E41_Appellation");
+          const isPrimaryAppellationTypeTriple = t.object.includes("http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation");
           if (isPredicateTriple) {
             predicate = t.predicate as SparqlJs.Term;
-          } else if (isLabelTriple) {
+          } else if (isLabelTriple || isIdentifiedByAppellationTriple || isAppellationTriple || isPrimaryAppellationTypeTriple) {
             // ignore
           } else {
             // pattern is too complex
@@ -287,6 +290,9 @@ function parseDirectPredicate(patterns: SparqlJs.Pattern[]): string | undefined 
         }
         break;
       case 'bind':
+        // ignore
+        break;
+      case 'optional':
         // ignore
         break;
       default:
