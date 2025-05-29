@@ -392,8 +392,8 @@
                                                                   type='IIIFViewer.ZoomToRegion' 
                                                                   targets='["{{viewId}}-image-annotation"]'
                                                                   data='{"imageIri": "{{image.value}}","regionIri": "{{region.value}}"}'>
-                                                  <div>
-                                                    <rs-iiif-image-thumbnail  height='40' width='45' style='border-radius: 1.5px;'
+                                                  <div class="resource-thumbnail-small-container">
+                                                    <rs-iiif-image-thumbnail  height='40' width='auto' style='border-radius: 1.5px;'
                                                                               image-or-region='{{region.value}}'      
                                                                               [[> rsp:IIIFConfig]]>
                                                     </rs-iiif-image-thumbnail>

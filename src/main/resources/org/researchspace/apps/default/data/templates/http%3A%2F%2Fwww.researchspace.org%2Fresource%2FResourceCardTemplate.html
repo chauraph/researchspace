@@ -67,7 +67,7 @@
         
         {{#if props.[http://www.researchspace.org/pattern/system/image_annotation/area_of_image]}}
           [[!-- when the resource is an Image annotation created in Image graph authoring, before saving the data --]]
-          <rs-iiif-image-thumbnail  height='480' width='640' style='height: 100%; width: 100%;'
+          <rs-iiif-image-thumbnail  height='480' width='auto' style='height: 100%; width: 100%;'
                                     image-or-region='{{props.[http://www.researchspace.org/pattern/system/image_annotation/area_of_image].values.0.value}}' 
                                     bbox='{{props.[http://www.researchspace.org/pattern/system/image_annotation/boundingBox].values.0.value}}'
                                     viewport='{{props.[http://www.researchspace.org/pattern/system/image_annotation/viewport].values.0.value}}'
@@ -76,7 +76,7 @@
           </rs-iiif-image-thumbnail>
         {{else if props.[http://www.researchspace.org/pattern/system/image_annotation/boundingBox]}}
           [[!-- when the resource is an Image annotation --]]
-          <rs-iiif-image-thumbnail  height='480' width='640' style='height: 100%; width: 100%;'
+          <rs-iiif-image-thumbnail  height='480' width='auto' style='height: 100%; width: 100%;'
                                     image-or-region='{{iri}}' 
                                     [[> rsp:IIIFConfig]]>
           </rs-iiif-image-thumbnail>
@@ -87,7 +87,7 @@
 
             <template id='then'>
               [[!-- when the resource has an annotation as image --]]
-              <rs-iiif-image-thumbnail  height='480' width='640' style='height: 100%; width: 100%;'
+              <rs-iiif-image-thumbnail  height='480' width='auto' style='height: 100%; width: 100%;'
                                         image-or-region='{{imgUrl}}'
                                         [[> rsp:IIIFConfig]]>
               </rs-iiif-image-thumbnail>
@@ -115,7 +115,7 @@
         [[!-- for all other cards that are not in KM --]]
 
           {{#case "http://www.researchspace.org/ontology/EX_Digital_Image_Region" break=true}}
-            <rs-iiif-image-thumbnail height='480' width='640' style='height: 100%; width: 100%;'
+            <rs-iiif-image-thumbnail height='480' width='auto' style='height: 100%; width: 100%;'
                                     image-or-region='{{iri}}'      
                                     [[> rsp:IIIFConfig]]>
             </rs-iiif-image-thumbnail>
