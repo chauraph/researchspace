@@ -77,7 +77,7 @@ interface State {
 
 const CLASS_NAME = 'autocomplete-text-field';
 const MINIMUM_LIMIT = 3;
-const DEFAULT_TEMPLATE = `<span title="{{label.value}}">{{label.value}}</span>`;
+const DEFAULT_TEMPLATE = `<span title="{{label.value}}">{{label.value}}</span>{{{getNodeTypes value}}}`;
 
 export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, State> {
   private tupleTemplate: string = null;
