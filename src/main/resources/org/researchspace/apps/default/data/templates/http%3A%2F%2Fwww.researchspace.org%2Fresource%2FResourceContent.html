@@ -212,6 +212,17 @@
                                                                     }
 
                                                                     OPTIONAL {
+                                                                        <[[this]]> ?representationProp ?representation.
+                                                                        $representation crm:P129i_is_subject_of ?externalIIIFImage .
+                                                                        ?externalIIIFImage a crmdig:D1_Digital_Object .
+                                                                        ?externalIIIFImage crm:P2_has_type <http://iiif.io/api/image> .
+                                                                        ?externalIIIFImage crm:P129i_is_subject_of ?externalIIIFService .
+                                                                        ?externalIIIFService a crmdig:D1_Digital_Object .
+                                                                        ?externalIIIFService crm:P2_has_type <http://iiif.io/api/image#ImageService> .   
+                                                                        BIND (CONCAT(str(?externalIIIFService), "/full/!640,480/0/default.jpg") AS ?externalIIIFUrl)
+                                                                    }
+
+                                                                    OPTIONAL {
                                                                     <[[this]]> ?representationProp ?representation .
                                                                     ?representation a rs:EX_Digital_Image .
                                                                     BIND(REPLACE(STR(?representation), "^.*/(.*)$", "$1") as ?imageID) .
@@ -240,7 +251,7 @@
                                                                     }
 
 
-                                                                    BIND(COALESCE(?uploadIiifUrl, ?iiifUrl, ?uploadIiifRegionUrl, ?iiifRegionUrl, ?representation) AS ?imgURLx)
+                                                                    BIND(COALESCE(?externalIIIFUrl, ?uploadIiifUrl, ?iiifUrl, ?uploadIiifRegionUrl, ?iiifRegionUrl, ?representation) AS ?imgURLx)
                                                                     BIND(IF(EXISTS { <[[this]]> rs:PX_has_main_representation ?representation }, true, false) AS ?isMainRepx)
                                                                 } UNION {
                                                                     <[[this]]> a rs:EX_Digital_Image ;
@@ -255,12 +266,55 @@
                                                                     BIND(REPLACE(STR(<[[this]]>), "^.*/(.*)$", "$1") as ?imageID) .
                                                                     BIND(CONCAT("/proxy/IIIF/", ?imageID, "/full/!640,480/0/default.jpg") AS ?iiifUrl)
                                                                     }
-                                                                    BIND(COALESCE(?uploadIiifUrl, ?iiifUrl, <[[this]]>) AS ?imgURLx)
+
+                                                                    OPTIONAL {
+                                                                        <[[this]]> rdf:type rso:EX_Digital_Image;
+                                                                            crm:P129i_is_subject_of ?externalIIIFImage .
+                                                                        ?externalIIIFImage a crmdig:D1_Digital_Object .
+                                                                        ?externalIIIFImage crm:P2_has_type <http://iiif.io/api/image> .
+                                                                        ?externalIIIFImage crm:P129i_is_subject_of ?externalIIIFService .
+                                                                        ?externalIIIFService a crmdig:D1_Digital_Object .
+                                                                        ?externalIIIFService crm:P2_has_type <http://iiif.io/api/image#ImageService> .   
+                                                                        BIND (CONCAT(str(?externalIIIFService), "/full/!640,480/0/default.jpg") AS ?externalIIIFUrl) .
+                                                                    }
+                                                                    BIND(COALESCE(?externalIIIFUrl, ?uploadIiifUrl, ?iiifUrl, <[[this]]>) AS ?imgURLx)
                                                                     BIND(true AS ?isMainRepy)
-                                                                }  
+                                                                } UNION {
+                                                                    OPTIONAL {
+                                                                        {
+                                                                          {
+                                                                            <[[this]]> owl:sameAs ?wikidata_url .
+                                                                            FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
+                                                                          }
+                                                                          UNION {
+                                                                            <[[this]]> skos:exactMatch ?wikidata_url .
+                                                                            FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
+                                                                          }
+                                                                          UNION {
+                                                                            <[[this]]> crm:P129i_is_subject_of ?record .
+                                                                            ?record crmdig:L11i_was_output_of ?creation .
+                                                                            ?creation crm:P134_continued ?import .
+                                                                            ?import a crmdig:D12_Data_Transfer_Event .
+                                                                            ?import crmdig:L14_transferred ?wikidata_url .
+                                                                            FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
+                                                                          }
+                                                                          FILTER(BOUND(?wikidata_url))
+                                                                          
+                                                                          SERVICE <https://query.wikidata.org/sparql> {
+                                                                            ?wikidata_url wdt:P18 ?image .
+                                                                          }
+                                                                      
+                                                                          BIND(REPLACE(STR(?image), "^http://commons\\.wikimedia\\.org/wiki/Special:FilePath/(.+)$", 
+                                                                               "https://commons.wikimedia.org/w/thumb.php?width=640&f=$1") AS ?wikidataImgURL)
+                                                                          BIND(?wikidataImgURL AS ?imgURLwikidata)
+                                                                          BIND(false AS ?isMainRepwikidata)
+                                                                        }
+                                                                      }
+                                                                }
                                                             }
-                                                            BIND(?imgURLx AS ?imgURL)
-                                                            BIND(COALESCE(?isMainRepx, ?isMainRepy) AS ?isMainRep)
+                                                            BIND(COALESCE(?imgURLx, ?imgURLwikidata) AS ?imgURL)
+                                                            BIND(COALESCE(?isMainRepx, ?isMainRepy, ?isMainRepwikidata) AS ?isMainRep)
+                                                            FILTER(BOUND(?imgURL) || BOUND(?isMainRep))
                                                             } ORDER BY ?imgURL '
 
                                                             no-image-template = '{{> noImage}}'
@@ -878,8 +932,65 @@
 [[#block "headerData"]]
 <!-- RESOURCE LABEL-->
 <div class="rs-resource-header--singletitle">
-    <div class="rs-resource-header--title" style="text-transform: capitalize;">
-        <mp-label iri='[[this]]'></mp-label>
+    <div class="rs-resource-header--title"> [[!-- style="text-transform: capitalize;"> --]]
+        <semantic-query query='PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+                                SELECT DISTINCT * WHERE {
+                                {
+                                    <[[this]]> owl:sameAs ?wikidata_url .
+                                    FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
+                                }
+                                UNION
+                                {
+                                    <[[this]]> skos:exactMatch ?wikidata_url .
+                                    FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
+                                }
+                                UNION
+                                {
+                                    <[[this]]> crm:P129i_is_subject_of ?record .
+                                    ?record crmdig:L11i_was_output_of ?creation .
+                                    ?creation crm:P134_continued ?import .
+                                    ?import rdf:type crmdig:D12_Data_Transfer_Event ;
+                                            crmdig:L14_transferred ?wikidata_url .
+                                    FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
+                                }
+                                
+                                FILTER(BOUND(?wikidata_url))
+                                
+                                SERVICE <https://query.wikidata.org/sparql> {
+                                    OPTIONAL {
+                                    ?wikidata_url rdfs:label ?wikidataItemLabel_en FILTER (lang(?wikidataItemLabel_en) = "en") .
+                                    }
+                                    OPTIONAL {
+                                    ?wikidata_url rdfs:label ?wikidataItemLabel_fr FILTER (lang(?wikidataItemLabel_fr) = "fr") .
+                                    }
+                                    OPTIONAL {
+                                    ?wikidata_url rdfs:label ?wikidataItemLabel_de FILTER (lang(?wikidataItemLabel_de) = "de") .
+                                    }
+                                    OPTIONAL {
+                                    ?wikidata_url rdfs:label ?wikidataItemLabel_it FILTER (lang(?wikidataItemLabel_it) = "it") .
+                                    }
+                                }
+                                }'
+                    template='{{> fedResult}}'
+                    no-result-template="'{{> localResult}}'">
+            <template id="fedResult">
+                {{#if bindings.0.wikidataItemLabel_en}}
+                    <div><span title="{{bindings.0.wikidataItemLabel_en.value}}">{{bindings.0.wikidataItemLabel_en.value}} (en)</span></div>
+                {{/if}}
+                    {{#if bindings.0.wikidataItemLabel_fr}}
+                    <div><span title="{{bindings.0.wikidataItemLabel_fr.value}}">{{bindings.0.wikidataItemLabel_fr.value}} (fr)</span></div>
+                {{/if}}
+                    {{#if bindings.0.wikidataItemLabel_de}}
+                    <div><span title="{{bindings.0.wikidataItemLabel_de.value}}">{{bindings.0.wikidataItemLabel_de.value}} (de)</span></div>
+                {{/if}}
+                    {{#if bindings.0.wikidataItemLabel_it}}
+                    <div><span title="{{bindings.0.wikidataItemLabel_it.value}}">{{bindings.0.wikidataItemLabel_it.value}} (it)</span></div>
+                {{/if}}
+            </template>
+            <template id="localResult">
+                <mp-label iri='[[this]]'></mp-label>
+            </template>
+        </semantic-query>
     </div>
     <div style="display: flex ;">
         <mp-copy-to-clipboard text='[[this]]'>
