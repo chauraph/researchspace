@@ -1,0 +1,194 @@
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix dir: <https://w3id.org/food/ontology/dir/> .
+@prefix ns1: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+dir:context {
+    dc:contributor a owl:AnnotationProperty .
+
+    dc:creator a owl:AnnotationProperty .
+
+    dc:date a owl:AnnotationProperty .
+
+    dc:description a owl:AnnotationProperty .
+
+    dc:title a owl:AnnotationProperty .
+
+    <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Entity> a owl:Class ;
+        owl:equivalentClass dir:Entity .
+
+    <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#describes> a owl:ObjectProperty ;
+        owl:equivalentProperty dir:describes .
+
+    <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isDescribedBy> a owl:ObjectProperty ;
+        owl:equivalentProperty dir:isDescribedBy .
+
+    ns1:coversRequirements a owl:AnnotationProperty .
+
+    ns1:hasComponent a owl:AnnotationProperty .
+
+    ns1:hasIntent a owl:AnnotationProperty .
+
+    ns1:hasUnitTest a owl:AnnotationProperty .
+
+    ns1:isSpecializationOf a owl:AnnotationProperty .
+
+    ns1:relatedCPs a owl:AnnotationProperty .
+
+    ns1:scenarios a owl:AnnotationProperty .
+
+    <http://www.semanticweb.org/owlapi#nodeID> a owl:AnnotationProperty .
+
+    rdfs:comment a owl:AnnotationProperty .
+
+    owl:topObjectProperty a owl:ObjectProperty .
+
+    dir:inclusive_upper_bound_value a owl:AnnotationProperty ;
+        rdfs:subPropertyOf rdfs:label .
+
+    <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept> a owl:Class .
+
+    <http://www.ontologydesignpatterns.org/cp/owl/description.owl#usesConcept> a owl:ObjectProperty .
+
+    <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description> a owl:Class .
+
+    <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue> a owl:DatatypeProperty .
+
+    rdfs:label a owl:AnnotationProperty .
+
+    dir:DescriptionInRange a owl:Class ;
+        rdfs:label "description in range"@en ;
+        rdfs:comment """This class allows one to identify descriptions involving a specific concept (i.e. description:usesConcept) relating to a literal value that can be defined within a particular a range. For instance:
+            
+            * 100% of sheep milk;
+            * at least 25cm of diameter (circular shape).
+            
+            Individuals of this class cannot exist without the entity they (partially or fully) describe - see the class [Entity](#https://w3id.org/food/ontology/dir/Entity)."""@en ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:subClassOf _:N08062d0e311442588b3bd2dcdf527ef0,
+            _:N1565df1e5e674db286f17f21a04faa08,
+            _:N882ba3a6d8894999b2e471e4c760793d,
+            _:N978621e760604677bc66b4c4e49a9654,
+            _:Nb5a3e58377664ea7b0be10fad31d75b8,
+            _:Nc4e133ffc7c4405ea82702de4fefafce,
+            <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description>,
+            <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description> .
+
+    dir:describes a owl:ObjectProperty ;
+        rdfs:label "describes"@en ;
+        rdfs:comment "The link between a description and the entity that is described."@en ;
+        rdfs:isDefinedBy dir: ;
+        owl:inverseOf dir:isDescribedBy .
+
+    dir:hasInclusiveLowerBoundValue a owl:DatatypeProperty,
+            owl:FunctionalProperty ;
+        rdfs:label "has inclusive lower bound value"@en ;
+        rdfs:comment "Any value that specifies an inclusive lower bound for a certain amount of a concept as conceived in a particular description (e.g. \"at least 25cm\")."@en ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:subPropertyOf dir:isRangedByValue ;
+        owl:propertyDisjointWith dir:hasNonInclusiveLowerBoundValue .
+
+    dir:hasInclusiveUpperBoundValue a owl:DatatypeProperty,
+            owl:FunctionalProperty ;
+        rdfs:label "has inclusive upper bound value"@en ;
+        rdfs:comment "Any value that specifies an inclusive upper bound for a certain amount of a concept as conceived in a particular description (e.g. \"at most 25cm\")."@en ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:subPropertyOf dir:isRangedByValue ;
+        owl:propertyDisjointWith dir:hasNonInclusiveUpperBoundValue .
+
+    <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> a owl:Class .
+
+    dir:Entity a owl:Class ;
+        rdfs:label "entity"@en ;
+        rdfs:comment "This class allows the specification of entities that that are (partially or fully) described by means of descriptions."@en ;
+        rdfs:isDefinedBy dir: .
+
+    dir:hasNonInclusiveLowerBoundValue a owl:DatatypeProperty,
+            owl:FunctionalProperty ;
+        rdfs:label "has non-inclusive lower bound value"@en ;
+        rdfs:comment "Any value that specifies a non-inclusive lower bound for a certain amount of a concept as conceived in a particular description (e.g. \"greater than 25cm\")."@en ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:subPropertyOf dir:isRangedByValue .
+
+    dir:hasNonInclusiveUpperBoundValue a owl:DatatypeProperty,
+            owl:FunctionalProperty ;
+        rdfs:label "has non-inclusive upper bound value"@en ;
+        rdfs:comment "Any value that specifies a non-inclusive upper bound for a certain amount of a concept as conceived in a particular description (e.g. \"less than 25cm\")."@en ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:subPropertyOf dir:isRangedByValue .
+
+    dir:isDescribedBy a owl:ObjectProperty ;
+        rdfs:label "is described by"@en ;
+        rdfs:comment "The link between an entity and a (partial or full) description of it."@en ;
+        rdfs:domain dir:Entity ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> .
+
+    dir:isRangedByValue a owl:DatatypeProperty ;
+        rdfs:label "is ranged by value"@en ;
+        rdfs:comment """Any value that specifies a certain amount of a concept as conceived in a particular description (e.g. "100%" and "25cm"). 
+            
+            The value is defined as a free-text literal, instead of specifying more complex structure, so as to be easily populated with data of different natures, such as those coming from heterogeneous (and even multilingual) documents."""@en ;
+        rdfs:domain dir:DescriptionInRange ;
+        rdfs:isDefinedBy dir: ;
+        rdfs:range rdfs:Literal ;
+        rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasDataValue> .
+
+    dir: a owl:Ontology ;
+        rdfs:label "Description In Range"^^xsd:string ;
+        dc:creator "Aldo Gangemi"^^xsd:string,
+            "Giorgia Lodi"^^xsd:string,
+            "Silvio Peroni"^^xsd:string ;
+        dc:date "2016-07-08" ;
+        dc:description <https://w3id.org/food/img/dir.png>,
+            """The Description In Range (DIR) ontology design patterns is a specialization of the Description ODP, that allows one to range the conceptualization of a descriptive context within specific borders defined by means of literal values. 
+            
+            The specialization emerged within an e-government Linked Open Data (LOD) project named FOOD (http://w3id.org/food), where it was required to model in OWL descriptions of raw material and physical, chemical, organoleptic characteristics of European Union (EU) quality schemes for agricultural and food products – i.e., PDO (Protected Designation of Origin), PGI (Protected Geographical Indication) and TSG (Traditional Speciality Guaranteed)."""^^xsd:string ;
+        dc:title "Description In Range"^^xsd:string ;
+        ns1:coversRequirements """1. What are the descriptions related to a particular entity?
+            
+            2. What entities are described in terms of a particular concept?
+            
+            3. How the concepts involved in the description of a certain entity have been restricted within particular bounds?"""^^xsd:string ;
+        ns1:hasComponent "http://www.ontologydesignpatterns.org/cp/owl/description.owl"^^xsd:anyURI ;
+        ns1:hasIntent "This pattern allows one to range the conceptualization of a descriptive context within specific borders defined by means of literal values."^^xsd:string ;
+        ns1:hasUnitTest "SPARQL Query as unit test (returns the errors if any)"^^xsd:string ;
+        ns1:isSpecializationOf "http://www.ontologydesignpatterns.org/cp/owl/description.owl"^^xsd:anyURI ;
+        ns1:relatedCPs "http://www.ontologydesignpatterns.org/cp/owl/description.owl"^^xsd:anyURI ;
+        ns1:scenarios """# Scenario 1
+            In order to obtain the registered quality scheme PDO, the wine "Amarone della Valpolicella" has to comply with a set of rules including grape composition rules. In particular, it has to be made with a specific ampelographic composition that indicates the different types of grapes that contribute to form the wine, together with their percentage ranges. In this case, the "Amarone della Valpolicella" must be composed (among the others) by Corvina and Corvinone grapes from 45% to 95%.
+            
+            # Scenario 2
+            The policy document of "Parmigiano Reggiano" indicates that, for consumers, it presents a set of characteristics among which the "diameter of the plain faces", which must be within the range "35-45 cm", and the "external aspect" that should be "natural straw-coloured rind"."""^^xsd:string ;
+        rdfs:comment "The Description In Range (DIR) ontology design patterns is a specialization of the Description ODP, that allows one to range the conceptualization of a descriptive context within specific borders defined by means of literal values."^^xsd:string ;
+        owl:imports <http://www.ontologydesignpatterns.org/cp/owl/description.owl> ;
+        owl:versionIRI dir:1.0.0 .
+
+    _:N08062d0e311442588b3bd2dcdf527ef0 a owl:Restriction ;
+        owl:maxCardinality "1"^^xsd:nonNegativeInteger ;
+        owl:onProperty dir:hasInclusiveLowerBoundValue .
+
+    _:N1565df1e5e674db286f17f21a04faa08 a owl:Restriction ;
+        owl:onClass <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept> ;
+        owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/description.owl#usesConcept> ;
+        owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger .
+
+    _:N882ba3a6d8894999b2e471e4c760793d a owl:Restriction ;
+        owl:maxCardinality "1"^^xsd:nonNegativeInteger ;
+        owl:onProperty dir:hasNonInclusiveLowerBoundValue .
+
+    _:N978621e760604677bc66b4c4e49a9654 a owl:Restriction ;
+        owl:onProperty dir:isRangedByValue ;
+        owl:someValuesFrom rdfs:Literal .
+
+    _:Nb5a3e58377664ea7b0be10fad31d75b8 a owl:Restriction ;
+        owl:maxCardinality "1"^^xsd:nonNegativeInteger ;
+        owl:onProperty dir:hasInclusiveUpperBoundValue .
+
+    _:Nc4e133ffc7c4405ea82702de4fefafce a owl:Restriction ;
+        owl:maxCardinality "1"^^xsd:nonNegativeInteger ;
+        owl:onProperty dir:hasNonInclusiveUpperBoundValue .
+}
+

@@ -1,0 +1,65 @@
+@prefix crm: <http://www.cidoc-crm.org/cidoc-crm/> .
+@prefix dsanno: <https://w3id.org/dsanno/ontology/core#> .
+@prefix lrmoo: <http://iflastandards.info/ns/lrm/lrmoo/> .
+@prefix ns1: <https://w3id.org/dsanno/ontology/core#/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+
+ns1:context {
+    dsanno:RC4_embodies a rdfs:Class ;
+        rdfs:label "embodies"@en ;
+        crm:P04_represents lrmoo:R4_embodies ;
+        rdfs:comment """This class is the representation of the n-ary relationship form of the LRMoo property 'R4 embodies'.
+This property associates an instance of F2 Expression that has been applied to an instance of F3 Manifestation."""@en ;
+        rdfs:subClassOf crm:PC0_Typed_CRM_Property,
+            <https://w3id.org/food/ontology/dir/Entity> .
+
+    schema:additionalType a owl:ObjectProperty ;
+        rdfs:label "additionalType" ;
+        rdfs:comment """An additional type for the item, typically used for adding more specific types from external vocabularies in microdata syntax. This is a relationship between something and a class that the thing is in. Typically the value is a URI-identified RDF class, and in this case corresponds to the
+    use of rdf:type in RDF. Text values can be used sparingly, for cases where useful information can be added without their being an appropriate schema to reference. In the case of text values, the class label should follow the schema.org <a href="https://schema.org/docs/styleguide.html">style guide</a>.""" ;
+        rdfs:subPropertyOf rdf:type ;
+        schema:domainIncludes schema:Thing ;
+        schema:rangeIncludes schema:Text,
+            schema:URL .
+
+    dsanno: a owl:Ontology ;
+        rdfs:label "Deep Scholarly Annotation Platform Ontology" ;
+        owl:imports crm: .
+
+    dsanno:DSAP1_observed a owl:ObjectProperty ;
+        rdfs:label "observed"@en ;
+        rdfs:domain dsanno:DSA2_Segment_Observation ;
+        rdfs:range crm:E90_Symbolic_Object ;
+        rdfs:subPropertyOf crm:P140_assigned_attribute_to .
+
+    dsanno:DSAP1i_was_observed_by a owl:ObjectProperty ;
+        rdfs:label "was observed by"@en ;
+        rdfs:domain crm:E90_Symbolic_Object ;
+        rdfs:range dsanno:DSA2_Segment_Observation ;
+        rdfs:subPropertyOf crm:P140i_was_attributed_by .
+
+    dsanno:DSAP2_observed_segment a owl:ObjectProperty ;
+        rdfs:label "observed segment"@en ;
+        rdfs:domain dsanno:DSA2_Segment_Observation ;
+        rdfs:range crm:E90_Symbolic_Object ;
+        rdfs:subPropertyOf crm:P141_assigned .
+
+    dsanno:DSAP2i_segment_was_observed_by a owl:ObjectProperty ;
+        rdfs:label "segment was observed by"@en ;
+        rdfs:domain crm:E90_Symbolic_Object ;
+        rdfs:range dsanno:DSA2_Segment_Observation ;
+        rdfs:subPropertyOf crm:P141i_was_assigned_by .
+
+    dsanno:DSA1_Scholarly_Assertion a owl:Class ;
+        rdfs:label "Scholarly Assertion"@en ;
+        rdfs:subClassOf crm:E13_Attribute_Assignment,
+            <http://www.ics.forth.gr/isl/CRMinf/I1_Argumentation> .
+
+    dsanno:DSA2_Segment_Observation a owl:Class ;
+        rdfs:label "Segment Observation"@en ;
+        rdfs:subClassOf dsanno:DSA1_Scholarly_Assertion .
+}
+
