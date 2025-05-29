@@ -150,7 +150,7 @@ export function parseTemplate(body: string): ParsedTemplate {
 }
 
 function resolveTemplateIri(ref: string) {
-  if (ref.startsWith('http:/')) {
+  if (/^https?:\/\//.test(ref)) { //enable opening semantic forms with https scheme
     return Rdf.iri(ref);
   } else {
     return SparqlUtil.resolveIris([ref])[0];
