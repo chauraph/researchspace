@@ -196,7 +196,8 @@ export class TreePickerInput extends MultipleValuesInput<TreePickerInputProps, S
   render() {
     const { maxOccurs } = this.props.definition;
     const { treeSelection } = this.state;
-    const showCreateNewButton = this.state.nestedForm && (!treeSelection || treeSelection.length < maxOccurs);
+    // Don't show "New" button when schemePageButtonConfig is provided (showing scheme button instead)
+    const showCreateNewButton = this.state.nestedForm && (!treeSelection || treeSelection.length < maxOccurs) && !this.props.schemePageButtonConfig;
     return (
       <div className={CLASS_NAME} ref={this.htmlElement}>
         {this.renderTreePicker()}
