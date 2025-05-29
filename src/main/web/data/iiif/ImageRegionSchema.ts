@@ -124,6 +124,60 @@ export const ImageRegionIsPrimaryAreaOf = Forms.normalizeFieldDefinition({
   }`,
 });
 
+export const ImageRegionAssignedBySegmentObservation = Forms.normalizeFieldDefinition({
+  id: 'attributeBySegmentObservation',
+  xsdDatatype: vocabularies.xsd.anyURI,
+  insertPattern: `INSERT {
+    $subject <http://www.cidoc-crm.org/cidoc-crm/P141i_was_assigned_by> ?assignment .
+    ?assignment <http://www.cidoc-crm.org/cidoc-crm/P141_assigned> ?subject .
+    ?subject crm:P2_has_type <http://www.researchspace.org/resource/vocab/image_annotation_type/observed_segment> .
+    $value <http://www.cidoc-crm.org/cidoc-crm/P140i_was_attributed_by> ?assignment .
+    ?assignment <http://www.cidoc-crm.org/cidoc-crm/P140_assigned_attribute_to> $value .
+    ?assignment a <https://w3id.org/dsanno/ontology/core#DSA1_Scholarly_Assertion> .
+    ?assignment a <http://www.cidoc-crm.org/cidoc-crm/E13_Attribute_Assignment> .
+    ?assignment crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation> .
+    ?assignment crm:P177_assigned_property_of_type <http://www.cidoc-crm.org/cidoc-crm/P106_is_composed_of>.
+    ?assignment crm:P1_is_identified_by ?appellation .
+
+    ?appellation a crm:E41_Appellation .
+    ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> . 
+    ?appellation crm:P190_has_symbolic_content "segment observation"^^xsd:string .
+
+    ?assignment crm:P129i_is_subject_of ?entity_form_record .
+    ?entity_form_record crm:P129_is_about ?assignment .
+
+    ?entity_form_record a crmdig:D1_Digital_Object .
+    ?entity_form_record crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> .
+    <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> crm:P2i_is_type_of ?entity_form_record .
+
+    ?entity_form_record crmdig:L11i_was_output_of ?entity_formRecord_creation .
+    ?entity_formRecord_creation crmdig:L11_had_output ?entity_form_record .
+
+    ?entity_formRecord_creation a crmdig:D7_Digital_Machine_Event .
+    ?entity_formRecord_creation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+    <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> crm:P2i_is_type_of ?entity_formRecord_creation .
+
+    ?entity_formRecord_creation crm:P4_has_time-span ?date .
+    ?date a crm:E52_Time-Span . 
+    ?date crm:P82_at_some_time_within ?currentTime .
+
+    ?entity_formRecord_creation crm:P14_carried_out_by ?__useruri__ .
+    ?__useruri__ crm:P14i_performed ?entity_formRecord_creation .
+
+  } WHERE {
+   BIND(IRI(CONCAT(STR($value), "/segment_observation/{{UUID}}")) AS ?assignment)
+   BIND(IRI(CONCAT(STR(?assignment), "/primary_appellation")) AS ?appellation)
+   BIND(IRI(CONCAT(STR(?assignment), "/entity_form_record")) AS ?entity_form_record)
+   BIND(IRI(CONCAT(STR(?entity_form_record), "/entity_formRecord_creation")) AS ?entity_formRecord_creation)
+   BIND(IRI(CONCAT(STR(?entity_formRecord_creation), "/at_some_time_within")) AS ?date)
+   BIND(NOW() AS ?currentTime)
+   }`,
+  selectPattern: `SELECT ?value WHERE {
+    $subject <http://www.cidoc-crm.org/cidoc-crm/P106i_forms_part_of> ?value .
+    $value <http://www.cidoc-crm.org/cidoc-crm/P106_is_composed_of> $subject .
+  }`,
+});
+
 export const ImageRegionFields: ReadonlyArray<Forms.FieldDefinition> = [
   ImageRegionType,
   ImageRegionLabel,
@@ -131,4 +185,5 @@ export const ImageRegionFields: ReadonlyArray<Forms.FieldDefinition> = [
   ImageRegionValue,
   ImageRegionViewport,
   ImageRegionIsPrimaryAreaOf,
+  ImageRegionAssignedBySegmentObservation,
 ];
