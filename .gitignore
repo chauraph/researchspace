@@ -41,3 +41,14 @@ src/main/webapp/assets/bundles-manifest.json
 
 # Mac
 .DS_Store
+
+# deployment
+researchspace-docker-compose/
+.java-version
+.nvmrc
+
+#build
+src/main/webapp/assets/*
+
+# code harness documentation
+docs/
