@@ -22,6 +22,7 @@ package org.researchspace.repository.sparql;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -45,6 +46,7 @@ public class MpSharedHttpClientSessionManager extends SharedHttpClientSessionMan
                 .newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("rdf4j-sesameclientimpl-%d").build());
         Integer maxConnections = this.config.getEnvironmentConfig().getMaxSparqlHttpConnections();
         Integer connectionTimeout = this.config.getEnvironmentConfig().getSparqlHttpConnectionTimeout();
+        String userAgent = this.config.getEnvironmentConfig().getSparqlHttpUserAgent();
 
         RequestConfig.Builder configBuilder = RequestConfig.custom();
         if (connectionTimeout != null) {
@@ -56,6 +58,12 @@ public class MpSharedHttpClientSessionManager extends SharedHttpClientSessionMan
         RequestConfig requestConfig = configBuilder.build();
         HttpClientBuilder mpHttpClientBuilder = HttpClientBuilder.create().setMaxConnPerRoute(maxConnections)
                 .setMaxConnTotal(maxConnections).setDefaultRequestConfig(requestConfig);
+
+        // public endpoints (e.g. the Wikidata Query Service) reject the generic
+        // Apache HttpClient default user agent, so identify the platform explicitly
+        if (StringUtils.isNotBlank(userAgent)) {
+            mpHttpClientBuilder = mpHttpClientBuilder.setUserAgent(userAgent);
+        }
 
         this.setHttpClientBuilder(mpHttpClientBuilder);
     }

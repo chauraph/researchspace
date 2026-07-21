@@ -175,6 +175,25 @@ public class EnvironmentConfiguration extends ConfigurationGroupBase {
     }
 
     /**************************** SPARQL HTTP CLIENT PARAMETERS ***************/
+    /**
+     * User-Agent header sent with every outgoing SPARQL HTTP request (federated
+     * SERVICE calls included).
+     *
+     * Public endpoints such as the Wikidata Query Service reject the generic
+     * Apache HttpClient default with "Please set a user-agent and respect our
+     * robot policy" (https://w.wiki/4wJS), so a descriptive value is required.
+     * Deployments federating to Wikimedia services should override this with a
+     * contact address, e.g.
+     * <code>sparqlHttpUserAgent=MyInstance/1.0 (https://example.org; admin@example.org)</code>
+     *
+     * @return
+     */
+    @ConfigurationParameter
+    public String getSparqlHttpUserAgent() {
+        return getString("sparqlHttpUserAgent",
+                "ResearchSpace/4.0 (https://researchspace.org; https://github.com/researchspace/researchspace)");
+    }
+
     @ConfigurationParameter
     public Integer getMaxSparqlHttpConnections() {
         return getInteger("maxSparqlHttpConnections", 10);
