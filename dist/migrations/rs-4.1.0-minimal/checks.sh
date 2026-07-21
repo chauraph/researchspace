@@ -134,7 +134,39 @@ SELECT ?g (COUNT(*) AS ?n) WHERE {
 EOF
 }
 
-ALL="P1 M1 T1 T2 C1 C2 C3 G1 O1 O2"
+
+q_G2() { cat <<'EOF'
+# G2 — BREAKDOWN of the Phase 7 drop target, grouped by namespace family.
+#      Run before 07 so you know what you are removing.
+SELECT ?family (COUNT(DISTINCT ?g) AS ?graphs) WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  BIND(IF(CONTAINS(STR(?g), "cidoc-crm/CRMsci/"),      "crmsci  (old cidoc-crm path)",
+       IF(CONTAINS(STR(?g), "isl/CRMsci/"),            "crmsci  (old forth path)",
+       IF(CONTAINS(STR(?g), "isl/CRMinf/"),            "crminf  (old forth path)",
+       IF(CONTAINS(STR(?g), "isl/CRMgeo/"),            "crmgeo  (old forth path)",
+       IF(CONTAINS(STR(?g), "cidoc-crm/CRMba/"),       "crmba   (old cidoc-crm path)",
+       IF(CONTAINS(STR(?g), "cidoc-crm/CRMarchaeo/"),  "crmarchaeo (old)",
+       IF(CONTAINS(STR(?g), "cidoc-crm/influence/"),   "influence  (old)", ""))))))) AS ?family)
+  FILTER(?family != "")
+} GROUP BY ?family ORDER BY DESC(?graphs)
+EOF
+}
+
+q_G3() { cat <<'EOF'
+# G3 — SAFETY: do any of the drop-target graphs hold non-KP content?
+#      An auto-KP graph is small and describes one property. Anything large is
+#      suspicious — inspect before dropping.
+SELECT ?g (COUNT(*) AS ?triples) WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  FILTER(CONTAINS(STR(?g), "cidoc-crm/CRMsci/") || CONTAINS(STR(?g), "isl/CRMinf/")
+      || CONTAINS(STR(?g), "isl/CRMgeo/")      || CONTAINS(STR(?g), "cidoc-crm/CRMba/")
+      || CONTAINS(STR(?g), "isl/CRMsci/")
+      || CONTAINS(STR(?g), "cidoc-crm/CRMarchaeo/") || CONTAINS(STR(?g), "cidoc-crm/influence/"))
+} GROUP BY ?g ORDER BY DESC(?triples) LIMIT 15
+EOF
+}
+
+ALL="P1 M1 T1 T2 C1 C2 C3 G1 G2 G3 O1 O2"
 
 run_one() {
   local name="$1"
@@ -153,9 +185,14 @@ run_one() {
   if printf '%s' "$out" | grep -qi '<html\|error\|exception'; then
     echo "ENDPOINT ERROR:"; printf '%s\n' "$out" | head -20; return 1
   fi
-  local rows; rows=$(printf '%s\n' "$out" | tail -n +2 | grep -c . || true)
-  printf '%s\n' "$out"
-  echo "  → $rows data row(s)"
+  if printf '%s' "$out" | grep -q '<boolean>'; then
+    local b; b=$(printf '%s' "$out" | grep -o '<boolean>[^<]*' | sed 's|<boolean>||')
+    echo "  ASK → $b"
+  else
+    local rows; rows=$(printf '%s\n' "$out" | tail -n +2 | grep -c . || true)
+    printf '%s\n' "$out"
+    echo "  → $rows data row(s)"
+  fi
   echo
 }
 
@@ -166,6 +203,7 @@ case "${1:-}" in
   baseline) for c in P1 T1;             do run_one "$c"; done ;;
   verify)   for c in P1 M1 T2 C2 C3;    do run_one "$c"; done ;;
   phase7)   for c in O1 O2 G1;          do run_one "$c"; done ;;
+  pre7)     for c in G1 G2 G3 O1;       do run_one "$c"; done ;;
   all)      for c in $ALL;              do run_one "$c"; done ;;
   *)        for c in "$@";              do run_one "$c"; done ;;
 esac
