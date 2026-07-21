@@ -1,0 +1,123 @@
+# 07_drop_stale_graphs.sparql — Phase 7. Run with the platform STOPPED.
+#
+# Two independent jobs, each a separate update below:
+#   (a) auto-generated KP context graphs for the migrated namespaces
+#   (b) ALL ontology context graphs
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHY (b) DROPS EVERYTHING, NOT JUST THE OBSOLETE ONES
+#
+# LDPAssetsLoader.java:196-206 loads the `ontologies` repository ONLY when the
+# default repository contains no `owl:Ontology` at all:
+#
+#     if (!hasDefaultAlreadyLoaded("SELECT * WHERE {?ontology a owl:Ontology} LIMIT 1"))
+#         loadAllToRepository("ontologies", ...);
+#
+# All 19 shipped ontology files declare `a owl:Ontology`. Dropping only the six
+# obsolete graphs would leave 13 behind, the guard would still return true, and
+# the seven NEW extension ontologies would never load — silently, with no error.
+#
+# So every ontology graph goes. This is safe: ontologies are schema shipped as
+# files in the image, and they reload in full on the next startup, after which
+# checkIfKPsExistForPreloadedOntologiesAndLoad() (:204) regenerates the auto-KPs
+# that (a) removed.
+#
+# ⚠️ BEFORE RUNNING: confirm no ontology graph holds hand-edited triples that
+#    exist nowhere in source. Anything not in the .trig files will not come back.
+#    See the pre-check at the bottom.
+#
+# ⚠️ CRMdig and FRBRoo graphs ARE dropped here and reload from the PINNED files
+#    (isl/CRMdig/, fr/frbr/frbroo/). That is intended — same content, same IRIs.
+#
+# Usage (platform stopped, Blazegraph up):
+#   curl -sS "$SPARQL" --data-urlencode "update=$(cat 07_drop_stale_graphs.sparql)"
+#
+# Idempotent. Verify with checks.sh G1 (before/after) and the pre-check below.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# (a) Auto-KP context graphs for the MIGRATED namespaces only.
+#     Named <old-namespace><property>/context, e.g.
+#       http://www.cidoc-crm.org/cidoc-crm/CRMsci/O21_has_found_at/context
+#     Regenerated from the new ontologies on next startup.
+#     CRMdig and FRBRoo prefixes are deliberately absent — they stay pinned.
+# ─────────────────────────────────────────────────────────────────────────────
+DELETE { GRAPH ?g { ?s ?p ?o } }
+WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  FILTER(
+       STRSTARTS(STR(?g), "http://www.cidoc-crm.org/cidoc-crm/CRMarchaeo/")
+    || STRSTARTS(STR(?g), "http://www.cidoc-crm.org/cidoc-crm/CRMba/")
+    || STRSTARTS(STR(?g), "http://www.cidoc-crm.org/cidoc-crm/CRMsci/")
+    || STRSTARTS(STR(?g), "http://www.cidoc-crm.org/cidoc-crm/influence/")
+    || STRSTARTS(STR(?g), "http://www.ics.forth.gr/isl/CRMgeo/")
+    || STRSTARTS(STR(?g), "http://www.ics.forth.gr/isl/CRMsci/")
+    || STRSTARTS(STR(?g), "http://www.ics.forth.gr/isl/CRMinf/")
+  )
+} ;
+
+# ─────────────────────────────────────────────────────────────────────────────
+# (b) ALL ontology context graphs — union of the pre-migration and post-migration
+#     file sets (25 IRIs). Enumerated explicitly rather than pattern-matched, so
+#     the blast radius is auditable and nothing unrelated can be caught.
+# ─────────────────────────────────────────────────────────────────────────────
+DELETE { GRAPH ?g { ?s ?p ?o } }
+WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  VALUES ?g {
+    # --- obsolete: migrated away, no file ships these any more -----------------
+    <http://www.cidoc-crm.org/cidoc-crm/CRMarchaeo/context>
+    <http://www.cidoc-crm.org/cidoc-crm/CRMba/context>
+    <http://www.cidoc-crm.org/cidoc-crm/CRMsci/context>
+    <http://www.cidoc-crm.org/cidoc-crm/influence/context>
+    <http://www.ics.forth.gr/isl/CRMgeo/context>
+    <http://www.ics.forth.gr/isl/CRMinf/context>
+
+    # --- new extension ontologies (drop so they load cleanly) -----------------
+    <http://www.cidoc-crm.org/extensions/crmarchaeo/context>
+    <http://www.cidoc-crm.org/extensions/crmba/context>
+    <http://www.cidoc-crm.org/extensions/crmgeo/context>
+    <http://www.cidoc-crm.org/extensions/crminf/context>
+    <http://www.cidoc-crm.org/extensions/crmsci/context>
+    <http://www.cidoc-crm.org/extensions/crmtex/context>
+    <http://www.cidoc-crm.org/extensions/influence/context>
+
+    # --- pinned + unchanged: dropped only to clear the owl:Ontology guard,
+    #     reload identically from their shipped files ---------------------------
+    <http://www.ics.forth.gr/isl/CRMdig/context>
+    <http://iflastandards.info/ns/fr/frbr/frbroo/context>
+    <http://iflastandards.info/ns/lrm/lrmoo/context>
+    <http://www.cidoc-crm.org/cidoc-crm/context>
+    <http://www.researchspace.org/ontology/context>
+    <http://www.w3.org/2004/02/skos/core/context>
+    <http://w3id.org/vir/context>
+    <https://linked.art/ns/terms/context>
+    <https://ontology.swissartresearch.net/aaao/context>
+    <https://w3id.org/dsanno/ontology/core#/context>
+    <https://w3id.org/food/ontology/dir/context>
+    <https://www.w3.org/2002/07/owl/context>
+  }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRE-CHECK — run as a SELECT before the updates above.
+# Lists every ontology graph with its triple count, so you can spot a graph that
+# is far larger than its source file (a sign of hand-edited content that will
+# not survive the drop).
+#
+# SELECT ?g (COUNT(*) AS ?n) WHERE {
+#   GRAPH ?g { ?s ?p ?o }
+#   ?ont a <http://www.w3.org/2002/07/owl#Ontology>
+#   FILTER(CONTAINS(STR(?g), "/context"))
+# } GROUP BY ?g ORDER BY DESC(?n)
+#
+# POST-CHECK — after running, before restart. Must return false:
+#
+# ASK { ?ontology a <http://www.w3.org/2002/07/owl#Ontology> }
+#
+# If it returns true, some owl:Ontology survives outside the 25 graphs above and
+# the loader will still skip the repository. Find it with:
+#
+# SELECT ?g (COUNT(*) AS ?n) WHERE {
+#   GRAPH ?g { ?ontology a <http://www.w3.org/2002/07/owl#Ontology> }
+# } GROUP BY ?g

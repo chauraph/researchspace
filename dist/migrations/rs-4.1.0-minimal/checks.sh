@@ -6,6 +6,7 @@
 #   ./checks.sh P1                run one check
 #   ./checks.sh baseline          run the Phase 4 set  (P1 T1)
 #   ./checks.sh verify            run the Phase 10 set (P1 M1 T2 C2 C3)
+#   ./checks.sh phase7            post-drop gate      (O1 O2 G1)
 #
 # Endpoint and credentials come from the environment:
 #   SPARQL   default http://localhost:10214/blazegraph/sparql
@@ -117,7 +118,23 @@ SELECT (COUNT(DISTINCT ?g) AS ?graphs) WHERE {
 EOF
 }
 
-ALL="P1 M1 T1 T2 C1 C2 C3 G1"
+
+q_O1() { cat <<'EOF'
+# O1 — ONTOLOGY GUARD. After Phase 7 this MUST be false, or the loader skips
+#      the whole ontologies repository (LDPAssetsLoader.java:196-206).
+ASK { ?ontology a <http://www.w3.org/2002/07/owl#Ontology> }
+EOF
+}
+
+q_O2() { cat <<'EOF'
+# O2 — which graphs still hold an owl:Ontology. Empty after Phase 7.
+SELECT ?g (COUNT(*) AS ?n) WHERE {
+  GRAPH ?g { ?ontology a <http://www.w3.org/2002/07/owl#Ontology> }
+} GROUP BY ?g ORDER BY ?g
+EOF
+}
+
+ALL="P1 M1 T1 T2 C1 C2 C3 G1 O1 O2"
 
 run_one() {
   local name="$1"
@@ -148,6 +165,7 @@ case "${1:-}" in
   show)     shift; q_"${1:?need a check name}" ;;
   baseline) for c in P1 T1;             do run_one "$c"; done ;;
   verify)   for c in P1 M1 T2 C2 C3;    do run_one "$c"; done ;;
+  phase7)   for c in O1 O2 G1;          do run_one "$c"; done ;;
   all)      for c in $ALL;              do run_one "$c"; done ;;
   *)        for c in "$@";              do run_one "$c"; done ;;
 esac
