@@ -54,3 +54,8 @@ src/main/webapp/assets/*
 docs/
 export_migrated_data/
 export_pre_migration_data/
+.claude/
+.commandcode/
+
+# temporary files
+temp/
