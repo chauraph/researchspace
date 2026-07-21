@@ -21,15 +21,16 @@ from pathlib import Path
 # ─────────────────────────────────────────────────────────────────────────────
 # Built-in mapping: list of (old_prefix, new_prefix) tuples
 # ─────────────────────────────────────────────────────────────────────────────
-# remove frbroo=>lrmoo and crmdig to avoid regression
 MAPPING = [
     ("http://www.cidoc-crm.org/cidoc-crm/CRMarchaeo/", "http://www.cidoc-crm.org/extensions/crmarchaeo/"),
     ("http://www.cidoc-crm.org/cidoc-crm/CRMba/",       "http://www.cidoc-crm.org/extensions/crmba/"),
+    ("http://www.ics.forth.gr/isl/CRMdig/",             "http://www.cidoc-crm.org/extensions/crmdig/"),
     ("http://www.ics.forth.gr/isl/CRMgeo/",             "http://www.cidoc-crm.org/extensions/crmgeo/"),
     ("http://www.cidoc-crm.org/cidoc-crm/influence/",   "http://www.cidoc-crm.org/extensions/influence/"),
     ("http://www.cidoc-crm.org/cidoc-crm/CRMsci/",      "http://www.cidoc-crm.org/extensions/crmsci/"),
     ("http://www.ics.forth.gr/isl/CRMsci/",             "http://www.cidoc-crm.org/extensions/crmsci/"),
     ("http://www.ics.forth.gr/isl/CRMinf/",             "http://www.cidoc-crm.org/extensions/crminf/"),
+    ("http://iflastandards.info/ns/fr/frbr/frbroo/",    "http://iflastandards.info/ns/lrm/lrmoo/"),
 ]
 
 
