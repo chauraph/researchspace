@@ -1,0 +1,16 @@
+@prefix crm: <http://www.cidoc-crm.org/cidoc-crm/> .
+@prefix dsanno: <https://w3id.org/dsanno/ontology/socio-spatiotemporal#> .
+@prefix ns1: <https://w3id.org/dsanno/ontology/socio-spatiotemporal#/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ns1:context {
+    dsanno: a owl:Ontology ;
+        rdfs:label "Deep Scholarly Annotation Platform Ontology (Socio-spatiotemporal Extension)" ;
+        owl:imports crm: .
+
+    dsanno:DSAPS1_Geosociopolitical_Unit a owl:Class ;
+        rdfs:label "Geosociopolitical Unit"@en ;
+        rdfs:subClassOf crm:E74_Group .
+}
+
