@@ -23,7 +23,8 @@ RS_PASS="${RS_PASS:-admin}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 q_P1() { cat <<'EOF'
-# P1 — PINNED DATA INTACT. Run before and after; counts must be identical.
+# P1 — PINNED DATA INTACT. Must NOT DECREASE. A rise equal to the 03
+#      normalisation is expected; frbroo must be unchanged.
 SELECT ?ns ?position (COUNT(*) AS ?n) WHERE {
   { ?s a ?t . BIND(REPLACE(STR(?t), "^(.*[/#])[^/#]*$", "$1") AS ?ns) BIND("type" AS ?position) }
   UNION
@@ -75,7 +76,7 @@ SELECT ?term (COUNT(*) AS ?n) WHERE {
 } GROUP BY ?term ORDER BY DESC(?n)
 EOF
 }
-q_T2() { q_T1; }
+q_T2() { q_T1 | sed '2s/.*/#         AFTER: only the *_CORRECT rows may be non-zero./'; }
 
 q_C1() { cat <<'EOF'
 # C1 — CRMdig PIN VIOLATIONS, before 03. Expect ONLY the six artefact graphs.
@@ -88,7 +89,16 @@ SELECT ?g (COUNT(*) AS ?n) WHERE {
 } GROUP BY ?g ORDER BY DESC(?n)
 EOF
 }
-q_C2() { q_C1; }   # after 03: must return zero rows
+q_C2() { cat <<'EOF'
+# C2 — CRMdig PIN VIOLATIONS, after 03. MUST return zero rows.
+SELECT ?g (COUNT(*) AS ?n) WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  FILTER(STRSTARTS(STR(?s), "http://www.cidoc-crm.org/extensions/crmdig/")
+      || STRSTARTS(STR(?p), "http://www.cidoc-crm.org/extensions/crmdig/")
+      || (isIRI(?o) && STRSTARTS(STR(?o), "http://www.cidoc-crm.org/extensions/crmdig/")))
+} GROUP BY ?g ORDER BY DESC(?n)
+EOF
+}
 
 q_C3() { cat <<'EOF'
 # C3 — FUNCTIONAL PROOF of 03. Every row must have ?creation bound.

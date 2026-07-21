@@ -94,6 +94,7 @@ WHERE {
     <https://linked.art/ns/terms/context>
     <https://ontology.swissartresearch.net/aaao/context>
     <https://w3id.org/dsanno/ontology/core#/context>
+    <https://w3id.org/dsanno/ontology/socio-spatiotemporal#/context>
     <https://w3id.org/food/ontology/dir/context>
     <https://www.w3.org/2002/07/owl/context>
   }

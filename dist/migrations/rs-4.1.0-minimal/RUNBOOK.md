@@ -257,10 +257,46 @@ Mandatory. Without this the `ontologies` repo is skipped entirely
 (`LDPAssetsLoader.java:196-206` — skipped whenever any `owl:Ontology` exists) and
 your new ontology files never load.
 
-- Drop the migrating ontology context graphs — doc Phase 3.2.
-  **Do not drop** `http://www.ics.forth.gr/isl/CRMdig/context` or
-  `http://iflastandards.info/ns/fr/frbroo/context` — both pinned.
-- Drop the auto-KP context graphs — doc Phase 3.3 (~48 in dev; count on prod).
+⚠️ The old doc's Phase 3.2 **cannot work**: it drops 6 ontology graphs, but all
+19 shipped files declare `a owl:Ontology`, so the guard stays true. Use the
+script here, which drops all 26.
+
+```bash
+# 1. INVENTORY FIRST — what are you about to remove?
+./checks.sh pre7          # G1 count · G2 by family · G3 largest 15 · O1 guard
+```
+
+`G3` is the safety gate. Auto-KP graphs are uniformly ~25 triples; ontology
+contexts are 100–330. **Anything else large is hand-authored content that will
+not come back** — inspect before proceeding.
+
+```bash
+# 2. DROP
+curl -sS "$SPARQL" --data-urlencode "update=$(cat 07_drop_stale_graphs.sparql)"
+
+# 3. GATE — all three must pass before restart
+./checks.sh phase7        # O1 false · O2 empty · G1 zero
+```
+
+🔴 **If `O1` is still true, `O2` names the survivor — do not just drop it.**
+An ontology added through the platform UI exists *only* in the database
+(ontologies are absent from `repositoriesLDPSave`, which is `[assets]`). Dropping
+one is permanent and silent. Export it, turn it into a `.trig` under
+`ldp/ontologies/`, ship it, *then* drop:
+
+```bash
+G='<the IRI O2 reported>'
+curl -s -H 'Accept: text/turtle' "$SPARQL" \
+  --data-urlencode "query=CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <$G> { ?s ?p ?o } }" \
+  > rescued.ttl
+```
+
+Wrap it as `<$G> { … }` in a **`.trig`** — the loader accepts only
+`.trig`/`.nq`/`.trix` and **silently skips `.ttl`** with no log line
+(`LDPAssetsLoader.java:309-313`). A Protégé export dropped in as-is does nothing.
+
+Encountered live: `https://w3id.org/dsanno/ontology/socio-spatiotemporal#/context`,
+11 triples, defining the class the Geosociopolitical form depends on.
 
 ---
 
@@ -311,11 +347,11 @@ predates the crminf slice** — those graphs load empty and pristine each time.
 
 | check | expectation |
 |---|---|
-| `checks.sparql` P1 | identical to Phase 4 baseline |
-| `checks.sparql` M1 | empty — no stale migrating namespaces |
-| `checks.sparql` C2 | empty — no `extensions/crmdig` left |
-| `checks.sparql` C3 | every `?creation` bound |
-| `checks.sparql` T2 | only `*_CORRECT` rows non-zero (if T1 was non-zero) |
+| `checks.sh` P1 | **must not DECREASE.** A rise equal to what `03` normalised is expected; `frbroo` unchanged |
+| `checks.sh` M1 | empty — no stale migrating namespaces |
+| `checks.sh` C2 | empty — no `extensions/crmdig` left |
+| `checks.sh` C3 | every `?creation` bound |
+| `checks.sh` T2 | only `*_CORRECT` rows non-zero (if T1 was non-zero) |
 
 Then two UI checks that no query can cover:
 

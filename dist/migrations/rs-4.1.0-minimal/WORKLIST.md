@@ -54,7 +54,7 @@ Source: clone of runtime LDP storage taken before migration.
 ### ⚠️ Storage model finding that reframes this audit
 
 `runtime-data/config/global.prop` sets:
-```
+```text
 loadDefaultConfig = 1
 forceLDPLoadFromStorages = runtime
 ```
@@ -100,7 +100,7 @@ zero stale migrating namespaces anywhere in either tree.
 ### ⚠️ The one defect — `crmdig` bound to the new namespace
 
 `temp/app/config/namespaces.prop:21`
-```
+```text
 crmdig = http://www.cidoc-crm.org/extensions/crmdig/     ← wrong
 ```
 Only line differing from the dev volume copy, which has `isl/CRMdig/`.
@@ -112,7 +112,7 @@ Three-way split it creates: config says `extensions/`, data says `isl/`
 
 ### Templates — 4 overrides, all shadowing image templates
 
-```
+```text
 temp/runtime/template/   ResourceContent.html · Start.html
 temp/app/templates/      IIIFConfig.html · KnowledgeMapOntodiaConfig.html
 ```
@@ -149,6 +149,115 @@ not block any merged fix.
 
 ---
 
+## Round 3 — execution on the deployment (COMPLETE ✅)
+
+Ran the runbook against the remote instance (`:10215`). Outcome: **migration
+verified**. Phases 5 and 8 turned out to be unnecessary; everything else applied.
+
+### Baseline (Phase 4)
+
+```text
+P1   crmdig  type 5279 · predicate 5479      frbroo  type 4
+T1   0 rows  → 02_term_renames.sparql confirmed unnecessary on production
+```
+
+`T1` returning zero was the last real unknown — dev had no image annotations, so
+it proved nothing about production. Production is clean too. `02` stays deleted.
+
+### Phase 7 — 198 graphs dropped
+
+`G2`/`G3` breakdown before dropping:
+
+| content | count | size |
+|---|---|---|
+| ontology context graphs | 6 | 100–326 triples each (~1282 total) |
+| auto-KP context graphs | 192 | uniformly 25–26 triples |
+
+Distribution was exactly "6 ontologies + flat KP tail" — no outlier hiding
+hand-authored content. `G3` is the check that would have caught one.
+
+Families: crmsci 49 · crmgeo 41 · crmarchaeo 39 · influence 39 · crmba 16 ·
+crminf 14. No `isl/CRMsci/` row — that graph never existed, which is the one the
+old doc's `DROP GRAPH` loop would have errored on for lack of `SILENT`.
+
+### ⚠️ Discovery — a UI-created ontology that existed only in the database
+
+After the drop, `O1` was still true. `O2` found one survivor:
+
+```text
+https://w3id.org/dsanno/ontology/socio-spatiotemporal#/context   11 triples
+```
+
+Created 2025-05-10 by `admin` **through the platform UI**. No source file
+anywhere; absent from LDP storage (ontologies are not in `repositoriesLDPSave`,
+which is `[assets]`); absent from the LDP snapshot. It defines
+`DSAPS1_Geosociopolitical_Unit` (`subClassOf crm:E74_Group`), used by the
+in-progress `GeosociopoliticalUnit` form.
+
+**Dropping it would have been permanent and silent.** Rescued as
+`ldp/ontologies/dsanno-socio-spatiotemporal.trig` (commit `f4e41f563`), then
+dropped, then reloaded from the image.
+
+> **Generalise this.** Any ontology added through the UI lives only in the DB and
+> dies at the next Phase 7. `O2` *before* dropping is the inventory step that
+> catches them. This one was found by luck — the guard stayed true and forced a
+> look.
+
+Also noted: the loader accepts only `.trig` / `.nq` / `.trix`
+(`LDPAssetsLoader.java:309-313`) and **silently skips `.ttl`** with no log line.
+A Protégé export dropped into `ldp/ontologies/` does nothing at all.
+
+### Verification (Phase 10)
+
+```text
+M1   0 rows                                  no stale migrating namespaces
+T2   0 rows                                  no renamed-term data
+C1   0 rows / C2 0 rows                      no extensions/crmdig anywhere
+C3   5 rows, every ?creation bound           03 worked
+P1   crmdig type 5284 (+5) · predicate 5485 (+6) · frbroo 4 (unchanged)
+```
+
+**The P1 rise is correct, not drift.** `03` moves artefact triples *into*
+`isl/CRMdig/`, so the count must go up by exactly what it normalised; `C1 → 0`
+confirms none are left on the other side. The invariant is **"must not
+decrease"** — a fall would mean pinned data was lost. `checks.sh` P1 header has
+been corrected accordingly (it previously said "must be identical").
+
+UI checks passed: thumbnails render (proves the `crmdig` prefix binding), new
+image annotation writes `S4_Single_Observation`.
+
+### Audit of `docs/crm-minimal-migration.md` — 11 flaws
+
+Four fail **silently**:
+
+| line | flaw | effect |
+|---|---|---|
+| 428 | `-u admin:im` | Phase 3.3 auto-KP drop returns 401; `-s` hides it — the drop never runs |
+| 553 | `-u admin:int` | Phase 4.3 pinned-data check same |
+| 458 | `cidoc_crm.org` (underscore) | verification never counts influence graphs → **false pass** |
+| 133, 423, 538, 562 | `ns/fr/frbroo/` missing `frbr/` | FRBRoo instance count always 0 → would argue *against* the pin |
+
+Structural:
+
+- **Phase 3.2 cannot work.** Drops 7 ontology graphs; all 19 files declare
+  `a owl:Ontology`, so the guard stays true and the new extension ontologies
+  never load. Superseded by `07_drop_stale_graphs.sparql` (26 graphs).
+- Line 419 `DROP GRAPH` without `SILENT` — errors on a non-existent graph.
+- **Phase 3.5 `forceLDPLoadFromStorages=default` is risky.** With force on both
+  `default` and `runtime`, storage batches iterate in HashMap order
+  (`LDPAssetsLoader.java:131`) — for the 29 shared authority/configuration
+  graphs, whichever runs last wins, non-deterministically.
+- Line 480 greps `forceLDPLoad_fromStorages` (underscore) — never matches.
+- Phase 3.4 backs up into `ldp/`; correct depth, but a pre-existing target gives
+  `ldp/backup/assets/*.trig` → grandparent ≠ `ldp` → **startup aborts**.
+- Phase 3.6's reasoning is wrong (FORCE bypasses `selectContentToLoad`
+  entirely); the `CLEAR` itself is fine.
+- Line 70 `--name-ly` typo.
+
+`RUNBOOK.md` supersedes that document for deployment.
+
+---
+
 ## Standing checks (run every round)
 
 ```bash
@@ -169,7 +278,7 @@ grep -rl 'lrm/lrmoo/'      "$D" | wc -l
 
 # dead terms — expect none
 grep -rlE 'S4_Observation|O21_has_found_at|O19i_was_object_found_by|J3_applies|SO3[01]_|EO2_Event_Pattern' "$D"
-```
+```text
 
 ---
 
