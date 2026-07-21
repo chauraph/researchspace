@@ -1,0 +1,70 @@
+# 02_term_renames.sparql — CRM 7.1.x term renames
+#
+# Upstream's replace_prefixes.py rewrites *namespaces* only. Three terms in the
+# namespaces we DO migrate were also **renamed** upstream, so a prefix-only pass
+# leaves an IRI that looks migrated but resolves to nothing:
+#
+#     crmsci:S4_Observation      -> crmsci:S4_Single_Observation
+#     crmsci:O21_has_found_at    -> crmsci:O21_encountered_at
+#     crminf:J3_applies          -> crminf:J3_applied
+#
+# Run AFTER 01_prefixes.py + 4.1.0/import.sh. Safe to run before as well: both
+# the pre-migration and post-migration source IRIs are mapped to the correct
+# target, and the update is idempotent (re-running matches nothing).
+#
+# Usage:
+#     curl -u admin:admin "$SPARQL" --data-urlencode "update=$(cat 02_term_renames.sparql)"
+#
+# Verify before/after with checks.sparql (queries T1/T2).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# OPEN ISSUE — read before running. See conversation notes.
+#
+# CRMsci 1.2's single S4_Observation split into TWO classes in CRM 7.1:
+#     crmsci:S4_Single_Observation   an individual observation event
+#     crmsci:S27_Observation         the general/superclass form
+#
+# Upstream resolves them by role: instance typing -> S4_Single_Observation
+# (ImageAnnotationForm.html classtype), field domain/range -> S27_Observation
+# (pattern/system/.../PC14_carried_out_by.trig, .../is_domain_of.trig).
+#
+# The rewrite below is position-blind: it will also rewrite domain/range
+# references to S4_Single_Observation, where upstream uses S27_Observation.
+# Decide the policy before running. Options:
+#   (a) scope the S4 rule to rdf:type object position only, and fix the two KP
+#       .trig sources by hand (the `system` repo reloads changed graphs, so the
+#       source fix propagates on its own);
+#   (b) accept S4_Single_Observation everywhere and diverge from upstream;
+#   (c) exclude the KP graphs by name here.
+# ─────────────────────────────────────────────────────────────────────────────
+
+DELETE { GRAPH ?g { ?s ?p ?o } }
+INSERT { GRAPH ?g { ?s2 ?p2 ?o2 } }
+WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  VALUES (?from ?to) {
+    # pre-migration namespace forms
+    (<http://www.ics.forth.gr/isl/CRMsci/S4_Observation>
+     <http://www.cidoc-crm.org/extensions/crmsci/S4_Single_Observation>)
+    (<http://www.cidoc-crm.org/cidoc-crm/CRMsci/S4_Observation>
+     <http://www.cidoc-crm.org/extensions/crmsci/S4_Single_Observation>)
+    (<http://www.ics.forth.gr/isl/CRMsci/O21_has_found_at>
+     <http://www.cidoc-crm.org/extensions/crmsci/O21_encountered_at>)
+    (<http://www.cidoc-crm.org/cidoc-crm/CRMsci/O21_has_found_at>
+     <http://www.cidoc-crm.org/extensions/crmsci/O21_encountered_at>)
+    (<http://www.ics.forth.gr/isl/CRMinf/J3_applies>
+     <http://www.cidoc-crm.org/extensions/crminf/J3_applied>)
+
+    # post-prefix-migration forms (what 01_prefixes.py leaves behind)
+    (<http://www.cidoc-crm.org/extensions/crmsci/S4_Observation>
+     <http://www.cidoc-crm.org/extensions/crmsci/S4_Single_Observation>)
+    (<http://www.cidoc-crm.org/extensions/crmsci/O21_has_found_at>
+     <http://www.cidoc-crm.org/extensions/crmsci/O21_encountered_at>)
+    (<http://www.cidoc-crm.org/extensions/crminf/J3_applies>
+     <http://www.cidoc-crm.org/extensions/crminf/J3_applied>)
+  }
+  FILTER(?s = ?from || ?p = ?from || ?o = ?from)
+  BIND(IF(?s = ?from, ?to, ?s) AS ?s2)
+  BIND(IF(?p = ?from, ?to, ?p) AS ?p2)
+  BIND(IF(?o = ?from, ?to, ?o) AS ?o2)
+}

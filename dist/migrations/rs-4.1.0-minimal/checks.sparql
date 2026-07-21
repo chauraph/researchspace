@@ -1,0 +1,81 @@
+# checks.sparql — pre/post verification queries. Run each individually.
+#
+#     curl -u admin:admin -H 'Accept: text/csv' "$SPARQL" --data-urlencode 'query=<paste one block>'
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# P1 — PINNED DATA INTACT (run before AND after; counts must be identical)
+# ─────────────────────────────────────────────────────────────────────────────
+# Baseline observed on the dev instance 2026-07-21:
+#     isl/CRMdig/          5230 types / 6457 predicates
+#     fr/frbr/frbroo/        12 types /    0 predicates
+#
+# SELECT ?ns ?position (COUNT(*) AS ?n) WHERE {
+#   { ?s a ?t . BIND(REPLACE(STR(?t), "^(.*[/#])[^/#]*$", "$1") AS ?ns) BIND("type" AS ?position) }
+#   UNION
+#   { ?s ?p ?o . BIND(REPLACE(STR(?p), "^(.*[/#])[^/#]*$", "$1") AS ?ns) BIND("predicate" AS ?position) }
+#   FILTER(?ns IN ("http://www.ics.forth.gr/isl/CRMdig/",
+#                  "http://iflastandards.info/ns/fr/frbr/frbroo/"))
+# } GROUP BY ?ns ?position ORDER BY ?ns ?position
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# M1 — MIGRATION COMPLETE (must return zero rows after 01 + import)
+# ─────────────────────────────────────────────────────────────────────────────
+# SELECT ?ns ?position (COUNT(*) AS ?n) WHERE {
+#   { ?s a ?t . BIND(REPLACE(STR(?t), "^(.*[/#])[^/#]*$", "$1") AS ?ns) BIND("type" AS ?position) }
+#   UNION
+#   { ?s ?p ?o . BIND(REPLACE(STR(?p), "^(.*[/#])[^/#]*$", "$1") AS ?ns) BIND("predicate" AS ?position) }
+#   FILTER(?ns IN ("http://www.cidoc-crm.org/cidoc-crm/CRMsci/",
+#                  "http://www.ics.forth.gr/isl/CRMsci/",
+#                  "http://www.ics.forth.gr/isl/CRMgeo/",
+#                  "http://www.ics.forth.gr/isl/CRMinf/",
+#                  "http://www.cidoc-crm.org/cidoc-crm/CRMba/",
+#                  "http://www.cidoc-crm.org/cidoc-crm/CRMarchaeo/",
+#                  "http://www.cidoc-crm.org/cidoc-crm/influence/"))
+# } GROUP BY ?ns ?position ORDER BY ?ns ?position
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# T1 — RENAMED TERMS, BEFORE 02 (sizes the work; zero means 02 is a no-op)
+# T2 — same query AFTER 02: only the "*_CORRECT" rows may be non-zero
+# ─────────────────────────────────────────────────────────────────────────────
+# SELECT ?term (COUNT(*) AS ?n) WHERE {
+#  { ?s a <http://www.ics.forth.gr/isl/CRMsci/S4_Observation>              BIND("OLD S4_Observation" AS ?term) }
+#  UNION { ?s a <http://www.cidoc-crm.org/cidoc-crm/CRMsci/S4_Observation> BIND("OLD2 S4_Observation" AS ?term) }
+#  UNION { ?s a <http://www.cidoc-crm.org/extensions/crmsci/S4_Observation> BIND("DEAD S4_Observation" AS ?term) }
+#  UNION { ?s a <http://www.cidoc-crm.org/extensions/crmsci/S4_Single_Observation> BIND("S4_CORRECT" AS ?term) }
+#  UNION { ?s <http://www.ics.forth.gr/isl/CRMsci/O21_has_found_at> ?o     BIND("OLD O21_has_found_at" AS ?term) }
+#  UNION { ?s <http://www.cidoc-crm.org/extensions/crmsci/O21_has_found_at> ?o BIND("DEAD O21_has_found_at" AS ?term) }
+#  UNION { ?s <http://www.cidoc-crm.org/extensions/crmsci/O21_encountered_at> ?o BIND("O21_CORRECT" AS ?term) }
+#  UNION { ?s <http://www.ics.forth.gr/isl/CRMinf/J3_applies> ?o           BIND("OLD J3_applies" AS ?term) }
+#  UNION { ?s <http://www.cidoc-crm.org/extensions/crminf/J3_applies> ?o   BIND("DEAD J3_applies" AS ?term) }
+#  UNION { ?s <http://www.cidoc-crm.org/extensions/crminf/J3_applied> ?o   BIND("J3_CORRECT" AS ?term) }
+# } GROUP BY ?term ORDER BY DESC(?n)
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# C1 — CRMdig PIN VIOLATIONS, BEFORE 03 (expect only the six artefact graphs;
+#      anything else means real data has moved — stop and investigate)
+# ─────────────────────────────────────────────────────────────────────────────
+# SELECT ?g (COUNT(*) AS ?n) WHERE {
+#   GRAPH ?g { ?s ?p ?o }
+#   FILTER(STRSTARTS(STR(?s), "http://www.cidoc-crm.org/extensions/crmdig/")
+#       || STRSTARTS(STR(?p), "http://www.cidoc-crm.org/extensions/crmdig/")
+#       || (isIRI(?o) && STRSTARTS(STR(?o), "http://www.cidoc-crm.org/extensions/crmdig/")))
+# } GROUP BY ?g ORDER BY DESC(?n)
+#
+# C2 — same query AFTER 03: must return zero rows.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# C3 — FUNCTIONAL PROOF of 03: form-record provenance resolves the way the
+#      templates resolve it. ?creation must be bound for every row.
+# ─────────────────────────────────────────────────────────────────────────────
+# PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
+# PREFIX crmdig: <http://www.ics.forth.gr/isl/CRMdig/>
+# SELECT ?subject ?record ?creation WHERE {
+#   VALUES ?subject {
+#     <http://www.researchspace.org/resource/vocab/level_of_confidence>
+#     <http://www.researchspace.org/resource/vocab/level_of_confidence/certain>
+#     <http://www.researchspace.org/resource/vocab/level_of_confidence/uncertain>
+#     <http://www.researchspace.org/resource/vocab/technique>
+#   }
+#   ?subject crm:P129i_is_subject_of ?record .
+#   OPTIONAL { ?record crmdig:L11i_was_output_of ?creation }
+# }

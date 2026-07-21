@@ -6,6 +6,7 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix schema: <https://schema.org/> .
+@prefix crminf: <http://www.cidoc-crm.org/extensions/crminf/> .
 
 ns1:context {
     dsanno:RC4_embodies a rdfs:Class ;
@@ -56,7 +57,7 @@ This property associates an instance of F2 Expression that has been applied to a
     dsanno:DSA1_Scholarly_Assertion a owl:Class ;
         rdfs:label "Scholarly Assertion"@en ;
         rdfs:subClassOf crm:E13_Attribute_Assignment,
-            <http://www.ics.forth.gr/isl/CRMinf/I1_Argumentation> .
+            crminf:I1_Argumentation .
 
     dsanno:DSA2_Segment_Observation a owl:Class ;
         rdfs:label "Segment Observation"@en ;

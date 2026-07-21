@@ -13,12 +13,12 @@ rshelp=http://researchspace.org/help/
 
 crm=http://www.cidoc-crm.org/cidoc-crm/
 
-crmarchaeo = http://www.cidoc-crm.org/cidoc-crm/CRMarchaeo/
-crmba = http://www.cidoc-crm.org/cidoc-crm/CRMba/
+crmarchaeo = http://www.cidoc-crm.org/extensions/crmarchaeo/
+crmba = http://www.cidoc-crm.org/extensions/crmba/
 crmdig = http://www.ics.forth.gr/isl/CRMdig/
-crmgeo = http://www.ics.forth.gr/isl/CRMgeo/
-crminfluence = http://www.cidoc-crm.org/cidoc-crm/influence/
-crmsci = http://www.cidoc-crm.org/cidoc-crm/CRMsci/
+crmgeo = http://www.cidoc-crm.org/extensions/crmgeo/
+crminfluence = http://www.cidoc-crm.org/extensions/influence/
+crmsci = http://www.cidoc-crm.org/extensions/crmsci/
 
 frbroo = http://iflastandards.info/ns/fr/frbr/frbroo/
 
@@ -29,6 +29,9 @@ bds=http://www.bigdata.com/rdf/search#
 prov = http://www.w3.org/ns/prov#
 
 forms = http://www.researchspace.org/resource/system/forms/
-crminf = http://www.ics.forth.gr/isl/CRMinf/
+crminf = http://www.cidoc-crm.org/extensions/crminf/
 
 fedsail=http://www.openrdf.org/config/sail/federation#
+crmtex = http://www.cidoc-crm.org/extensions/crmtex/
+
+assets = http://www.researchspace.org/resource/assets/

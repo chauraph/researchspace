@@ -1,0 +1,65 @@
+# 03_pin_crmdig_artefacts.sparql — normalise CRMdig back to the pinned namespace
+#
+# WHY THIS EXISTS
+# ---------------
+# Six preloaded LDP artefacts were cherry-picked verbatim from
+# upstream/cidoc-extensions-forms, where CRMdig had already been moved to
+# .../extensions/crmdig/. They therefore contradict our pin:
+#
+#     ldp/authorities/...%2Fvocab%2Flevel_of_confidence.trig            8 triples
+#     ldp/configurations/...%2Fdata%2FArgumentation.trig                2
+#     ldp/configurations/...%2Fdata%2FBelief.trig                       2
+#     ldp/configurations/...%2Fdata%2FInference_logic.trig              2
+#     ldp/configurations/...%2Fdata%2FInference_making.trig             2
+#     ldp/configurations/...%2Fdata%2FProposition_set.trig              2
+#
+# We do NOT edit those .trig files: they are byte-identical to upstream and sit
+# in a slice we keep pulling from. The divergence is kept here instead.
+#
+# Symptom if skipped: the entity form-record / history panel is empty for those
+# six resources. All readers (FormMetadataTab.html, FormEntityRecord.html,
+# FormAssetSidebar.html, ActivityCardTemplate.html, ...) resolve crmdig: via
+# namespaces.prop to http://www.ics.forth.gr/isl/CRMdig/ and so never join.
+#
+# WHEN TO RUN
+# -----------
+# After every DB provisioning that loads these artefacts into an EMPTY graph
+# (fresh journal, or a restored snapshot that predates the crminf slice).
+# NOT needed on a plain container restart: LDPAssetsLoader.selectContentToLoad
+# skips reload for the `authorities` and `configurations` repositories when the
+# stored and loaded models differ, and does not raise the "Inconsistent state of
+# the LDP assets storage" error for them (LDPAssetsLoader.java:446-454).
+#
+# SCOPE
+# -----
+# Global, not graph-scoped: under the pin, NO triple anywhere should carry
+# .../extensions/crmdig/. Run checks.sparql query C1 first — if it reports rows
+# outside the six graphs above, stop and investigate before running this.
+#
+# !! If the crmdig pin is ever lifted, DELETE THIS FILE — it would silently
+# !! reverse the intended migration.
+#
+# Usage:
+#     curl -u admin:admin "$SPARQL" --data-urlencode "update=$(cat 03_pin_crmdig_artefacts.sparql)"
+#
+# Idempotent: re-running matches nothing.
+
+DELETE { GRAPH ?g { ?s ?p ?o } }
+INSERT { GRAPH ?g { ?s2 ?p2 ?o2 } }
+WHERE {
+  GRAPH ?g { ?s ?p ?o }
+  FILTER(
+       STRSTARTS(STR(?s), "http://www.cidoc-crm.org/extensions/crmdig/")
+    || STRSTARTS(STR(?p), "http://www.cidoc-crm.org/extensions/crmdig/")
+    || (isIRI(?o) && STRSTARTS(STR(?o), "http://www.cidoc-crm.org/extensions/crmdig/"))
+  )
+  BIND(IF(STRSTARTS(STR(?s), "http://www.cidoc-crm.org/extensions/crmdig/"),
+          IRI(REPLACE(STR(?s), "^http://www\\.cidoc-crm\\.org/extensions/crmdig/",
+                               "http://www.ics.forth.gr/isl/CRMdig/")), ?s) AS ?s2)
+  BIND(IF(STRSTARTS(STR(?p), "http://www.cidoc-crm.org/extensions/crmdig/"),
+          IRI(REPLACE(STR(?p), "^http://www\\.cidoc-crm\\.org/extensions/crmdig/",
+                               "http://www.ics.forth.gr/isl/CRMdig/")), ?p) AS ?p2)
+  BIND(IF(isIRI(?o) && STRSTARTS(STR(?o), "http://www.cidoc-crm.org/extensions/crmdig/"),
+          IRI(REPLACE(STR(?o), "^http://www\\.cidoc-crm\\.org/extensions/crmdig/",
+                               "http://www.ics.forth.gr/isl/CRMdig/")), ?o) AS ?o2)
+}
