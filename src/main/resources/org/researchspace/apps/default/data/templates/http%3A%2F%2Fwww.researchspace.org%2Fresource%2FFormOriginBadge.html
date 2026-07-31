@@ -1,0 +1,146 @@
+[[!--
+  Origin badge — names the act that created this record.
+
+  Four states, derived from what hangs off the entity_form_record_creation:
+    appraised  a D30_Annotation_Event  — candidates were weighed and a decision recorded
+    open       ...whose annotation is typed pending-adjudication — a decision is outstanding
+    imported   a D12_Data_Transfer_Event — copied from a named external source
+    entered    neither — created in the form
+
+  Absence of machine provenance is the normal case (~98% of members) and is NOT a
+  defect. Only "open" is styled with colour, because it is the only state that asks
+  for the operator's time.
+
+  Expects the client-side variable {{node}}. Where the surrounding template calls the
+  entity something else, wrap the include:   {{#bind node=iri}} … {{/bind}}
+
+  Params (backend):
+    showSentence   also render the explanatory sentence inline, instead of on hover
+--]]
+
+<semantic-query query='SELECT DISTINCT ?state ?source ?when ?actor ?actorName ?agent WHERE {
+                          BIND(<{{node}}> AS ?entity)
+
+                          ?entity crm:P129i_is_subject_of ?rec .
+                          ?rec crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record> ;
+                               crmdig:L11i_was_output_of ?creation .
+                          ?creation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation> .
+
+                          OPTIONAL { ?creation crm:P4_has_time-span/crm:P82_at_some_time_within ?when }
+                          OPTIONAL { ?creation crm:P14_carried_out_by ?actor }
+                          OPTIONAL { ?creation crm:P14_carried_out_by ?namedActor .
+                                     ?namedActor crm:P1_is_identified_by ?actorAppellation .
+                                     ?actorAppellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                                                       crm:P190_has_symbolic_content ?actorName }
+
+                          OPTIONAL { ?creation crm:P134_continued ?appraisal .
+                                     ?appraisal a crmdig:D30_Annotation_Event }
+                          OPTIONAL { ?creation crm:P134_continued ?agentEvent .
+                                     ?agentEvent crmdig:L23_used_software_or_firmware ?agent }
+                          OPTIONAL { ?creation crm:P134_continued ?openAppraisal .
+                                     ?openAppraisal crmdig:L48_created_annotation ?pending .
+                                     ?pending crm:P2_has_type ?pendingType .
+                                     FILTER(STRENDS(STR(?pendingType), "/pending-adjudication")) }
+                          OPTIONAL { ?creation crm:P134_continued ?import .
+                                     ?import a crmdig:D12_Data_Transfer_Event ;
+                                             crmdig:L14_transferred ?source }
+
+                          BIND( IF(BOUND(?pending),  "open",
+                                IF(BOUND(?appraisal),"appraised",
+                                IF(BOUND(?source),   "imported", "entered"))) AS ?state)
+                        } LIMIT 1'
+
+                template='{{> originBadge}}'>
+
+  <template id='originBadge'>
+    {{#if bindings.0.state.value}}
+      <span class="origin-badge-holder">
+        [[#if showSentence]]
+
+          {{> badgeOnly}}
+          <span class="origin-badge-sentence">{{> sentence}}</span>
+
+        [[else]]
+
+          <mp-popover>
+            <mp-popover-trigger placement="bottom" trigger='["hover", "focus", "click"]'>
+              {{> badgeOnly}}
+            </mp-popover-trigger>
+            <mp-popover-content>
+              <div class="origin-badge-popover">{{> sentence}}</div>
+            </mp-popover-content>
+          </mp-popover>
+
+        [[/if]]
+      </span>
+    {{/if}}
+  </template>
+
+  [[!-- the badge itself: quiet for origin facts, colour only for the outstanding one --]]
+  <template id='badgeOnly'>
+    {{#switch bindings.0.state.value}}
+      {{#case "appraised" break=true}}
+        <span class="badge badge--secondary origin-badge" title="Appraised">
+          <rs-icon icon-type="rounded" icon-name="fact_check" symbol="true"></rs-icon>
+          Appraised
+        </span>
+      {{/case}}
+      {{#case "open" break=true}}
+        <span class="badge badge--action origin-badge" title="Open question">
+          <rs-icon icon-type="rounded" icon-name="question_mark" symbol="true"></rs-icon>
+          Open question
+        </span>
+      {{/case}}
+      {{#case "imported" break=true}}
+        <span class="badge badge--default origin-badge" title="Imported">
+          <rs-icon icon-type="rounded" icon-name="download" symbol="true"></rs-icon>
+          Imported
+        </span>
+      {{/case}}
+      {{#default}}
+        <span class="badge badge--default origin-badge" title="Entered">
+          <rs-icon icon-type="rounded" icon-name="edit" symbol="true"></rs-icon>
+          Entered
+        </span>
+      {{/default}}
+    {{/switch}}
+  </template>
+
+  [[!-- one sentence per state; the "entered" one states the open-world reading outright --]]
+  <template id='sentence'>
+    {{#switch bindings.0.state.value}}
+
+      {{#case "appraised" break=true}}
+        Candidates were weighed against stated criteria{{#if bindings.0.when.value}}
+        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}}{{#if bindings.0.actor.value}}
+        by {{#if bindings.0.actorName.value}}{{bindings.0.actorName.value}}{{else}}<mp-label iri='{{bindings.0.actor.value}}'></mp-label>{{/if}}{{/if}}{{#if bindings.0.agent.value}},
+        assisted by <mp-label iri='{{bindings.0.agent.value}}'></mp-label>{{/if}}.
+        The criteria and the evidence are on the Metadata tab.
+      {{/case}}
+
+      {{#case "open" break=true}}
+        An appraisal ran{{#if bindings.0.when.value}}
+        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}} and did not conclude —
+        the candidates could not be told apart from the evidence available.
+        A decision is outstanding; the reasoning is on the Metadata tab.
+      {{/case}}
+
+      {{#case "imported" break=true}}
+        Copied from
+        <a class="text-link-action" target="_blank" href="{{bindings.0.source.value}}"
+           title="{{bindings.0.source.value}}">{{bindings.0.source.value}}</a>{{#if bindings.0.when.value}}
+        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}}{{#if bindings.0.actor.value}}
+        by {{#if bindings.0.actorName.value}}{{bindings.0.actorName.value}}{{else}}<mp-label iri='{{bindings.0.actor.value}}'></mp-label>{{/if}}{{/if}}.
+      {{/case}}
+
+      {{#default}}
+        Created in the form{{#if bindings.0.when.value}}
+        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}}{{#if bindings.0.actor.value}}
+        by {{#if bindings.0.actorName.value}}{{bindings.0.actorName.value}}{{else}}<mp-label iri='{{bindings.0.actor.value}}'></mp-label>{{/if}}{{/if}}.
+        No external source or machine appraisal is recorded — that describes how this
+        record was made, not whether it is right.
+      {{/default}}
+
+    {{/switch}}
+  </template>
+</semantic-query>

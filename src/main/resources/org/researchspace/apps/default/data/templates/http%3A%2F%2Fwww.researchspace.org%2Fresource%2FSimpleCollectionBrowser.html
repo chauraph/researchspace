@@ -323,6 +323,12 @@
                                 {{/ifCond}}
                               </template>
                             </semantic-query>
+
+                            [[!-- how this record was made — an origin fact, shown next to
+                                  what kind of thing it is. Detail on the Metadata tab. --]]
+                            {{#bind node=iri}}
+                              [[> rsp:FormOriginBadge]]
+                            {{/bind}}
                           {{/if}}
                         {{/case}}
 

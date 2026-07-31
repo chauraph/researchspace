@@ -21,9 +21,34 @@
 {{/ifCond}}
 
 
+[[!-- what the aligned identifiers give back: names and images, fetched live --]]
+{{#ifCond mode "!==" "new"}}
+    {{#if node}}
+        [[> rsp:FormFederationTab]]
+    {{/if}}
+{{/ifCond}}
+
+
 {{#ifCond mode "!==" "new"}}
     {{#if node}}
         <bs-tab event-key="metadata" title="Metadata" tab-class-name="tab-right">
+
+            <div class="semantic-form-input-title">Record metadata</div>
+
+            [[!-- how this record was made: an origin fact, never a grade.
+                  Absence of machine provenance is the normal case, not a defect. --]]
+            <div class="table-expanded">
+                <table class="table metadata-table">
+                    <tbody>
+                        <tr class="standard-row">
+                            <td class="table-title" style="width: 200px;"><b>Origin</b></td>
+                            <td class="table-description">
+                                [[> rsp:FormOriginBadge showSentence=true]]
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             [[!-- creation details --]]
             <semantic-query query='SELECT DISTINCT ?actor ?actorFullName ?creationDateValue ?importFromExternalSource ?sourceURI WHERE {
@@ -57,7 +82,6 @@
                             template='{{> template}}'>
                                 
                 <template id='template'>
-                    <div class="semantic-form-input-title">Record metadata</div>
                     <div class="table-expanded">
                         <table class="table metadata-table">
                             <tbody>
@@ -354,7 +378,11 @@
                     </div>
                 </template>
             </semantic-query>
-            
+
+            [[!-- the appraisal that decided this record's external identifiers, and the
+                  service calls it was decided from. Renders nothing when there is none. --]]
+            [[> rsp:FormAlignmentProvenance]]
+
         </bs-tab>
     {{/if}}
 {{/ifCond}}

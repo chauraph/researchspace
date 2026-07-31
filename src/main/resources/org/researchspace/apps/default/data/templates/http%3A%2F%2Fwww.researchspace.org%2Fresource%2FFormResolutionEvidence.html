@@ -1,0 +1,139 @@
+[[!--
+  Evidence viewer — the service calls an appraisal was decided from.
+
+  Ordered by certainty, not by size. The request is always visible: it is short, it
+  is the only part that says whether the right question was asked, and it is
+  replayable — reissue it and diff the result against what is stored here. The
+  response is a verbatim, minified literal; it stays folded and is not reformatted,
+  because unaltered is what makes it evidence.
+
+  A run is shared. "Also evidence for N other members" is shown wherever a reader
+  would otherwise assume the call was about this record.
+
+  Rendered inside <mp-overlay-dialog-content> by FormAlignmentProvenance.
+  Expects the client-side variable {{node}}.
+--]]
+
+<semantic-query query='SELECT ?run ?service ?when ?parameters ?response
+                              (STRLEN(STR(?response)) AS ?responseSize)
+                       WHERE {
+                          BIND(<{{node}}> AS ?entity)
+                          ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
+                          ?creation crm:P134_continued ?appraisal .
+                          ?appraisal a crmdig:D30_Annotation_Event ;
+                                     crm:P134_continued ?run .
+                          ?run a crmdig:D10_Software_Execution ;
+                               crmdig:L23_used_software_or_firmware ?service ;
+                               crmdig:L13_used_parameters/rdf:value ?parameters ;
+                               crmdig:L11_had_output/rdf:value      ?response .
+                          OPTIONAL { ?run crm:P4_has_time-span/crm:P82_at_some_time_within ?when }
+                       } ORDER BY ?service'
+
+                template='{{> runs}}'
+                no-result-template='{{> noRuns}}'>
+
+  <template id='runs'>
+    <div class="evidence-runs">
+      {{#each bindings}}
+        <div class="evidence-run">
+
+          <div class="evidence-run-head">
+            <a class="evidence-run-service" target="_blank"
+               href="{{service.value}}" title="{{service.value}}">{{service.value}}</a>
+
+            <div class="evidence-run-meta">
+              [[!-- the run is shared: say so where ownership would otherwise be assumed --]]
+              <semantic-query query='SELECT (COUNT(DISTINCT ?member) AS ?members) WHERE {
+                                        ?appraisal a crmdig:D30_Annotation_Event ;
+                                                   crm:P134_continued <{{run.value}}> .
+                                        ?creation crm:P134_continued ?appraisal .
+                                        ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
+                                     }'
+                              template='{{> shared}}'>
+                <template id='shared'>
+                  {{#ifCond bindings.0.members.value ">" "1"}}
+                    <mp-popover>
+                      <mp-popover-trigger placement="bottom" trigger='["click", "focus"]'>
+                        <span class="evidence-shared">
+                          <rs-icon icon-type="rounded" icon-name="group_work" symbol="true"></rs-icon>
+                          also evidence for {{minus bindings.0.members.value 1}} other member{{#ifCond bindings.0.members.value "!==" "2"}}s{{/ifCond}}
+                        </span>
+                      </mp-popover-trigger>
+                      <mp-popover-content>
+                        <div class="evidence-shared-list">
+                          <semantic-query query='SELECT DISTINCT ?member ?name WHERE {
+                                                    ?appraisal a crmdig:D30_Annotation_Event ;
+                                                               crm:P134_continued <{{run.value}}> .
+                                                    ?creation crm:P134_continued ?appraisal .
+                                                    ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation ;
+                                                            crm:P1_is_identified_by ?appellation .
+                                                    ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                                                                 crm:P190_has_symbolic_content ?name .
+                                                 } ORDER BY ?name'
+                                          template='{{> members}}'>
+                            <template id='members'>
+                              {{#each bindings}}
+                                <semantic-link-container uri='http://www.researchspace.org/resource/ThinkingFrames'
+                                                         urlqueryparam-view='resource-editor'
+                                                         urlqueryparam-resource-iri='{{member.value}}'>
+                                  <div class="text-link">{{name.value}}</div>
+                                </semantic-link-container>
+                              {{/each}}
+                            </template>
+                          </semantic-query>
+                        </div>
+                      </mp-popover-content>
+                    </mp-popover>
+                  {{/ifCond}}
+
+                </template>
+              </semantic-query>
+
+              {{#if when.value}}
+                <span class="badge badge--default evidence-chip">{{dateTimeFormat when.value "DD/MM/YYYY"}}</span>
+              {{/if}}
+              <span class="badge badge--default evidence-chip">{{responseSize.value}} bytes</span>
+            </div>
+          </div>
+
+          [[!-- the request: always open, always copyable, replayable as-is --]]
+          <div class="evidence-wire">
+            <div class="evidence-wire-label">Request</div>
+            <div class="evidence-payload">
+              {{#if (or (includes service.value "sparql") (includes service.value "query."))}}
+                <mp-code-block mode='application/sparql-query' code-text='{{parameters.value}}'></mp-code-block>
+              {{else}}
+                <mp-code-block mode='text/x-sh' code-text='{{parameters.value}}'></mp-code-block>
+              {{/if}}
+            </div>
+          </div>
+
+          [[!-- the response: verbatim and minified on purpose; folded, capped, scrollable --]]
+          <div class="evidence-wire">
+            [[!-- expanded defaults to true, and renderHidden to false: with expanded=false
+                  the payload is not mounted at all until the fold is opened, so CodeMirror
+                  never parses a 13 KB literal the reader did not ask for --]]
+            <mp-collapsible-div expanded='false' class-name="evidence-response">
+              <mp-collapsible-div-trigger>
+                <div class="evidence-wire-label evidence-wire-toggle">
+                  <rs-icon icon-type="rounded" icon-name="chevron_right" symbol="true"></rs-icon>
+                  Response
+                </div>
+              </mp-collapsible-div-trigger>
+              <mp-collapsible-div-content>
+                <div class="evidence-payload evidence-payload--capped">
+                  <mp-code-block mode='application/json' code-text='{{response.value}}'></mp-code-block>
+                </div>
+              </mp-collapsible-div-content>
+            </mp-collapsible-div>
+          </div>
+
+        </div>
+      {{/each}}
+    </div>
+  </template>
+
+  <template id='noRuns'>
+    <div style="padding: 12px 0;">No resolution run is recorded for this appraisal.</div>
+  </template>
+</semantic-query>

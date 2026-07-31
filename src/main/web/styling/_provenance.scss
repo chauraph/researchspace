@@ -1,0 +1,280 @@
+/**
+ * ResearchSpace
+ * Copyright (C) 2022-2024, © Kartography Community Interest Company
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/* Origin badge, alignment provenance, evidence viewer, federation tab.
+   Everything here rides on the existing .badge / .metadata-table / .table-expanded
+   vocabulary; these rules only handle spacing and the payload containers. */
+
+
+/* ── origin badge ───────────────────────────────────────────────────────── */
+
+.origin-badge-holder {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.origin-badge {
+    gap: 5px;
+
+    i {
+        font-size: 15px;
+    }
+}
+
+/* the sentence carries the open-world reading; it must not read as small print */
+.origin-badge-sentence {
+    color: $color-secondary;
+    line-height: 1.5;
+}
+
+.origin-badge-popover {
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+
+/* ── alignment provenance rows ──────────────────────────────────────────── */
+
+.provenance-agent {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    color: $color-secondary;
+
+    i {
+        font-size: 16px;
+    }
+}
+
+.provenance-adopted {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+
+    a {
+        overflow-wrap: anywhere;
+    }
+}
+
+.provenance-muted {
+    color: $color-secondary-light;
+}
+
+.provenance-pending-note {
+    margin-top: 6px;
+    color: $color-secondary;
+    line-height: 1.5;
+}
+
+
+/* ── evidence viewer ────────────────────────────────────────────────────── */
+
+.evidence-runs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.evidence-run {
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+    overflow: hidden;
+}
+
+.evidence-run-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid $color-border;
+}
+
+.evidence-run-service {
+    font-family: monospace;
+    overflow-wrap: anywhere;
+}
+
+.evidence-run-meta {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+/* a run is shared — this is the cue that it was not about the record being viewed */
+.evidence-shared {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: $color-secondary;
+    text-decoration: underline;
+
+    i {
+        font-size: 16px;
+    }
+}
+
+.evidence-shared-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.evidence-wire {
+    padding: 10px 14px;
+
+    & + & {
+        border-top: 1px solid $color-border;
+    }
+}
+
+.evidence-wire-label {
+    font-size: $font-size-small;
+    font-weight: 600;
+    color: $color-secondary;
+    margin-bottom: 4px;
+}
+
+.evidence-wire-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    margin-bottom: 0;
+
+    i {
+        font-size: 18px;
+        transition: transform .15s ease-in-out;
+    }
+}
+
+/* the trigger div carries collapsible-panel-trigger__expanded / __collapsed */
+.evidence-response .collapsible-panel-trigger__expanded .evidence-wire-toggle i {
+    transform: rotate(90deg);
+}
+
+/* mp-code-block is built for documentation pages: 32px padding, generous margins,
+   and it emits an inline <code>. Both need reining in for a payload. */
+.evidence-payload {
+
+    /* mp-code-block styles .holder through a CSS module, so the generated class
+       name is hashed — target the element structure instead of the class. */
+    > div {
+        padding: 10px;
+        margin: 0;
+    }
+
+    pre {
+        margin: 6px 0 0 0;
+        padding: 10px 12px;
+        overflow-x: auto;
+    }
+
+    /* minified JSON has no line breaks to honour, and long URIs must not
+       push the modal sideways */
+    code {
+        display: block;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+        line-height: 1.55;
+    }
+}
+
+/* the response can be 13 KB — cap it and let it scroll inside its own box */
+.evidence-payload--capped pre {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+
+/* ── federation tab ─────────────────────────────────────────────────────── */
+
+.federation-tab {
+    padding-bottom: 20px;
+}
+
+.federation-chip {
+    margin-left: 8px;
+}
+
+.federation-live-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* fetched values are evidence about the record, not part of it */
+.federation-live {
+    border-left: 3px solid $color-border-darker;
+    padding-left: 14px;
+    margin-top: 6px;
+}
+
+.federation-live-note {
+    color: $color-secondary-light;
+    font-size: $font-size-small;
+    margin-bottom: 12px;
+}
+
+.federation-names {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px 18px;
+    margin-bottom: 18px;
+}
+
+.federation-name {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+}
+
+.federation-lang {
+    flex: 0 0 22px;
+    font-family: monospace;
+    font-size: $font-size-small;
+    text-transform: uppercase;
+    color: $color-secondary-light;
+}
+
+.federation-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.federation-image {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.federation-empty {
+    color: $color-secondary-light;
+    padding: 6px 0;
+}

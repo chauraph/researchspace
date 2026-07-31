@@ -1,0 +1,196 @@
+[[!--
+  Federation tab — what this record's aligned identifiers give back.
+
+  Two halves, and the split matters:
+    - the inventory is local and instant;
+    - names and images are fetched live from the Wikidata Query Service through an
+      inline SERVICE clause, so they are evidence about this record, not part of it.
+      Nothing here is written back; a fetched name that should become an appellation
+      goes in through the Details tab like any other.
+
+  VIAF and GND publish no SPARQL endpoint, so they are listed and linked but not
+  federated. Saying so is more useful than pretending otherwise.
+
+  Cost control: rs-tabs mounts every pane when the form opens, so a SERVICE query
+  written straight into this tab would hit WDQS on every record view. The fetched
+  half therefore renders into an mp-event-target-template-render that stays empty
+  until either the tab is selected (mp-event-proxy on Tab.Selected) or the operator
+  clicks Fetch. The manual trigger is not redundant: RsTabs restores a remembered
+  tab in componentDidMount without emitting Tab.Selected, so a reload straight into
+  this tab produces no event.
+
+  Expects the client-side variables {{node}} and {{viewId}}.
+--]]
+
+<rs-tab event-key="federation" title="Federation">
+  <semantic-if query='ASK { { <{{node}}> <https://linked.art/ns/terms/equivalent> ?external }
+                            UNION
+                            { <{{node}}> <http://www.w3.org/2002/07/owl#sameAs> ?external } }'
+               then='{{> federation}}'
+               else='{{> noAlignments}}'>
+
+    <template id='federation'>
+      <div class="federation-tab">
+
+        [[!-- local: what this record is aligned to, and which of those can be queried --]]
+        <div class="semantic-form-input-title">Aligned identifiers</div>
+        <semantic-query query='SELECT DISTINCT ?external ?authority ?federates WHERE {
+                                  BIND(<{{node}}> AS ?entity)
+                                  { ?entity <https://linked.art/ns/terms/equivalent> ?external }
+                                  UNION
+                                  { ?entity <http://www.w3.org/2002/07/owl#sameAs> ?external }
+
+                                  BIND(IF(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"), "Wikidata",
+                                       IF(CONTAINS(STR(?external), "viaf.org"), "VIAF",
+                                       IF(CONTAINS(STR(?external), "d-nb.info/gnd"), "GND",
+                                       IF(CONTAINS(STR(?external), "geonames.org"), "GeoNames", "External")))) AS ?authority)
+                                  BIND(IF(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"), "yes", "no") AS ?federates)
+                               } ORDER BY ?authority ?external'
+                        template='{{> inventory}}'>
+          <template id='inventory'>
+            <div class="table-expanded">
+              <table class="table metadata-table">
+                <tbody>
+                  {{#each bindings}}
+                    <tr class="standard-row">
+                      <td class="table-title" style="width: 200px;"><b>{{authority.value}}</b></td>
+                      <td class="table-description">
+                        <a class="text-link-action" target="_blank"
+                           href="{{external.value}}" title="{{external.value}}">{{external.value}}</a>
+                        {{#ifCond federates.value "===" "yes"}}
+                          <span class="badge badge--secondary federation-chip">federates</span>
+                        {{else}}
+                          <span class="badge badge--default federation-chip">link only</span>
+                        {{/ifCond}}
+                      </td>
+                    </tr>
+                  {{/each}}
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </semantic-query>
+
+        [[!-- fetched: only rendered once asked for --]]
+        <div class="federation-live-header">
+          <div class="semantic-form-input-title">From Wikidata</div>
+          <mp-event-trigger id='{{viewId}}-federation-fetch-trigger'
+                            type='Component.TemplateUpdate'
+                            data='{"fetch": true}'
+                            targets='["{{viewId}}-federation-panel"]'>
+            <button class="btn btn-default btn-sm" type="button">
+              <rs-icon icon-type="rounded" icon-name="refresh" symbol="true"></rs-icon>
+              Fetch
+            </button>
+          </mp-event-trigger>
+        </div>
+
+        <mp-event-proxy id='{{viewId}}-federation-proxy'
+                        on-event-type='Tab.Selected'
+                        on-event-source='{{viewId}}-form-tabs'
+                        on-event-data='{"key": "federation"}'
+                        proxy-event-type='Component.TemplateUpdate'
+                        data='{"fetch": true}'
+                        proxy-targets='["{{viewId}}-federation-panel"]'></mp-event-proxy>
+
+        <mp-event-target-template-render id='{{viewId}}-federation-panel' template='{{> live}}'>
+
+          <template id='live'>
+            {{#if fetch}}
+
+              <div class="federation-live">
+                <div class="federation-live-note">
+                  Fetched from the Wikidata Query Service. Not stored, not part of this record.
+                </div>
+
+                [[!-- names in the four working languages --]]
+                <semantic-query query='SELECT ?external ?lang ?label WHERE {
+                                          BIND(<{{node}}> AS ?entity)
+                                          { ?entity <https://linked.art/ns/terms/equivalent> ?external }
+                                          UNION
+                                          { ?entity <http://www.w3.org/2002/07/owl#sameAs> ?external }
+                                          FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
+                                          SERVICE <https://query.wikidata.org/sparql> {
+                                            ?external <http://www.w3.org/2000/01/rdf-schema#label> ?label .
+                                            FILTER(LANG(?label) IN ("en", "fr", "de", "it"))
+                                            BIND(LANG(?label) AS ?lang)
+                                          }
+                                       } ORDER BY ?external ?lang'
+                                template='{{> names}}'
+                                no-result-template='{{> noNames}}'>
+                  <template id='names'>
+                    <div class="federation-names">
+                      {{#each bindings}}
+                        <div class="federation-name">
+                          <span class="federation-lang">{{lang.value}}</span>
+                          <span>{{label.value}}</span>
+                        </div>
+                      {{/each}}
+                    </div>
+                  </template>
+                  <template id='noNames'>
+                    <div class="federation-empty">No labels in en, fr, de or it.</div>
+                  </template>
+                </semantic-query>
+
+                [[!-- depicted image, via P18 on Wikimedia Commons --]]
+                <semantic-query query='SELECT ?external ?image WHERE {
+                                          BIND(<{{node}}> AS ?entity)
+                                          { ?entity <https://linked.art/ns/terms/equivalent> ?external }
+                                          UNION
+                                          { ?entity <http://www.w3.org/2002/07/owl#sameAs> ?external }
+                                          FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
+                                          SERVICE <https://query.wikidata.org/sparql> {
+                                            ?external <http://www.wikidata.org/prop/direct/P18> ?image .
+                                          }
+                                       }'
+                                template='{{> images}}'
+                                no-result-template='{{> noImages}}'>
+                  <template id='images'>
+                    <div class="federation-images">
+                      {{#each bindings}}
+                        <div class="federation-image">
+                          [[!-- Commons FilePath values arrive percent-encoded --]]
+                          <a href="[[decodeUriComponent '{{image.value}}']]"
+                             title="[[decodeUriComponent '{{image.value}}']]" target="_blank">
+                            <img src="[[decodeUriComponent '{{image.value}}']]"
+                                 alt="Image from Wikimedia Commons"
+                                 height="180" style="max-width: 15vw; object-fit: contain;">
+                          </a>
+                          <mp-copy-to-clipboard text='{{image.value}}' message='Image IRI has been copied'>
+                            <div class="text-link">
+                              <rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon>
+                              Copy IRI
+                            </div>
+                          </mp-copy-to-clipboard>
+                        </div>
+                      {{/each}}
+                    </div>
+                  </template>
+                  <template id='noImages'>
+                    <div class="federation-empty">No image (P18) on the aligned item.</div>
+                  </template>
+                </semantic-query>
+              </div>
+
+            {{else}}
+              <div class="federation-empty">
+                Not fetched yet — select this tab, or press Fetch, to query Wikidata.
+              </div>
+            {{/if}}
+          </template>
+
+        </mp-event-target-template-render>
+
+      </div>
+    </template>
+
+    <template id='noAlignments'>
+      <div class="federation-empty" style="padding-top: 20px;">
+        This record has no external alignment yet, so there is nothing to federate.
+        Add one on the External Authority tab.
+      </div>
+    </template>
+
+  </semantic-if>
+</rs-tab>
