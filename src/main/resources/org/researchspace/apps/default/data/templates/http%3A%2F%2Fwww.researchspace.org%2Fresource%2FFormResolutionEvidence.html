@@ -108,22 +108,33 @@
             </div>
           </div>
 
-          [[!-- the response: verbatim and minified on purpose; folded, capped, scrollable --]]
+          [[!-- The response: verbatim and minified on purpose; folded, capped, scrollable.
+
+               Deliberately NOT mp-code-block. That component runs CodeMirror.runMode
+               synchronously over the whole literal on mount, and it throws on these
+               payloads (8-13 KB of minified JSON on one line). A plain <pre> with the
+               text as a child rather than an attribute costs nothing, cannot fail, and
+               loses only syntax colour — which was never how anyone was going to read
+               13 KB anyway. The Copy button is the real affordance here.
+
+               expanded=false with renderHidden=false (both defaults aside) means the
+               payload is not in the DOM at all until the fold is opened. --]]
           <div class="evidence-wire">
-            [[!-- expanded defaults to true, and renderHidden to false: with expanded=false
-                  the payload is not mounted at all until the fold is opened, so CodeMirror
-                  never parses a 13 KB literal the reader did not ask for --]]
             <mp-collapsible-div expanded='false' class-name="evidence-response">
               <mp-collapsible-div-trigger>
                 <div class="evidence-wire-label evidence-wire-toggle">
                   <rs-icon icon-type="rounded" icon-name="chevron_right" symbol="true"></rs-icon>
                   Response
+                  <mp-copy-to-clipboard text='{{response.value}}' message='Response copied'>
+                    <span class="evidence-copy">
+                      <rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon>
+                      Copy
+                    </span>
+                  </mp-copy-to-clipboard>
                 </div>
               </mp-collapsible-div-trigger>
               <mp-collapsible-div-content>
-                <div class="evidence-payload evidence-payload--capped">
-                  <mp-code-block mode='application/json' code-text='{{response.value}}'></mp-code-block>
-                </div>
+                <pre class="evidence-raw">{{response.value}}</pre>
               </mp-collapsible-div-content>
             </mp-collapsible-div>
           </div>

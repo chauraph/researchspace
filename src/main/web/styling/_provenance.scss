@@ -205,10 +205,35 @@
     }
 }
 
-/* the response can be 13 KB — cap it and let it scroll inside its own box */
-.evidence-payload--capped pre {
+.evidence-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 12px;
+    font-weight: 400;
+    color: $color-action;
+
+    i {
+        font-size: 15px;
+    }
+}
+
+/* the raw response: minified, verbatim, up to 13 KB on a single line.
+   Wrap it, cap it, and let it scroll inside its own box so the modal never
+   scrolls sideways. No syntax highlighter — see the note in the template. */
+.evidence-raw {
+    margin: 6px 0 0 0;
+    padding: 10px 12px;
     max-height: 240px;
     overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    line-height: 1.55;
+    background-color: $color-lighter;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
 }
 
 
