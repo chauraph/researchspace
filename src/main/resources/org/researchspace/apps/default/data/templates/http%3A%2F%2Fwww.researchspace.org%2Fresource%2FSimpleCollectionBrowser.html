@@ -105,6 +105,10 @@
                       </mp-event-trigger>
                     {{/if}}
 
+                    [[!-- members awaiting a decision: a folded jump list, one query for the
+                          whole panel. Renders nothing when there are none. --]]
+                    [[> rsp:AuthorityOpenQuestions]]
+
                     <mp-event-target-template-render id='{{collection}}-mytree'  template='{{> treeTemplate}}'>
                       <template id='treeTemplate'>
                         <semantic-lazy-tree id='{{viewId}}-scheme-tree' 
@@ -137,7 +141,7 @@
                                 <mp-event-trigger id='{{viewId}}-form-edit-trigger--{{iri}}' 
                                                   type='Component.TemplateUpdate'
                                                   data='{"iri":"{{iri}}", 
-                                                        "label": "{{label}}", 
+                                                        "label": {{#if label}}{{stringify label}}{{else}}""{{/if}}, 
                                                         "mode": "edit"
                                                         }' 
                                                   targets='["{{viewId}}-term-forms"]'>
@@ -209,7 +213,7 @@
                                           proxy-targets='["{{bindings.0.viewId.value}}-entity-editor-area"]'
                                           additional-data='{"collectionDeleted": "true",
                                                               "iri": "{{bindings.0.iri.value}}",
-                                                              "label": "{{bindings.0.label.value}}"
+                                                              "label": {{#if bindings.0.label.value}}{{stringify bindings.0.label.value}}{{else}}""{{/if}}
                                                             }'
                           ></mp-event-proxy>
                       </template>
@@ -509,7 +513,7 @@
                                               proxy-event-type='Component.TemplateUpdate' 
                                               proxy-targets='["{{viewId}}-term-forms"]'
                                               additional-data='{"mode": "deleted", 
-                                                                "label": "{{bindings.0.label.value}}" }'
+                                                                "label": {{#if bindings.0.label.value}}{{stringify bindings.0.label.value}}{{else}}""{{/if}} }'
                               ></mp-event-proxy>
                             {{/if}}
                           --]]
@@ -520,7 +524,7 @@
                                             proxy-targets='[{{#if collection}}"{{collection}}-mytree",{{/if}} "{{viewId}}-term-forms"]'
                                             additional-data='{"mode": "deleted", 
                                                               "iri": "{{iri}}",
-                                                              "label": "{{bindings.0.label.value}}" }'
+                                                              "label": {{#if bindings.0.label.value}}{{stringify bindings.0.label.value}}{{else}}""{{/if}} }'
                             ></mp-event-proxy>
                           </div>
                         </template>
@@ -534,7 +538,7 @@
                                               proxy-event-type='Component.TemplateUpdate' 
                                               proxy-targets='["{{viewId}}-term-forms"]'
                                               additional-data='{"mode": "deleted", 
-                                                                "label": "{{label}}" }'
+                                                                "label": {{#if label}}{{stringify label}}{{else}}""{{/if}} }'
                               ></mp-event-proxy>
                             {{/if}}
                           --]]
@@ -545,7 +549,7 @@
                                             proxy-event-type='Component.TemplateUpdate' 
                                             proxy-targets='[{{#if collection}}"{{collection}}-mytree",{{/if}} "{{viewId}}-term-forms"]'
                                             additional-data='{"mode": "deleted",
-                                                            "label": "{{label}}" }'
+                                                            "label": {{#if label}}{{stringify label}}{{else}}""{{/if}} }'
                             ></mp-event-proxy>
                           </div>
                           
@@ -564,7 +568,7 @@
                                                 "editable": {{editable}},
                                                 "mode": "{{mode}}",
                                                 "viewId": "{{#if iri}}{{iri}}{{else}}{{viewId}}{{/if}}",    
-                                                "label": "{{#if label}}{{label}}{{/if}}",                                           
+                                                "label": {{#if label}}{{stringify label}}{{else}}""{{/if}},                                           
                                                 {{#if resourceLabelPattern}}"resourceLabelPattern": "{{resourceLabelPattern}}",{{/if}} 
                                                 {{#if selectedApiResource}}
                                                   {{#if apiResourceURI}}"apiResourceURI": "{{apiResourceURI}}",{{/if}}

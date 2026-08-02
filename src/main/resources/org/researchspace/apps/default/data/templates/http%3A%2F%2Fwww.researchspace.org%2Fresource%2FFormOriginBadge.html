@@ -1,13 +1,28 @@
 [[!--
   Origin badge — names the act that created this record.
 
-  Four states, derived from what hangs off the entity_form_record_creation:
+  Four states:
     appraised  a D30_Annotation_Event  — candidates were weighed and a decision recorded
-    open       ...whose annotation is typed pending-adjudication — a decision is outstanding
-    imported   a D12_Data_Transfer_Event — copied from a named external source
-    entered    neither — created in the form
+    open       ...whose annotation is typed pending-adjudication AND has not since been
+               settled — a decision is outstanding
+    imported   a D12_Data_Transfer_Event on the creation — copied from a named source
+    entered    none of those — created in the form
 
-  Absence of machine provenance is the normal case (~98% of members) and is NOT a
+  ANCHOR. An appraisal reaches its member two ways and both are live:
+    a) the annotation's own arc   ?appraisal L48_created_annotation/J30_has_domain <member>
+    b) the creation event         <member> …/L11i_was_output_of/P134_continued ?appraisal
+  (b) alone — which is all this query used to check — misses every ENRICHMENT act, run
+  over a member that already existed and whose creation predates it. Measured: 22
+  appraised members were being badged "Entered". (a) alone misses bare pendings and acts
+  that created no annotation. See FormAlignmentProvenance for the full reckoning.
+
+  SETTLED DEFERRALS. The model is monotone: an act that closes a deferral adds an
+  alignment, it does not retract the pending D29. So a surviving pending is not evidence
+  that a question is still open, and a member whose deferral was settled 23 minutes later
+  must not sit on the dashboard asking for attention forever. A pending counts as open
+  only while no later alignment carries the same J30/J31 pair.
+
+  Absence of machine provenance is the normal case (~97% of members) and is NOT a
   defect. Only "open" is styled with colour, because it is the only state that asks
   for the operator's time.
 
@@ -18,7 +33,7 @@
     showSentence   also render the explanatory sentence inline, instead of on hover
 --]]
 
-<semantic-query query='SELECT DISTINCT ?state ?source ?when ?actor ?actorName ?agent WHERE {
+<semantic-query query='SELECT DISTINCT ?state ?source ?when ?appraisedWhen ?actor ?actorName ?appraisedBy ?appraisedByName ?agent WHERE {
                           BIND(<{{node}}> AS ?entity)
 
                           ?entity crm:P129i_is_subject_of ?rec .
@@ -33,14 +48,42 @@
                                      ?actorAppellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
                                                        crm:P190_has_symbolic_content ?actorName }
 
-                          OPTIONAL { ?creation crm:P134_continued ?appraisal .
-                                     ?appraisal a crmdig:D30_Annotation_Event }
-                          OPTIONAL { ?creation crm:P134_continued ?agentEvent .
-                                     ?agentEvent crmdig:L23_used_software_or_firmware ?agent }
-                          OPTIONAL { ?creation crm:P134_continued ?openAppraisal .
-                                     ?openAppraisal crmdig:L48_created_annotation ?pending .
+                          OPTIONAL { { ?creation crm:P134_continued ?appraisal }
+                                     UNION
+                                     { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                                     ?appraisal a crmdig:D30_Annotation_Event .
+                                     [[!-- the act carries its own date; the creation date is a
+                                           different fact and would misdate an enrichment act by
+                                           however long the record existed before it --]]
+                                     OPTIONAL { ?appraisal crm:P4_has_time-span/crm:P82_at_some_time_within ?appraisedWhen }
+                                     OPTIONAL { ?appraisal crmdig:L23_used_software_or_firmware ?agent }
+                                     [[!-- and its own actor: whoever appraised is rarely whoever
+                                           first keyed the record in --]]
+                                     OPTIONAL { ?appraisal crm:P14_carried_out_by ?appraisedBy }
+                                     OPTIONAL { ?appraisal crm:P14_carried_out_by ?namedAppraiser .
+                                                ?namedAppraiser crm:P1_is_identified_by ?appraiserAppellation .
+                                                ?appraiserAppellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                                                                      crm:P190_has_symbolic_content ?appraisedByName } }
+
+                          OPTIONAL { { ?creation crm:P134_continued ?openAppraisal }
+                                     UNION
+                                     { ?openAppraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                                     ?openAppraisal a crmdig:D30_Annotation_Event ;
+                                                    crmdig:L48_created_annotation ?pending .
                                      ?pending crm:P2_has_type ?pendingType .
-                                     FILTER(STRENDS(STR(?pendingType), "/pending-adjudication")) }
+                                     FILTER(STRENDS(STR(?pendingType), "/pending-adjudication"))
+
+                                     [[!-- monotone model: a settled deferral keeps its D29, so
+                                           without this the badge would ask for a decision that
+                                           was already made. A pending with no J30/J31 cannot
+                                           match the inner pattern, so it correctly stays open. --]]
+                                     FILTER NOT EXISTS { ?pending crminf:J30_has_domain ?pendingDomain ;
+                                                                  crminf:J31_has_range  ?pendingTarget .
+                                                         ?later crminf:J30_has_domain ?pendingDomain ;
+                                                                crminf:J31_has_range  ?pendingTarget ;
+                                                                crm:P2_has_type ?laterType .
+                                                         FILTER(STRENDS(STR(?laterType), "/alignment")) } }
+
                           OPTIONAL { ?creation crm:P134_continued ?import .
                                      ?import a crmdig:D12_Data_Transfer_Event ;
                                              crmdig:L14_transferred ?source }
@@ -48,7 +91,7 @@
                           BIND( IF(BOUND(?pending),  "open",
                                 IF(BOUND(?appraisal),"appraised",
                                 IF(BOUND(?source),   "imported", "entered"))) AS ?state)
-                        } LIMIT 1'
+                        } ORDER BY DESC(?appraisedWhen) LIMIT 1'
 
                 template='{{> originBadge}}'>
 
@@ -110,17 +153,24 @@
   <template id='sentence'>
     {{#switch bindings.0.state.value}}
 
+      [[!-- the appraisal date, not the record's: an enrichment act can run years after the
+            member was created, and dating it to the creation would be a false statement
+            about when the candidates were weighed. Falls back to the creation date only
+            for records that never carried an act date of their own. --]]
       {{#case "appraised" break=true}}
-        Candidates were weighed against stated criteria{{#if bindings.0.when.value}}
-        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}}{{#if bindings.0.actor.value}}
-        by {{#if bindings.0.actorName.value}}{{bindings.0.actorName.value}}{{else}}<mp-label iri='{{bindings.0.actor.value}}'></mp-label>{{/if}}{{/if}}{{#if bindings.0.agent.value}},
+        Candidates were weighed against stated criteria{{#if bindings.0.appraisedWhen.value}}
+        on {{dateTimeFormat bindings.0.appraisedWhen.value "DD/MM/YYYY"}}{{else}}{{#if bindings.0.when.value}}
+        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}}{{/if}}{{#if bindings.0.appraisedBy.value}}
+        by {{#if bindings.0.appraisedByName.value}}{{bindings.0.appraisedByName.value}}{{else}}<mp-label iri='{{bindings.0.appraisedBy.value}}'></mp-label>{{/if}}{{else}}{{#if bindings.0.actor.value}}
+        by {{#if bindings.0.actorName.value}}{{bindings.0.actorName.value}}{{else}}<mp-label iri='{{bindings.0.actor.value}}'></mp-label>{{/if}}{{/if}}{{/if}}{{#if bindings.0.agent.value}},
         assisted by <mp-label iri='{{bindings.0.agent.value}}'></mp-label>{{/if}}.
         The criteria and the evidence are on the Metadata tab.
       {{/case}}
 
       {{#case "open" break=true}}
-        An appraisal ran{{#if bindings.0.when.value}}
-        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}} and did not conclude —
+        An appraisal ran{{#if bindings.0.appraisedWhen.value}}
+        on {{dateTimeFormat bindings.0.appraisedWhen.value "DD/MM/YYYY"}}{{else}}{{#if bindings.0.when.value}}
+        on {{dateTimeFormat bindings.0.when.value "DD/MM/YYYY"}}{{/if}}{{/if}} and did not conclude —
         the candidates could not be told apart from the evidence available.
         A decision is outstanding; the reasoning is on the Metadata tab.
       {{/case}}

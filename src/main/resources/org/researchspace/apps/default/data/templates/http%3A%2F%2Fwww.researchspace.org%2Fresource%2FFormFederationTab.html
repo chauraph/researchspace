@@ -104,12 +104,30 @@
                 </div>
 
                 [[!-- names in the four working languages --]]
+                [[!-- The local half is a DISTINCT sub-select, and that is not tidiness.
+
+                      A person record carries the SAME target under two predicates —
+                      la:equivalent from the alignment model and owl:sameAs as the flat
+                      triple; 48 pairs in this store. A UNION of the two therefore yields
+                      every identifier twice, which is why the tab used to show two of
+                      every name and two of every image.
+
+                      The dedup is a sub-select rather than a DISTINCT on the outer
+                      projection so that it happens BEFORE the SERVICE clause, which is
+                      driven by the bindings of ?external. An outer DISTINCT fixes the
+                      display just as well — both forms return 4 rows in ~0.45s here — but
+                      it leaves the duplicate binding in front of the remote call and
+                      relies on the engine to collapse it. Deduplicating first does not.
+
+                      VALUES rather than UNION so a third linking predicate is one line. --]]
                 <semantic-query query='SELECT ?external ?lang ?label WHERE {
-                                          BIND(<{{node}}> AS ?entity)
-                                          { ?entity <https://linked.art/ns/terms/equivalent> ?external }
-                                          UNION
-                                          { ?entity <http://www.w3.org/2002/07/owl#sameAs> ?external }
-                                          FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
+                                          { SELECT DISTINCT ?external WHERE {
+                                              BIND(<{{node}}> AS ?entity)
+                                              VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
+                                                                      <http://www.w3.org/2002/07/owl#sameAs> }
+                                              ?entity ?linkPredicate ?external .
+                                              FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
+                                          } }
                                           SERVICE <https://query.wikidata.org/sparql> {
                                             ?external <http://www.w3.org/2000/01/rdf-schema#label> ?label .
                                             FILTER(LANG(?label) IN ("en", "fr", "de", "it"))
@@ -134,12 +152,18 @@
                 </semantic-query>
 
                 [[!-- depicted image, via P18 on Wikimedia Commons --]]
+                [[!-- same DISTINCT sub-select as the names query above — see the note
+                      there. An item can legitimately carry several P18 images, so the
+                      outer query must not be DISTINCT on ?image alone; the dedup belongs
+                      to the identifier, not the picture. --]]
                 <semantic-query query='SELECT ?external ?image WHERE {
-                                          BIND(<{{node}}> AS ?entity)
-                                          { ?entity <https://linked.art/ns/terms/equivalent> ?external }
-                                          UNION
-                                          { ?entity <http://www.w3.org/2002/07/owl#sameAs> ?external }
-                                          FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
+                                          { SELECT DISTINCT ?external WHERE {
+                                              BIND(<{{node}}> AS ?entity)
+                                              VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
+                                                                      <http://www.w3.org/2002/07/owl#sameAs> }
+                                              ?entity ?linkPredicate ?external .
+                                              FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
+                                          } }
                                           SERVICE <https://query.wikidata.org/sparql> {
                                             ?external <http://www.wikidata.org/prop/direct/P18> ?image .
                                           }
@@ -150,10 +174,56 @@
                     <div class="federation-images">
                       {{#each bindings}}
                         <div class="federation-image">
-                          [[!-- Commons FilePath values arrive percent-encoded --]]
-                          <a href="[[decodeUriComponent '{{image.value}}']]"
-                             title="[[decodeUriComponent '{{image.value}}']]" target="_blank">
-                            <img src="[[decodeUriComponent '{{image.value}}']]"
+                          [[!-- The value is used as it arrives. It is percent-encoded —
+                                …/Special:FilePath/Hans%20von%20Hallwyl%20…%28J.%20Rieter%29.png
+                                — and that is what a URL is supposed to look like; decoding it
+                                would put literal spaces and parentheses in an href.
+
+                                This carried [[decodeUriComponent '{{image.value}}']] until the
+                                backend render was inspected. decodeUriComponent is a BACKEND
+                                helper, so its argument was the literal string "{{image.value}}",
+                                which has no escapes to decode: it emitted {{image.value}}
+                                unchanged and the client filled it in afterwards. A no-op that
+                                read as a precaution. Had it ever received a real value it would
+                                have been worse than nothing — URLDecoder.decode is form
+                                decoding, so a "+" in a Commons filename becomes a space. --]]
+
+                          [[!-- ?width on the <img> only. P18 returns a Special:FilePath URL,
+                                which is MediaWiki's redirect service and honours width by
+                                serving a server-side thumbnail; measured on Hans von Hallwyl,
+                                4,140,232 bytes full against 154,230 at width=300. The tile is
+                                drawn at height 180, so the full file was ~16x more than the
+                                page can use.
+
+                                The number is a FLOOR, not a size. MediaWiki rounds up to the
+                                next pre-rendered bucket for that file, and the buckets differ
+                                per file — on ZHB_SoSa_Portrait_003_cropped.jpg they are 250,
+                                330, 500, 960, so width=400 delivers 500px-… and width=501
+                                jumps to 960px. That rounding is a feature: it lands on an
+                                already-generated, cached thumbnail instead of forcing a
+                                render. Asking above the original is safe too — MediaWiki
+                                serves the original rather than upscaling.
+
+                                400 rather than 180 because the parameter sets WIDTH while the
+                                tile is constrained by HEIGHT. A landscape image at height 180
+                                is ~270 CSS px wide, so a 2x display wants ~540 real px; a
+                                portrait needs far less. 400 buys the landscape case, and
+                                costs the portrait one bucket (500px/131KB against
+                                330px/55KB here) out of a 1.4MB original. Drop it to 300 if
+                                the tiles are mostly portraits and the extra 76KB matters.
+
+                                The href and the copied IRI stay on the bare value: the link
+                                should open the real asset and the clipboard should carry the
+                                identifier, not a rendering of it.
+
+                                This works only while P18 yields the Special:FilePath form. The
+                                URL it redirects TO, upload.wikimedia.org/..., is a plain file
+                                server that ignores the parameter and returns all 4 MB without
+                                erroring — a silent regression if a future capture ever stores
+                                the resolved URL instead. --]]
+                          <a href="{{image.value}}"
+                             title="{{image.value}}" target="_blank">
+                            <img src="{{image.value}}?width=400"
                                  alt="Image from Wikimedia Commons"
                                  height="180" style="max-width: 15vw; object-fit: contain;">
                           </a>

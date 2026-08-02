@@ -1,37 +1,60 @@
 [[!--
-  Alignment provenance — the appraisal that decided this record's external identifiers,
-  and the service calls it was decided from.
+  Alignment provenance — the appraisal acts that decided this record's external
+  identifiers, and the service calls they were decided from.
 
-  The appraisal hangs off exactly the node the "Imported from" row above reads:
-      ?creation crm:P134_continued ?x
-  A D12_Data_Transfer_Event there means imported; a D30_Annotation_Event means adjudicated.
-  Same slot, same question, so this sits in the same tab.
+  ANCHOR. An appraisal reaches its member two different ways, and both are live:
 
-  A resolution run is shared — one reconciliation call can be the evidence for twenty
-  members — so it is never presented as belonging to this record.
+    a) the annotation's own arc      ?appraisal L48_created_annotation/J30_has_domain <member>
+    b) the form-record creation      <member> P129i_is_subject_of/L11i_was_output_of/P134_continued ?appraisal
 
-  Expects the client-side variable {{node}}.
+  (a) is how ENRICHMENT appraisals attach — acts run over members that already existed,
+  whose creation event predates the act and does not continue into it. (b) is how NEW
+  MINTS attach, and it is the only path for two shapes that carry no J30 at all: bare
+  pending-adjudication D29s, and appraisal acts that created no annotation.
+
+  Measured on the two authorities in the store: 47 acts, of which 23 are invisible to
+  (b) and 7 are invisible to (a). Neither anchor alone is sufficient, so every query
+  here UNIONs them. New mints satisfy both; DISTINCT/GROUP BY absorbs the duplicate.
+
+  MULTIPLE ACTS PER MEMBER. Appraisals split per subject and per rule, so one member can
+  carry several — Head defence has two, an act that deferred and a later act that closed
+  the deferral. One block is rendered per act, newest first, each with its own date,
+  actor, rules and adopted list. bindings.0 would have shown only the newest and silently
+  dropped the reasoning that preceded it.
+
+  Expects the client-side variables {{node}} and {{viewId}}.
 --]]
 
-<semantic-if query='ASK { <{{node}}> crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
-                          ?creation crm:P134_continued ?appraisal .
-                          ?appraisal a crmdig:D30_Annotation_Event . }'
+<semantic-if query='ASK { ?appraisal a crmdig:D30_Annotation_Event .
+                          { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain <{{node}}> }
+                          UNION
+                          { <{{node}}> crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
+                        }'
              then='{{> provenance}}'>
 
   <template id='provenance'>
 
-    <semantic-query query='SELECT ?appraisal ?when ?actor ?actorName ?agent ?note
-                                  (GROUP_CONCAT(DISTINCT ?criterionLabel; separator=" · ") AS ?criteria)
-                                  (COUNT(DISTINCT ?alignedTo) AS ?alignedCount)
-                                  (COUNT(DISTINCT ?run) AS ?runCount)
+    [[!-- ?entity is carried through the query on purpose: a semantic-query renders its
+          template against the result bindings, so a bare {{node}} inside a NESTED query
+          resolves to nothing. Same pattern as the authority-delete proxy in
+          SimpleCollectionBrowser. --]]
+    <semantic-query query='SELECT DISTINCT ?entity ?appraisal ?appraisalId ?when ?actor ?actorName ?agent ?note
+                                  (COUNT(DISTINCT ?criterion) AS ?ruleCount)
                            WHERE {
                               BIND(<{{node}}> AS ?entity)
-                              ?entity crm:P129i_is_subject_of ?rec .
-                              ?rec crmdig:L11i_was_output_of ?creation .
-                              ?creation crm:P134_continued ?appraisal .
-                              ?appraisal a crmdig:D30_Annotation_Event .
 
-                              OPTIONAL { ?appraisal crm:P4_has_time-span/crm:P82_at_some_time_within ?when }
+                              ?appraisal a crmdig:D30_Annotation_Event .
+                              { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                              UNION
+                              { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
+
+                              [[!-- acts carry their own time-span now; the creation event is the
+                                    fallback for older records that recorded it only there --]]
+                              OPTIONAL { ?appraisal crm:P4_has_time-span/crm:P82_at_some_time_within ?appraisalWhen }
+                              OPTIONAL { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
+                                         ?creation crm:P4_has_time-span/crm:P82_at_some_time_within ?creationWhen }
+                              BIND(COALESCE(?appraisalWhen, ?creationWhen) AS ?when)
+
                               OPTIONAL { ?appraisal crm:P14_carried_out_by ?actor }
                               OPTIONAL { ?appraisal crm:P14_carried_out_by ?namedActor .
                                          ?namedActor crm:P1_is_identified_by ?actorAppellation .
@@ -39,105 +62,243 @@
                                                            crm:P190_has_symbolic_content ?actorName }
                               OPTIONAL { ?appraisal crmdig:L23_used_software_or_firmware ?agent }
                               OPTIONAL { ?appraisal crm:P3_has_note ?note }
-                              OPTIONAL { ?appraisal crm:P33_used_specific_technique ?criterion .
-                                         ?criterion rdfs:label ?criterionLabel }
 
-                              [[!-- count only external alignments: every annotation is typed
-                                    "alignment", they differ by J32 --]]
-                              OPTIONAL { ?appraisal crmdig:L48_created_annotation ?alignment .
-                                         ?alignment crminf:J32_has_property_type <https://linked.art/ns/terms/equivalent> ;
-                                                    crminf:J31_has_range ?alignedTo }
+                              [[!-- gate only: the rules are listed with their notes by a nested
+                                    query below. Keyed on the criterion IRI, not on its label —
+                                    the rule catalogue lives in its own authority
+                                    (vocab/resolution_criterion), and a deployment that has the
+                                    acts but not the catalogue must still show the row. --]]
+                              OPTIONAL { ?appraisal crm:P32_used_general_technique ?criterion }
 
-                              OPTIONAL { ?appraisal crm:P134_continued ?run .
-                                         ?run a crmdig:D10_Software_Execution ;
-                                              crmdig:L13_used_parameters ?runParameters }
-                           } GROUP BY ?appraisal ?when ?actor ?actorName ?agent ?note'
+                              BIND(REPLACE(STR(?appraisal), "^.*/", "") AS ?appraisalId)
+                           }
+                           GROUP BY ?entity ?appraisal ?appraisalId ?when ?actor ?actorName ?agent ?note
+                           ORDER BY DESC(?when)'
 
-                    template='{{> table}}'>
+                    template='{{> acts}}'>
 
-      <template id='table'>
+      <template id='acts'>
         <div class="semantic-form-input-title">Alignment provenance</div>
-        <div class="table-expanded">
-          <table class="table metadata-table">
-            <tbody>
 
-              <tr class="standard-row">
-                <td class="table-title" style="width: 200px;"><b>Appraised</b></td>
-                <td class="table-description">
-                  {{#if bindings.0.when.value}}{{dateTimeFormat bindings.0.when.value "DD/MM/YYYY, h:mm a"}}{{/if}}
-                  {{#if bindings.0.actor.value}}
-                    by
-                    {{#if bindings.0.actorName.value}}
-                      <semantic-link-container uri="http://www.researchspace.org/resource/ThinkingFrames"
-                                               urlqueryparam-view='resource-editor'
-                                               urlqueryparam-entity-type-config='http://www.researchspace.org/resource/system/resource_configurations_container/data/User'
-                                               urlqueryparam-resource-iri="{{bindings.0.actor.value}}"
-                                               urlqueryparam-mode='edit'>
-                        <div style="text-decoration: underline; cursor: pointer;">{{bindings.0.actorName.value}}</div>
-                      </semantic-link-container>
-                    {{else}}
-                      <mp-label iri='{{bindings.0.actor.value}}'></mp-label>
+        {{#each bindings}}
+          <div class="table-expanded provenance-act">
+            <table class="table metadata-table">
+              <tbody>
+
+                <tr class="standard-row">
+                  <td class="table-title" style="width: 200px;"><b>Appraised</b></td>
+                  <td class="table-description">
+                    {{#if when.value}}{{dateTimeFormat when.value "DD/MM/YYYY, h:mm a"}}{{/if}}
+                    {{#if actor.value}}
+                      by
+                      {{#if actorName.value}}
+                        <semantic-link-container uri="http://www.researchspace.org/resource/ThinkingFrames"
+                                                 urlqueryparam-view='resource-editor'
+                                                 urlqueryparam-entity-type-config='http://www.researchspace.org/resource/system/resource_configurations_container/data/User'
+                                                 urlqueryparam-resource-iri="{{actor.value}}"
+                                                 urlqueryparam-mode='edit'>
+                          <div style="text-decoration: underline; cursor: pointer;">{{actorName.value}}</div>
+                        </semantic-link-container>
+                      {{else}}
+                        <mp-label iri='{{actor.value}}'></mp-label>
+                      {{/if}}
                     {{/if}}
-                  {{/if}}
-                  {{#if bindings.0.agent.value}}
-                    <span class="provenance-agent">
-                      <rs-icon icon-type="rounded" icon-name="smart_toy" symbol="true"></rs-icon>
-                      <mp-label iri='{{bindings.0.agent.value}}'></mp-label>
-                    </span>
-                  {{/if}}
-                </td>
-              </tr>
-
-              {{#if bindings.0.criteria.value}}
-                <tr class="standard-row">
-                  <td class="table-title" style="width: 200px;"><b>Criteria</b></td>
-                  <td class="table-description">{{bindings.0.criteria.value}}</td>
+                    {{#if agent.value}}
+                      <span class="provenance-agent">
+                        <rs-icon icon-type="rounded" icon-name="smart_toy" symbol="true"></rs-icon>
+                        <mp-label iri='{{agent.value}}'></mp-label>
+                      </span>
+                    {{/if}}
+                  </td>
                 </tr>
-              {{/if}}
 
-              {{#if bindings.0.note.value}}
+                [[!-- The rules this act admitted under, tiered.
+
+                      Tier 1, the badges: which rules fired, scannable in one glance and
+                      comparable across acts — three badges read as a shape, three
+                      paragraphs do not.
+                      Tier 2, the popover: what the rule actually says. A bare "sortal
+                      agreement" means nothing to a reader who did not write the
+                      catalogue, and judging whether an admission was sound needs the
+                      rule's text. The notes run to 4000 characters, so the popover
+                      scrolls rather than growing.
+
+                      Same badge + popover pattern as the origin badge in the header. --]]
+                {{#ifCond ruleCount.value ">" "0"}}
+                  <tr class="standard-row">
+                    <td class="table-title" style="width: 200px;"><b>Admitted under</b></td>
+                    <td class="table-description">
+                      <semantic-query query='SELECT DISTINCT ?criterion ?label ?note WHERE {
+                                                <{{appraisal.value}}> crm:P32_used_general_technique ?criterion .
+                                                OPTIONAL { ?criterion rdfs:label ?label }
+                                                OPTIONAL { ?criterion crm:P3_has_note ?note }
+                                             } ORDER BY ?label'
+                                      template='{{> rules}}'>
+                        <template id='rules'>
+                          <div class="provenance-rules">
+                            {{#each bindings}}
+                              <mp-popover>
+                                <mp-popover-trigger placement="bottom" trigger='["hover", "focus", "click"]'>
+                                  <span class="badge badge--secondary provenance-rule">
+                                    <rs-icon icon-type="rounded" icon-name="rule" symbol="true"></rs-icon>
+                                    {{#if label.value}}{{label.value}}{{else}}<mp-label iri='{{criterion.value}}'></mp-label>{{/if}}
+                                  </span>
+                                </mp-popover-trigger>
+                                <mp-popover-content>
+                                  <div class="provenance-rule-popover">
+                                    {{#if note.value}}
+                                      {{note.value}}
+                                    {{else}}
+                                      [[!-- the rule catalogue is not loaded here; the badge still
+                                            names the rule, so say what is missing rather than
+                                            opening an empty popover --]]
+                                      <span class="provenance-muted">No definition is recorded for this rule.</span>
+                                    {{/if}}
+                                  </div>
+                                </mp-popover-content>
+                              </mp-popover>
+                            {{/each}}
+                          </div>
+                        </template>
+                      </semantic-query>
+                    </td>
+                  </tr>
+                {{/ifCond}}
+
+                {{#if note.value}}
+                  <tr class="standard-row">
+                    <td class="table-title" style="width: 200px;"><b>Decision note</b></td>
+                    <td class="table-description">{{note.value}}</td>
+                  </tr>
+                {{/if}}
+
+                [[!-- Adopted alignments, per act rather than per member: with several acts on
+                      one member a shared list would repeat the same targets under every date
+                      and hide which act asserted what.
+
+                      Selected by verdict type (…/alignment), NOT by matching one hard-coded
+                      predicate. J32 now carries the four skos:*Match predicates as well as
+                      la:equivalent, and filtering on any one of them renders "No alignment
+                      adopted" beside a member that visibly carries the flat triple. Typing
+                      the verdict also survives the next predicate that gets added.
+
+                      The predicate is shown, not hidden: exactMatch and closeMatch to the
+                      same Getty id are different claims, and a correction that only changes
+                      the strength was previously invisible in this UI. --]]
                 <tr class="standard-row">
-                  <td class="table-title" style="width: 200px;"><b>Decision note</b></td>
-                  <td class="table-description">{{bindings.0.note.value}}</td>
+                  <td class="table-title" style="width: 200px;"><b>Adopted</b></td>
+                  <td class="table-description">
+                    <semantic-query query='SELECT DISTINCT ?alignedTo ?predicateLabel ?why WHERE {
+                                              <{{appraisal.value}}> crmdig:L48_created_annotation ?alignment .
+                                              ?alignment crm:P2_has_type ?verdictType .
+                                              FILTER(STRENDS(STR(?verdictType), "/alignment"))
+                                              ?alignment crminf:J31_has_range ?alignedTo .
+
+                                              [[!-- External targets only. Selecting by verdict type
+                                                    also catches alignments whose J32 is
+                                                    P1_is_identified_by — an act minting a LOCAL
+                                                    identifier node for the member. That is a real
+                                                    adoption but not an external one, and rendering
+                                                    it here put an internal IRI in the list as a
+                                                    dead outbound link. The local base is derived
+                                                    from the member being viewed rather than
+                                                    hard-coded, so this holds for any deployment
+                                                    namespace. --]]
+                                              BIND(REPLACE(STR(<{{entity.value}}>), "/vocab/.*$", "/") AS ?localBase)
+                                              FILTER(!STRSTARTS(STR(?alignedTo), ?localBase))
+
+                                              [[!-- one act can cover several members; keep this
+                                                    members rows, and keep annotations that state
+                                                    no domain at all --]]
+                                              { ?alignment crminf:J30_has_domain <{{entity.value}}> }
+                                              UNION
+                                              { FILTER NOT EXISTS { ?alignment crminf:J30_has_domain ?anyDomain } }
+
+                                              OPTIONAL { ?alignment crminf:J32_has_property_type ?predicate }
+                                              OPTIONAL { ?alignment crm:P3_has_note ?why }
+                                              BIND(REPLACE(STR(?predicate), "^.*[#/]", "") AS ?predicateLabel)
+                                           } ORDER BY ?predicateLabel ?alignedTo'
+                                    template='{{> adopted}}'
+                                    no-result-template='{{> noneAdopted}}'>
+                      <template id='adopted'>
+                        <div class="provenance-adopted">
+                          {{#each bindings}}
+                            <div class="provenance-adopted-row">
+                              {{#if predicateLabel.value}}
+                                <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                              {{/if}}
+                              <a class="text-link-action" target="_blank"
+                                 href="{{alignedTo.value}}" title="{{alignedTo.value}}">{{alignedTo.value}}</a>
+                              [[!-- the grounds moved from the act onto the individual
+                                    proposition, so this is now the only place the reasoning
+                                    for one target can be read --]]
+                              {{#if why.value}}
+                                <mp-popover>
+                                  <mp-popover-trigger placement="bottom" trigger='["click", "focus"]'>
+                                    <span class="provenance-why">
+                                      <rs-icon icon-type="rounded" icon-name="info" symbol="true"></rs-icon>
+                                      grounds
+                                    </span>
+                                  </mp-popover-trigger>
+                                  <mp-popover-content>
+                                    <div class="provenance-rule-popover">{{why.value}}</div>
+                                  </mp-popover-content>
+                                </mp-popover>
+                              {{/if}}
+                            </div>
+                          {{/each}}
+                        </div>
+                      </template>
+                      <template id='noneAdopted'>
+                        <span class="provenance-muted">No alignment adopted</span>
+                      </template>
+                    </semantic-query>
+                  </td>
                 </tr>
-              {{/if}}
 
-              [[!-- adopted alignments, listed rather than counted --]]
-              <tr class="standard-row">
-                <td class="table-title" style="width: 200px;"><b>Adopted</b></td>
-                <td class="table-description">
-                  <semantic-query query='SELECT DISTINCT ?alignedTo WHERE {
-                                            <{{node}}> crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
-                                            ?creation crm:P134_continued ?appraisal .
-                                            ?appraisal a crmdig:D30_Annotation_Event ;
-                                                       crmdig:L48_created_annotation ?alignment .
-                                            ?alignment crminf:J32_has_property_type <https://linked.art/ns/terms/equivalent> ;
-                                                       crminf:J31_has_range ?alignedTo .
-                                          } ORDER BY ?alignedTo'
-                                  template='{{> adopted}}'
-                                  no-result-template='{{> noneAdopted}}'>
-                    <template id='adopted'>
-                      <div class="provenance-adopted">
-                        {{#each bindings}}
-                          <a class="text-link-action" target="_blank"
-                             href="{{alignedTo.value}}" title="{{alignedTo.value}}">{{alignedTo.value}}</a>
-                        {{/each}}
-                      </div>
-                    </template>
-                    <template id='noneAdopted'>
-                      <span class="provenance-muted">No alignment adopted</span>
-                    </template>
-                  </semantic-query>
-                </td>
-              </tr>
+              </tbody>
+            </table>
+          </div>
+        {{/each}}
+      </template>
+    </semantic-query>
 
-              {{#if bindings.0.runCount.value}}
+    [[!-- Evidence, once per member rather than once per act: a resolution run is shared —
+          one reconciliation call is the evidence behind up to sixteen members here — so it
+          is never presented as belonging to one act or one record. The runs are listed in
+          the dialog with their own timestamps.
+
+          FILTER NOT EXISTS is a guard: appraisal acts are themselves typed
+          D10_Software_Execution as well as D30_Annotation_Event, so "?run a D10" does not
+          on its own mean "is a service call". Nothing leaks in today — no act continues
+          into another act — but the count must not depend on that staying true. --]]
+    <semantic-query query='SELECT ?viewId (COUNT(DISTINCT ?run) AS ?runCount) WHERE {
+                              BIND("{{viewId}}" AS ?viewId)
+                              BIND(<{{node}}> AS ?entity)
+                              ?appraisal a crmdig:D30_Annotation_Event .
+                              { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                              UNION
+                              { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
+                              ?appraisal crm:P134_continued ?run .
+                              ?run a crmdig:D10_Software_Execution .
+                              FILTER NOT EXISTS { ?run a crmdig:D30_Annotation_Event }
+                           } GROUP BY ?viewId'
+                    template='{{> evidence}}'>
+      <template id='evidence'>
+        {{#ifCond bindings.0.runCount.value ">" "0"}}
+          <div class="table-expanded">
+            <table class="table metadata-table">
+              <tbody>
                 <tr class="standard-row">
                   <td class="table-title" style="width: 200px;"><b>Evidence</b></td>
                   <td class="table-description">
-                    <mp-overlay-dialog id="{{viewId}}-alignment-evidence"
+                    [[!-- modal-xlSize only. preview_modal additionally sets
+                          .modal-body { display: flex } for the side-by-side media preview,
+                          which makes the run cards flex items sized to their longest line
+                          instead of filling the dialog. --]]
+                    <mp-overlay-dialog id="{{bindings.0.viewId.value}}-alignment-evidence"
                                        type="modal"
-                                       class="modal-xlSize preview_modal"
+                                       class="modal-xlSize"
                                        title="Alignment evidence">
                       <mp-overlay-dialog-trigger>
                         <div style="text-decoration: underline; cursor: pointer;">
@@ -150,44 +311,90 @@
                     </mp-overlay-dialog>
                   </td>
                 </tr>
-              {{/if}}
-
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        {{/ifCond}}
       </template>
     </semantic-query>
 
-    [[!-- an appraisal that did not conclude. Its own table rather than a row in the one
-          above: a semantic-query is not a <tr>, and the browser would hoist it out of
-          <tbody>. Styled as an outstanding decision, not as an error — the services
-          behaved correctly, the world is ambiguous. --]]
-    <semantic-query query='SELECT ?pendingNote WHERE {
+    [[!-- Deferrals. Its own table rather than a row above: a semantic-query is not a <tr>,
+          and the browser would hoist it out of <tbody>.
+
+          The model is monotone — a later act that closes a deferral adds an alignment, it
+          does not retract the pending D29 — so a pending is NOT evidence that a question
+          is still open. Head defence carries a pending closeMatch on aat:300036794 raised
+          at 08:48 and an alignment on the same target minted at 09:11. ?later detects
+          exactly that, and the two are shown differently: still open, or settled and kept
+          for the record. Deleting the settled one from the display would hide that the
+          question was ever raised, which is the part worth keeping.
+
+          Styled as an outstanding decision, never as an error — the services behaved
+          correctly, the world is ambiguous. --]]
+    <semantic-query query='SELECT DISTINCT ?pending ?pendingNote ?target ?predicateLabel ?resolved WHERE {
                               BIND(<{{node}}> AS ?entity)
-                              ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
-                              ?creation crm:P134_continued ?appraisal .
+                              ?appraisal a crmdig:D30_Annotation_Event .
+                              { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                              UNION
+                              { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
+
                               ?appraisal crmdig:L48_created_annotation ?pending .
                               ?pending crm:P2_has_type ?pendingType .
                               FILTER(STRENDS(STR(?pendingType), "/pending-adjudication"))
+
                               OPTIONAL { ?pending crm:P3_has_note ?pendingNote }
-                           } LIMIT 1'
+                              OPTIONAL { ?pending crminf:J31_has_range ?target }
+                              OPTIONAL { ?pending crminf:J32_has_property_type ?predicate }
+                              BIND(REPLACE(STR(?predicate), "^.*[#/]", "") AS ?predicateLabel)
+
+                              [[!-- a later act that settled this same domain/target pair.
+                                    BOUND over an OPTIONAL rather than BIND(EXISTS{}) — the
+                                    latter is the shakier of the two in Blazegraph. --]]
+                              OPTIONAL { ?pending crminf:J30_has_domain ?pendingDomain ;
+                                                  crminf:J31_has_range ?pendingTarget .
+                                         ?later crminf:J30_has_domain ?pendingDomain ;
+                                                crminf:J31_has_range ?pendingTarget ;
+                                                crm:P2_has_type ?laterType .
+                                         FILTER(STRENDS(STR(?laterType), "/alignment")) }
+                              BIND(BOUND(?later) AS ?resolved)
+                           }'
                     template='{{> pending}}'>
       <template id='pending'>
         <div class="table-expanded">
           <table class="table metadata-table">
             <tbody>
-              <tr class="standard-row">
-                <td class="table-title" style="width: 200px;"><b>Outstanding</b></td>
-                <td class="table-description">
-                  <span class="badge badge--action origin-badge">
-                    <rs-icon icon-type="rounded" icon-name="question_mark" symbol="true"></rs-icon>
-                    Awaiting a decision
-                  </span>
-                  {{#if bindings.0.pendingNote.value}}
-                    <div class="provenance-pending-note">{{bindings.0.pendingNote.value}}</div>
-                  {{/if}}
-                </td>
-              </tr>
+              {{#each bindings}}
+                <tr class="standard-row">
+                  <td class="table-title" style="width: 200px;">
+                    <b>{{#ifCond resolved.value "===" "true"}}Was deferred{{else}}Outstanding{{/ifCond}}</b>
+                  </td>
+                  <td class="table-description">
+                    {{#ifCond resolved.value "===" "true"}}
+                      <span class="badge badge--default origin-badge">
+                        <rs-icon icon-type="rounded" icon-name="check" symbol="true"></rs-icon>
+                        Settled by a later appraisal
+                      </span>
+                    {{else}}
+                      <span class="badge badge--action origin-badge">
+                        <rs-icon icon-type="rounded" icon-name="question_mark" symbol="true"></rs-icon>
+                        Awaiting a decision
+                      </span>
+                    {{/ifCond}}
+                    {{#if target.value}}
+                      <div class="provenance-adopted-row provenance-pending-target">
+                        {{#if predicateLabel.value}}
+                          <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                        {{/if}}
+                        <a class="text-link-action" target="_blank"
+                           href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                      </div>
+                    {{/if}}
+                    {{#if pendingNote.value}}
+                      <div class="provenance-pending-note">{{pendingNote.value}}</div>
+                    {{/if}}
+                  </td>
+                </tr>
+              {{/each}}
             </tbody>
           </table>
         </div>

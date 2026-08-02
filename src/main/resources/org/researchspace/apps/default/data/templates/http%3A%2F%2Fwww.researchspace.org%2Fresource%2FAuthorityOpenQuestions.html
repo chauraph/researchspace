@@ -1,0 +1,126 @@
+[[!--
+  Open questions for one authority — members whose appraisal ran and did not conclude.
+
+  A folded strip above the member list that expands into a jump list. Selecting an entry
+  fires the same two events the row's own edit pencil fires, so it is a shortcut to an
+  existing action rather than a new path:
+      Component.TemplateUpdate -> {{viewId}}-term-forms    open the record
+      LazyTree.Focus           -> {{viewId}}-scheme-tree   scroll and highlight the row
+
+  Why here and not a marker on each tree row:
+
+    semantic-lazy-tree calls renderNodeInfoTemplate() once per rendered node with only
+    {iri, label} in scope, so a query in that template fires once per member — 552
+    requests when the technique authority opens. This is one request for the panel.
+
+    And there is no width to take. Member rows already truncate long names under two
+    action buttons pinned to the right edge of an overflow-hidden row.
+
+  Names only. The adjudication note runs to ~180 characters and names three candidates;
+  it would wreck a 300px panel, so it stays on the Metadata tab of the record you land
+  on. The sidebar locates, the record decides.
+
+  Renders nothing at all when the authority has none — which is the state 31 of 32
+  authorities are in, and it should look like nothing rather than like a zero.
+
+  Expects the client-side variables {{collection}} and {{viewId}}.
+--]]
+
+[[!-- ?viewId is carried through the query on purpose. semantic-query renders its
+      template against the result bindings, not the surrounding context, so a bare
+      {{viewId}} inside <template> resolves to nothing and the event targets come out
+      as "-term-forms". Binding it as a projected variable is the pattern already used
+      further down this file for the authority-delete proxy. --]]
+<semantic-query query='SELECT DISTINCT ?viewId ?member ?name WHERE {
+                          BIND("{{viewId}}" AS ?viewId)
+
+                          ?member crm:P71i_is_listed_in <{{collection}}> .
+
+                          [[!-- Both anchors. Walking the creation chain alone finds only
+                                members minted by the act; an ENRICHMENT act runs over a member
+                                that already existed, and its creation does not continue into
+                                it — which is most of them. See FormAlignmentProvenance. --]]
+                          ?appraisal a crmdig:D30_Annotation_Event ;
+                                     crmdig:L48_created_annotation ?pending .
+                          { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?member }
+                          UNION
+                          { ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
+
+                          ?pending crm:P2_has_type ?pendingType .
+                          FILTER(STRENDS(STR(?pendingType), "/pending-adjudication"))
+
+                          [[!-- and only the ones still open. The model is monotone — closing a
+                                deferral adds an alignment rather than retracting the pending —
+                                so without this the strip would keep offering questions that
+                                have already been answered, which is the fastest way to make an
+                                operator stop trusting it. --]]
+                          FILTER NOT EXISTS { ?pending crminf:J30_has_domain ?pendingDomain ;
+                                                       crminf:J31_has_range  ?pendingTarget .
+                                              ?later crminf:J30_has_domain ?pendingDomain ;
+                                                     crminf:J31_has_range  ?pendingTarget ;
+                                                     crm:P2_has_type ?laterType .
+                                              FILTER(STRENDS(STR(?laterType), "/alignment")) }
+
+                          OPTIONAL { ?member crm:P1_is_identified_by ?appellation .
+                                     ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                                                  crm:P190_has_symbolic_content ?name }
+                       } ORDER BY ?name'
+
+                template='{{> strip}}'>
+
+  <template id='strip'>
+    {{#ifCond bindings.length ">" 0}}
+      <div class="open-questions">
+        <mp-collapsible-div expanded='false' class-name="open-questions-fold">
+
+          <mp-collapsible-div-trigger>
+            [[!-- no chevron of our own: .collapsible-panel-trigger draws one with a
+                  :before and swaps the glyph on expand --]]
+            <div class="open-questions-bar">
+              <span class="open-questions-count">?</span>
+              <span>{{bindings.length}} open
+                {{#ifCond bindings.length "===" 1}}question{{else}}questions{{/ifCond}}</span>
+            </div>
+          </mp-collapsible-div-trigger>
+
+          <mp-collapsible-div-content>
+            <div class="open-questions-list">
+              {{#each bindings}}
+                [[!-- the label goes through {{stringify}}, never inside literal quotes: a
+                      member name can legally contain a double quote (Halberd, "Sempach
+                      type") and it lands verbatim inside a JSON attribute value, which
+                      then fails to parse and takes the whole component down. Handlebars
+                      escapes the helper's output and the HTML parser decodes it again, so
+                      an apostrophe survives too — {{{triple-stash}}} would break on that.
+                      The {{#if}} guard is not decoration: on a missing name stringify
+                      renders nothing and leaves "label": , behind. And the space before
+                      the closing brace is required — {{...}}} parses as a triple-stash and
+                      fails at compile time. --]]
+                <mp-event-trigger id='{{viewId.value}}-openQuestion-jump--{{member.value}}'
+                                  type='Component.TemplateUpdate'
+                                  data='{"iri":"{{member.value}}", "mode":"edit",
+                                         "label": {{#if name.value}}{{stringify name.value}}{{else}}""{{/if}} }'
+                                  targets='["{{viewId.value}}-term-forms"]'>
+                  <div class="open-questions-item" title="{{name.value}}">
+                    <span class="open-questions-item-name">
+                      {{#if name.value}}{{name.value}}{{else}}<mp-label iri='{{member.value}}'></mp-label>{{/if}}
+                    </span>
+                    <rs-icon icon-type="rounded" icon-name="chevron_right" symbol="true"></rs-icon>
+                  </div>
+                </mp-event-trigger>
+
+                [[!-- scroll the tree to the member the record just opened for --]]
+                <mp-event-proxy id='{{viewId.value}}-openQuestion-focus--{{member.value}}'
+                                on-event-source='{{viewId.value}}-openQuestion-jump--{{member.value}}'
+                                proxy-event-type='LazyTree.Focus'
+                                proxy-targets='["{{viewId.value}}-scheme-tree"]'
+                                data='{"iri":"{{member.value}}"}'></mp-event-proxy>
+              {{/each}}
+            </div>
+          </mp-collapsible-div-content>
+
+        </mp-collapsible-div>
+      </div>
+    {{/ifCond}}
+  </template>
+</semantic-query>

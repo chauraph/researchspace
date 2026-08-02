@@ -50,6 +50,91 @@
 }
 
 
+/* ── open questions strip (authority sidebar) ───────────────────────────── */
+
+/* Sits between the New button and the member list, so it never competes with a
+   member name for width — those already truncate under their action buttons. */
+.open-questions {
+    margin: 0 0 10px 0;
+    border: 1px solid $color-action-border;
+    border-radius: $border-radius;
+    background-color: $color-action--op10;
+    overflow: hidden;
+}
+
+.open-questions-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    font-size: $font-size-small;
+    font-weight: 600;
+    color: $color-action;
+    cursor: pointer;
+}
+
+/* the trigger draws its own chevron via :before and swaps the glyph on expand —
+   colour it to match the bar rather than adding a second one */
+.open-questions-fold .collapsible-panel-trigger {
+    padding: 0 0 0 10px;
+    color: $color-action;
+}
+
+.open-questions-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    border-radius: 50%;
+    background-color: $color-action;
+    color: $color-white;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.open-questions-list {
+    border-top: 1px solid $color-action-border;
+    background-color: $color-white;
+}
+
+.open-questions-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    font-size: $font-size-small;
+    color: $color-action;
+    border-bottom: 1px solid $color-border;
+    cursor: pointer;
+    min-width: 0;
+
+    &:hover {
+        background-color: $color-action--op10;
+    }
+
+    i {
+        margin-left: auto;
+        font-size: 16px;
+        color: $color-secondary-light;
+    }
+}
+
+.open-questions-list > *:last-child .open-questions-item {
+    border-bottom: none;
+}
+
+/* names run long — truncate rather than widening the panel */
+.open-questions-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+
 /* ── alignment provenance rows ──────────────────────────────────────────── */
 
 .provenance-agent {
@@ -75,6 +160,72 @@
     }
 }
 
+/* admission rules, tiered: the badge says which rule fired, the popover says what it
+   means. Mirrors .origin-badge in the header so both read as the same affordance. */
+.provenance-rules {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.provenance-rule {
+    gap: 5px;
+    cursor: pointer;
+
+    i {
+        font-size: 15px;
+    }
+}
+
+/* Rule notes and alignment grounds run from 130 to 4300 characters — they are the
+   worked reasoning, not a gloss. Wider than the origin-badge popover so the long ones
+   are readable, and scrolling rather than growing so the short ones stay compact. */
+.provenance-rule-popover {
+    max-width: 460px;
+    max-height: 340px;
+    overflow-y: auto;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+/* several appraisal acts can sit on one member; separate them, newest first */
+.provenance-act + .provenance-act {
+    margin-top: 14px;
+}
+
+.provenance-adopted-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px;
+    min-width: 0;
+}
+
+/* the predicate is a claim about strength, not decoration: exactMatch and closeMatch to
+   the same id are different assertions and the difference used to be invisible here */
+.provenance-predicate {
+    font-family: monospace;
+    flex: 0 0 auto;
+}
+
+.provenance-why {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    color: $color-action;
+    white-space: nowrap;
+
+    i {
+        font-size: 15px;
+    }
+}
+
+.provenance-pending-target {
+    margin-top: 6px;
+}
+
 .provenance-muted {
     color: $color-secondary-light;
 }
@@ -88,13 +239,19 @@
 
 /* ── evidence viewer ────────────────────────────────────────────────────── */
 
+/* width:100% is load-bearing. Some dialog variants lay .modal-body out as a flex
+   row, which would size these to their longest line instead of the dialog. */
 .evidence-runs {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
+    min-width: 0;
 }
 
 .evidence-run {
+    width: 100%;
+    min-width: 0;
     border: 1px solid $color-border;
     border-radius: $border-radius;
     overflow: hidden;
@@ -165,44 +322,23 @@
     gap: 4px;
     cursor: pointer;
     margin-bottom: 0;
-
-    i {
-        font-size: 18px;
-        transition: transform .15s ease-in-out;
-    }
 }
 
-/* the trigger div carries collapsible-panel-trigger__expanded / __collapsed */
-.evidence-response .collapsible-panel-trigger__expanded .evidence-wire-toggle i {
-    transform: rotate(90deg);
+/* the trigger supplies the chevron itself, and its default 20px content padding
+   would indent the fold out of line with the Request block above it */
+.evidence-fold .collapsible-div-content {
+    padding: 0;
 }
 
-/* mp-code-block is built for documentation pages: 32px padding, generous margins,
-   and it emits an inline <code>. Both need reining in for a payload. */
-.evidence-payload {
-
-    /* mp-code-block styles .holder through a CSS module, so the generated class
-       name is hashed — target the element structure instead of the class. */
-    > div {
-        padding: 10px;
-        margin: 0;
-    }
-
-    pre {
-        margin: 6px 0 0 0;
-        padding: 10px 12px;
-        overflow-x: auto;
-    }
-
-    /* minified JSON has no line breaks to honour, and long URIs must not
-       push the modal sideways */
-    code {
-        display: block;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-        font-size: 12px;
-        line-height: 1.55;
-    }
+/* a run that returned nothing — reported, not hidden */
+.evidence-failure {
+    margin: 6px 0 0 0;
+    padding: 10px 12px;
+    line-height: 1.5;
+    color: $color-secondary;
+    background-color: $color-lighter;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
 }
 
 .evidence-copy {
@@ -218,9 +354,8 @@
     }
 }
 
-/* the raw response: minified, verbatim, up to 13 KB on a single line.
-   Wrap it, cap it, and let it scroll inside its own box so the modal never
-   scrolls sideways. No syntax highlighter — see the note in the template. */
+/* payload blocks. Wrapped, capped, and scrolling inside their own box so the modal
+   never scrolls sideways however long a URL in the payload is. */
 .evidence-raw {
     margin: 6px 0 0 0;
     padding: 10px 12px;
@@ -234,6 +369,31 @@
     background-color: $color-lighter;
     border: 1px solid $color-border;
     border-radius: $border-radius;
+
+    /* mp-code-highlight emits a bare inline <code> and fills it via CodeMirror
+       runMode; the <pre> above supplies the box, this supplies the flow */
+    > code {
+        display: block;
+        white-space: inherit;
+        overflow-wrap: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        background: none;
+        border: none;
+        padding: 0;
+    }
+}
+
+/* the readable statement of what was asked for — short, always open, so it needs
+   no cap and no scrollbar */
+.evidence-raw--short {
+    max-height: none;
+}
+
+/* the verbatim capture is a few hundred characters and already line-broken by the
+   service — show it whole and honour its newlines rather than reflowing them */
+.evidence-raw--request {
+    max-height: none;
 }
 
 

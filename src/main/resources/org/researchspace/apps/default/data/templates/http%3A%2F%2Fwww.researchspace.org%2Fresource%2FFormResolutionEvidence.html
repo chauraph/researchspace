@@ -1,32 +1,66 @@
 [[!--
   Evidence viewer — the service calls an appraisal was decided from.
 
-  Ordered by certainty, not by size. The request is always visible: it is short, it
-  is the only part that says whether the right question was asked, and it is
-  replayable — reissue it and diff the result against what is stored here. The
-  response is a verbatim, minified literal; it stays folded and is not reformatted,
-  because unaltered is what makes it evidence.
+  Runs are recorded per call, so a run is one HTTP request and one response, stamped
+  to the millisecond. Three properties hang off each:
+
+     L13_used_parameters -> <run>/parameters    what was asked for, in short. Usually
+                                                the literal query string, occasionally
+                                                a description of a batch. Stays open.
+     L10_had_input       -> <run>/raw_request   the executable capture: a JSON object
+                                                with method, url, headers, body and
+                                                requested_at. Replayable as-is.
+     L11_had_output      -> <run>/response      what came back, pretty-printed.
+
+  All three carry crm:P190_has_symbolic_content on a D1_Digital_Object. (They used
+  rdf:value on a D9_Data_Object before; both moved together.) raw_request and
+  parameters are additionally linked by P106_is_composed_of, which the display does
+  not need to traverse — both hang off the run directly.
+
+  raw_request and parameters are OPTIONAL: runs captured under an earlier model carry
+  only some of them, and those records must still render.
 
   A run is shared. "Also evidence for N other members" is shown wherever a reader
   would otherwise assume the call was about this record.
 
+  ANCHOR. The appraisal reaches its member two ways and both are live — see the header
+  of FormAlignmentProvenance for why. Every query here UNIONs them; anchoring on the
+  creation chain alone hides every enrichment act, and on J30 alone hides bare pendings.
+
+  FILTER NOT EXISTS is a guard, not a fix. Appraisal acts are themselves typed
+  D10_Software_Execution as well as D30_Annotation_Event (46 of them in the store), so
+  "?run a D10" is not on its own a test for "is a service call". Today nothing leaks in,
+  because ?run is reached through P134 and no act continues into another act — but that
+  held only by accident while L11_had_output was required, since the acts have no output.
+  Making the output OPTIONAL, which a failed call needs, removes the accidental filter,
+  so the intended one is stated explicitly.
+
   Rendered inside <mp-overlay-dialog-content> by FormAlignmentProvenance.
   Expects the client-side variable {{node}}.
 --]]
-
-<semantic-query query='SELECT ?run ?service ?when ?parameters ?response
+<semantic-query query='SELECT DISTINCT ?run ?service ?when ?rawRequest ?parameters ?response ?failure
                               (STRLEN(STR(?response)) AS ?responseSize)
                        WHERE {
                           BIND(<{{node}}> AS ?entity)
-                          ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
-                          ?creation crm:P134_continued ?appraisal .
-                          ?appraisal a crmdig:D30_Annotation_Event ;
-                                     crm:P134_continued ?run .
+                          ?appraisal a crmdig:D30_Annotation_Event .
+                          { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                          UNION
+                          { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
+
+                          ?appraisal crm:P134_continued ?run .
                           ?run a crmdig:D10_Software_Execution ;
-                               crmdig:L23_used_software_or_firmware ?service ;
-                               crmdig:L13_used_parameters/rdf:value ?parameters ;
-                               crmdig:L11_had_output/rdf:value      ?response .
+                               crmdig:L23_used_software_or_firmware ?service .
+                          FILTER NOT EXISTS { ?run a crmdig:D30_Annotation_Event }
+
+                          [[!-- a call that failed has no output at all: its status is
+                                structural — an error note and nothing to show — so
+                                requiring L11 would delete outage evidence from the record
+                                rather than reporting it --]]
+                          OPTIONAL { ?run crmdig:L11_had_output/crm:P190_has_symbolic_content ?response }
+                          OPTIONAL { ?run crmdig:L10_had_input/crm:P190_has_symbolic_content      ?rawRequest }
+                          OPTIONAL { ?run crmdig:L13_used_parameters/crm:P190_has_symbolic_content ?parameters }
                           OPTIONAL { ?run crm:P4_has_time-span/crm:P82_at_some_time_within ?when }
+                          OPTIONAL { ?run crm:P3_has_note ?failure }
                        } ORDER BY ?service'
 
                 template='{{> runs}}'
@@ -42,12 +76,18 @@
                href="{{service.value}}" title="{{service.value}}">{{service.value}}</a>
 
             <div class="evidence-run-meta">
-              [[!-- the run is shared: say so where ownership would otherwise be assumed --]]
+              [[!-- the run is shared: say so where ownership would otherwise be assumed.
+
+                    Both anchors again — walking the creation chain alone counts zero for
+                    every enrichment act, which reads as "this call was only about this
+                    record" and is the opposite of the truth. --]]
               <semantic-query query='SELECT (COUNT(DISTINCT ?member) AS ?members) WHERE {
                                         ?appraisal a crmdig:D30_Annotation_Event ;
                                                    crm:P134_continued <{{run.value}}> .
-                                        ?creation crm:P134_continued ?appraisal .
-                                        ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation .
+                                        { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?member }
+                                        UNION
+                                        { ?creation crm:P134_continued ?appraisal .
+                                          ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation }
                                      }'
                               template='{{> shared}}'>
                 <template id='shared'>
@@ -89,41 +129,109 @@
                 </template>
               </semantic-query>
 
+              [[!-- per-call now, and stamped to the millisecond: several runs can land in
+                    the same second, so the time is what separates them --]]
               {{#if when.value}}
-                <span class="badge badge--default evidence-chip">{{dateTimeFormat when.value "DD/MM/YYYY"}}</span>
+                <span class="badge badge--default evidence-chip">{{dateTimeFormat when.value "DD/MM/YYYY, HH:mm:ss"}}</span>
               {{/if}}
-              <span class="badge badge--default evidence-chip">{{responseSize.value}} bytes</span>
-            </div>
-          </div>
-
-          [[!-- the request: always open, always copyable, replayable as-is --]]
-          <div class="evidence-wire">
-            <div class="evidence-wire-label">Request</div>
-            <div class="evidence-payload">
-              {{#if (or (includes service.value "sparql") (includes service.value "query."))}}
-                <mp-code-block mode='application/sparql-query' code-text='{{parameters.value}}'></mp-code-block>
+              {{#if response.value}}
+                <span class="badge badge--default evidence-chip">{{responseSize.value}} bytes</span>
               {{else}}
-                <mp-code-block mode='text/x-sh' code-text='{{parameters.value}}'></mp-code-block>
+                <span class="badge badge--action evidence-chip">
+                  <rs-icon icon-type="rounded" icon-name="error" symbol="true"></rs-icon>
+                  no response
+                </span>
               {{/if}}
             </div>
           </div>
 
-          [[!-- The response: verbatim and minified on purpose; folded, capped, scrollable.
+          [[!-- One block per property, named after the property, so the display and the
+               model can be read against each other:
 
-               Deliberately NOT mp-code-block. That component runs CodeMirror.runMode
-               synchronously over the whole literal on mount, and it throws on these
-               payloads (8-13 KB of minified JSON on one line). A plain <pre> with the
-               text as a child rather than an attribute costs nothing, cannot fail, and
-               loses only syntax colour — which was never how anyone was going to read
-               13 KB anyway. The Copy button is the real affordance here.
+                 header       L23_used_software_or_firmware   the service
+                 Parameters   L13_used_parameters             what was asked for
+                 Raw request  L10_had_input                   the verbatim wire capture
+                 Response     L11_had_output                  what came back
 
-               expanded=false with renderHidden=false (both defaults aside) means the
-               payload is not in the DOM at all until the fold is opened. --]]
+               Parameters stays open: it is short and it is the readable statement of the
+               call, which is what someone scanning three runs wants. The two verbatim
+               captures are peers below it, same fold, opened on demand. --]]
+          {{#if parameters.value}}
+            <div class="evidence-wire">
+              <div class="evidence-wire-label">
+                Parameters
+                <mp-copy-to-clipboard text='{{parameters.value}}' message='Parameters copied'>
+                  <span class="evidence-copy">
+                    <rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon>
+                    Copy
+                  </span>
+                </mp-copy-to-clipboard>
+              </div>
+              <pre class="evidence-raw evidence-raw--short">{{parameters.value}}</pre>
+            </div>
+          {{/if}}
+
+          [[!-- the verbatim wire capture; only rendered where one exists --]]
+          {{#if rawRequest.value}}
+            <div class="evidence-wire">
+              <mp-collapsible-div expanded='false' class-name="evidence-fold">
+                <mp-collapsible-div-trigger>
+                  <div class="evidence-wire-label evidence-wire-toggle">
+                    Raw request
+                    <mp-copy-to-clipboard text='{{rawRequest.value}}' message='Raw request copied'>
+                      <span class="evidence-copy">
+                        <rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon>
+                        Copy
+                      </span>
+                    </mp-copy-to-clipboard>
+                  </div>
+                </mp-collapsible-div-trigger>
+                <mp-collapsible-div-content>
+                  [[!-- <code> with the payload as CONTENT, never code-text as an ATTRIBUTE.
+
+                        Registry.ts parseAttributeValue() runs JSON.parse on any attribute
+                        value matching /^{.*}$/, so a JSON payload passed through code-text
+                        arrives as a JavaScript object; CodeMirror.runMode then calls
+                        .split() on it and throws inside componentDidMount. A bare <code>
+                        is routed to mp-code-highlight by Registry.ts:104 with codeText
+                        taken from the element's children, which stay a string.
+
+                        No whitespace between <pre> and its child: <pre> preserves it. --]]
+                  <pre class="evidence-raw evidence-raw--request"><code mode='application/json'>{{rawRequest.value}}</code></pre>
+                </mp-collapsible-div-content>
+              </mp-collapsible-div>
+            </div>
+          {{/if}}
+
+          [[!-- The response: verbatim, pretty-printed by the capture, 2-18 KB.
+
+               Same <code>-as-content rule as the raw request above — see the note there.
+               Measured: runMode takes 2-25 ms on these payloads, and the fold keeps even
+               that off the dialog-open path, since expanded=false with renderHidden at
+               its default means nothing is in the DOM until the fold is opened. --]]
+          [[!-- a call that returned nothing. The failure is the evidence: it says the
+                appraisal was made without this source, which is a different record from
+                one where the source was never asked. --]]
+          {{#unless response.value}}
+            <div class="evidence-wire">
+              <div class="evidence-wire-label">Outcome</div>
+              <div class="evidence-failure">
+                {{#if failure.value}}
+                  {{failure.value}}
+                {{else}}
+                  The call is recorded but returned no response.
+                {{/if}}
+              </div>
+            </div>
+          {{/unless}}
+
+          {{#if response.value}}
           <div class="evidence-wire">
-            <mp-collapsible-div expanded='false' class-name="evidence-response">
+            <mp-collapsible-div expanded='false' class-name="evidence-fold">
               <mp-collapsible-div-trigger>
+                [[!-- no chevron of our own: .collapsible-panel-trigger draws one with a
+                      :before and swaps the glyph on expand --]]
                 <div class="evidence-wire-label evidence-wire-toggle">
-                  <rs-icon icon-type="rounded" icon-name="chevron_right" symbol="true"></rs-icon>
                   Response
                   <mp-copy-to-clipboard text='{{response.value}}' message='Response copied'>
                     <span class="evidence-copy">
@@ -134,10 +242,11 @@
                 </div>
               </mp-collapsible-div-trigger>
               <mp-collapsible-div-content>
-                <pre class="evidence-raw">{{response.value}}</pre>
+                <pre class="evidence-raw"><code mode='application/json'>{{response.value}}</code></pre>
               </mp-collapsible-div-content>
             </mp-collapsible-div>
           </div>
+          {{/if}}
 
         </div>
       {{/each}}
