@@ -8,9 +8,12 @@
     imported   a D12_Data_Transfer_Event on the creation — copied from a named source
     entered    none of those — created in the form
 
-  ANCHOR. An appraisal reaches its member two ways and both are live:
-    a) the annotation's own arc   ?appraisal L48_created_annotation/J30_has_domain <member>
-    b) the creation event         <member> …/L11i_was_output_of/P134_continued ?appraisal
+  ANCHOR. An appraisal reaches its member three ways and all are live:
+    a) the proposition's domain   ?appraisal L48_created_annotation/J30_has_domain <member>
+    b) the annotation's target    ?appraisal L48_created_annotation/L43_annotates  <member>
+    c) the creation event         <member> …/L11i_was_output_of/P134_continued ?appraisal
+  (b) is the only path for findings that state no proposition — a refused candidate or a
+  completed search that found nothing carries no J30/J31/J32 at all.
   (b) alone — which is all this query used to check — misses every ENRICHMENT act, run
   over a member that already existed and whose creation predates it. Measured: 22
   appraised members were being badged "Entered". (a) alone misses bare pendings and acts
@@ -51,6 +54,8 @@
                           OPTIONAL { { ?creation crm:P134_continued ?appraisal }
                                      UNION
                                      { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                                     UNION
+                                     { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?entity }
                                      ?appraisal a crmdig:D30_Annotation_Event .
                                      [[!-- the act carries its own date; the creation date is a
                                            different fact and would misdate an enrichment act by
@@ -68,6 +73,8 @@
                           OPTIONAL { { ?creation crm:P134_continued ?openAppraisal }
                                      UNION
                                      { ?openAppraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                                     UNION
+                                     { ?openAppraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?entity }
                                      ?openAppraisal a crmdig:D30_Annotation_Event ;
                                                     crmdig:L48_created_annotation ?pending .
                                      ?pending crm:P2_has_type ?pendingType .

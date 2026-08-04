@@ -28,6 +28,8 @@
 <semantic-if query='ASK { ?appraisal a crmdig:D30_Annotation_Event .
                           { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain <{{node}}> }
                           UNION
+                          { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates <{{node}}> }
+                          UNION
                           { <{{node}}> crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
                         }'
              then='{{> provenance}}'>
@@ -45,6 +47,8 @@
 
                               ?appraisal a crmdig:D30_Annotation_Event .
                               { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                              UNION
+                              { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?entity }
                               UNION
                               { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
 
@@ -278,6 +282,8 @@
                               ?appraisal a crmdig:D30_Annotation_Event .
                               { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
                               UNION
+                              { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?entity }
+                              UNION
                               { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
                               ?appraisal crm:P134_continued ?run .
                               ?run a crmdig:D10_Software_Execution .
@@ -318,6 +324,72 @@
       </template>
     </semantic-query>
 
+    [[!-- NEGATIVE FINDINGS: candidates examined and refused, and searches that concluded
+          nothing exists to align to.
+
+          These are results, not absences. "Not found" after a recorded exhaustion probe is
+          a different statement from a record nobody has looked at, and it is the more
+          expensive of the two to establish — without it the next wave re-runs the search.
+          Same for a rejected candidate: it says this plausible match was considered and
+          why it fails, which is what stops it being adopted next time.
+
+          They carry NO J30/J31/J32 — there is no proposition to state, only a finding —
+          so they attach to the member by crmdig:L43_annotates alone. That is why every
+          anchor in this file has a third branch.
+
+          Folded, and only the count is shown closed: on a member with three refusals the
+          notes run to several thousand characters, and they are reference material for
+          someone re-opening the question, not something to read on the way past. --]]
+    <semantic-query query='SELECT DISTINCT ?finding ?verdict ?note WHERE {
+                              BIND(<{{node}}> AS ?entity)
+                              ?appraisal a crmdig:D30_Annotation_Event ;
+                                         crmdig:L48_created_annotation ?finding .
+                              ?finding crmdig:L43_annotates ?entity ;
+                                       crm:P2_has_type ?findingType .
+                              FILTER(STRENDS(STR(?findingType), "/rejected") ||
+                                     STRENDS(STR(?findingType), "/not-found"))
+                              BIND(REPLACE(STR(?findingType), "^.*/", "") AS ?verdict)
+                              OPTIONAL { ?finding crm:P3_has_note ?note }
+                           } ORDER BY ?verdict'
+                    template='{{> findings}}'>
+      <template id='findings'>
+        <div class="table-expanded">
+          <table class="table metadata-table">
+            <tbody>
+              <tr class="standard-row">
+                <td class="table-title" style="width: 200px;"><b>Also established</b></td>
+                <td class="table-description">
+                  <mp-collapsible-div expanded='false' class-name="evidence-fold">
+                    <mp-collapsible-div-trigger>
+                      <div class="evidence-wire-label evidence-wire-toggle">
+                        {{bindings.length}} negative finding{{#ifCond bindings.length "!==" 1}}s{{/ifCond}}
+                      </div>
+                    </mp-collapsible-div-trigger>
+                    <mp-collapsible-div-content>
+                      <div class="provenance-findings">
+                        {{#each bindings}}
+                          <div class="provenance-finding">
+                            {{#ifCond verdict.value "===" "not-found"}}
+                              <span class="badge badge--default provenance-predicate">no match exists</span>
+                            {{else}}
+                              <span class="badge badge--default provenance-predicate">candidate refused</span>
+                            {{/ifCond}}
+                            {{#if note.value}}
+                              <div class="provenance-finding-note">{{note.value}}</div>
+                            {{/if}}
+                          </div>
+                        {{/each}}
+                      </div>
+                    </mp-collapsible-div-content>
+                  </mp-collapsible-div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </semantic-query>
+
     [[!-- Deferrals. Its own table rather than a row above: a semantic-query is not a <tr>,
           and the browser would hoist it out of <tbody>.
 
@@ -335,6 +407,8 @@
                               BIND(<{{node}}> AS ?entity)
                               ?appraisal a crmdig:D30_Annotation_Event .
                               { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                              UNION
+                              { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?entity }
                               UNION
                               { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
 
@@ -369,29 +443,51 @@
                     <b>{{#ifCond resolved.value "===" "true"}}Was deferred{{else}}Outstanding{{/ifCond}}</b>
                   </td>
                   <td class="table-description">
-                    {{#ifCond resolved.value "===" "true"}}
-                      <span class="badge badge--default origin-badge">
-                        <rs-icon icon-type="rounded" icon-name="check" symbol="true"></rs-icon>
-                        Settled by a later appraisal
-                      </span>
-                    {{else}}
-                      <span class="badge badge--action origin-badge">
-                        <rs-icon icon-type="rounded" icon-name="question_mark" symbol="true"></rs-icon>
-                        Awaiting a decision
-                      </span>
-                    {{/ifCond}}
-                    {{#if target.value}}
-                      <div class="provenance-adopted-row provenance-pending-target">
-                        {{#if predicateLabel.value}}
-                          <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
-                        {{/if}}
-                        <a class="text-link-action" target="_blank"
-                           href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
-                      </div>
-                    {{/if}}
-                    {{#if pendingNote.value}}
-                      <div class="provenance-pending-note">{{pendingNote.value}}</div>
-                    {{/if}}
+                    [[!-- One wrapper, and it is load-bearing. _table.scss gives
+                          .table-description "display:flex; align-items:center", so every
+                          DIRECT child of the cell becomes a flex item in a ROW. The other
+                          rows here each render a single element and are unaffected; this
+                          one has three, which laid them side by side, squeezed the badge
+                          to about 100px so "Awaiting a decision" wrapped onto three lines,
+                          and centred it against the middle of a 4,600-character note.
+                          Wrapping restores one flex item, and the column lives inside. --]]
+                    <div class="provenance-pending">
+                      {{#ifCond resolved.value "===" "true"}}
+                        <span class="badge badge--default origin-badge">
+                          <rs-icon icon-type="rounded" icon-name="check" symbol="true"></rs-icon>
+                          Settled by a later appraisal
+                        </span>
+                      {{else}}
+                        <span class="badge badge--action origin-badge">
+                          <rs-icon icon-type="rounded" icon-name="question_mark" symbol="true"></rs-icon>
+                          Awaiting a decision
+                        </span>
+                      {{/ifCond}}
+
+                      {{#if target.value}}
+                        <div class="provenance-adopted-row">
+                          {{#if predicateLabel.value}}
+                            <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                          {{/if}}
+                          <a class="text-link-action" target="_blank"
+                             href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                        </div>
+                      {{/if}}
+
+                      [[!-- folded, like the negative findings: the verdict and its target are
+                            the row's message, the reasoning behind it runs to several
+                            thousand characters and is for whoever picks the question up --]]
+                      {{#if pendingNote.value}}
+                        <mp-collapsible-div expanded='false' class-name="evidence-fold">
+                          <mp-collapsible-div-trigger>
+                            <div class="evidence-wire-label evidence-wire-toggle">Why it was deferred</div>
+                          </mp-collapsible-div-trigger>
+                          <mp-collapsible-div-content>
+                            <div class="provenance-pending-note">{{pendingNote.value}}</div>
+                          </mp-collapsible-div-content>
+                        </mp-collapsible-div>
+                      {{/if}}
+                    </div>
                   </td>
                 </tr>
               {{/each}}

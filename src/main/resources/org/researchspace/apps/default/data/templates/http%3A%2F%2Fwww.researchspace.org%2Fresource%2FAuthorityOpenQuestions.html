@@ -44,6 +44,8 @@
                                      crmdig:L48_created_annotation ?pending .
                           { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?member }
                           UNION
+                          { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?member }
+                          UNION
                           { ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
 
                           ?pending crm:P2_has_type ?pendingType .

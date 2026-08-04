@@ -38,12 +38,31 @@
   Rendered inside <mp-overlay-dialog-content> by FormAlignmentProvenance.
   Expects the client-side variable {{node}}.
 --]]
-<semantic-query query='SELECT DISTINCT ?run ?service ?when ?rawRequest ?parameters ?response ?failure
+[[!-- One row per RUN, which needs the GROUP BY: L13_used_parameters is the one
+      multi-valued property on a run.
+
+      A Reconciliation Service API call is BATCHED — its body is
+      queries={"q0": {"query": "garniture"}, "q1": {"query": "brigandine"}, …} — and
+      each of those objects is stored as its own parameter node, up to 12 on one run.
+      A flat SELECT DISTINCT cross-multiplied them into 12 near-identical rows, so the
+      dialog rendered 25 cards where the badge that opened it correctly counted 4 runs.
+
+      Only the two reconciliation endpoints batch (Getty vocab/reconcile, Wikidata
+      wmcloud); the SPARQL endpoints always carry exactly one parameter node, because
+      there the parameter IS the query. Everything else on a run — service, time, input,
+      output, note — is 1:1, measured across all 169 runs.
+
+      The individual queries are listed inside the card by their own query below. --]]
+<semantic-query query='SELECT ?run ?service ?when ?rawRequest ?response ?failure
+                              ?previous ?previousWhen ?previousService
+                              (COUNT(DISTINCT ?param) AS ?queryCount)
                               (STRLEN(STR(?response)) AS ?responseSize)
                        WHERE {
                           BIND(<{{node}}> AS ?entity)
                           ?appraisal a crmdig:D30_Annotation_Event .
                           { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?entity }
+                          UNION
+                          { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?entity }
                           UNION
                           { ?entity crm:P129i_is_subject_of/crmdig:L11i_was_output_of/crm:P134_continued ?appraisal }
 
@@ -58,10 +77,32 @@
                                 rather than reporting it --]]
                           OPTIONAL { ?run crmdig:L11_had_output/crm:P190_has_symbolic_content ?response }
                           OPTIONAL { ?run crmdig:L10_had_input/crm:P190_has_symbolic_content      ?rawRequest }
-                          OPTIONAL { ?run crmdig:L13_used_parameters/crm:P190_has_symbolic_content ?parameters }
+                          OPTIONAL { ?run crmdig:L13_used_parameters ?param }
                           OPTIONAL { ?run crm:P4_has_time-span/crm:P82_at_some_time_within ?when }
                           OPTIONAL { ?run crm:P3_has_note ?failure }
-                       } ORDER BY ?service'
+
+                          [[!-- THE CHAIN. A run may P134_continue an earlier run: a retry after a
+                                failure, or a query refined from what the previous one returned.
+                                P134 points BACKWARDS in time, so ?previous is the predecessor —
+                                confirmed against the timestamps (21:19:43 continues 21:06:52
+                                continues 21:03:51, which is the HTTP 499).
+
+                                The act links every run in a chain directly, not just its head,
+                                so a flat list is complete but says nothing about lineage: the
+                                canary shows 17 runs of which 8 continue another. Naming the
+                                predecessor on each card restores the order of work without
+                                nesting the list, and keeps every run appearing exactly once. --]]
+                          OPTIONAL { ?run crm:P134_continued ?previous .
+                                     ?previous a crmdig:D10_Software_Execution .
+                                     FILTER NOT EXISTS { ?previous a crmdig:D30_Annotation_Event }
+                                     OPTIONAL { ?previous crm:P4_has_time-span/crm:P82_at_some_time_within ?previousWhen }
+                                     OPTIONAL { ?previous crmdig:L23_used_software_or_firmware ?previousService } }
+
+                          [[!-- newest first: the chain reads as "and before that…", which is the
+                                direction P134 points and the order a reader retraces work in --]]
+                       } GROUP BY ?run ?service ?when ?rawRequest ?response ?failure
+                                  ?previous ?previousWhen ?previousService
+                         ORDER BY DESC(?when)'
 
                 template='{{> runs}}'
                 no-result-template='{{> noRuns}}'>
@@ -86,6 +127,8 @@
                                                    crm:P134_continued <{{run.value}}> .
                                         { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?member }
                                         UNION
+                                        { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?member }
+                                        UNION
                                         { ?creation crm:P134_continued ?appraisal .
                                           ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation }
                                      }'
@@ -101,14 +144,27 @@
                       </mp-popover-trigger>
                       <mp-popover-content>
                         <div class="evidence-shared-list">
+                          [[!-- the list must use the same three anchors as the count above,
+                                or the popover contradicts the number that opened it --]]
                           <semantic-query query='SELECT DISTINCT ?member ?name WHERE {
                                                     ?appraisal a crmdig:D30_Annotation_Event ;
                                                                crm:P134_continued <{{run.value}}> .
-                                                    ?creation crm:P134_continued ?appraisal .
-                                                    ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation ;
-                                                            crm:P1_is_identified_by ?appellation .
-                                                    ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
-                                                                 crm:P190_has_symbolic_content ?name .
+                                                    { ?appraisal crmdig:L48_created_annotation/crminf:J30_has_domain ?member }
+                                                    UNION
+                                                    { ?appraisal crmdig:L48_created_annotation/crmdig:L43_annotates ?member }
+                                                    UNION
+                                                    { ?creation crm:P134_continued ?appraisal .
+                                                      ?member crm:P129i_is_subject_of/crmdig:L11i_was_output_of ?creation }
+                                                    [[!-- two naming conventions in play: person members
+                                                          carry a primary_appellation, concept members
+                                                          (object_type and the rest) carry skos:prefLabel.
+                                                          Reading only the first left every concept row
+                                                          blank. --]]
+                                                    OPTIONAL { ?member crm:P1_is_identified_by ?appellation .
+                                                               ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                                                                            crm:P190_has_symbolic_content ?appellationName }
+                                                    OPTIONAL { ?member skos:prefLabel ?prefLabel }
+                                                    BIND(COALESCE(?appellationName, ?prefLabel) AS ?name)
                                                  } ORDER BY ?name'
                                           template='{{> members}}'>
                             <template id='members'>
@@ -116,7 +172,7 @@
                                 <semantic-link-container uri='http://www.researchspace.org/resource/ThinkingFrames'
                                                          urlqueryparam-view='resource-editor'
                                                          urlqueryparam-resource-iri='{{member.value}}'>
-                                  <div class="text-link">{{name.value}}</div>
+                                  <div class="text-link">{{#if name.value}}{{name.value}}{{else}}<mp-label iri='{{member.value}}'></mp-label>{{/if}}</div>
                                 </semantic-link-container>
                               {{/each}}
                             </template>
@@ -133,6 +189,12 @@
                     the same second, so the time is what separates them --]]
               {{#if when.value}}
                 <span class="badge badge--default evidence-chip">{{dateTimeFormat when.value "DD/MM/YYYY, HH:mm:ss"}}</span>
+              {{/if}}
+              {{#if previous.value}}
+                <span class="evidence-continues" title="{{previous.value}}">
+                  <rs-icon icon-type="rounded" icon-name="arrow_back" symbol="true"></rs-icon>
+                  continues {{#if previousWhen.value}}{{dateTimeFormat previousWhen.value "HH:mm:ss"}}{{else}}an earlier call{{/if}}
+                </span>
               {{/if}}
               {{#if response.value}}
                 <span class="badge badge--default evidence-chip">{{responseSize.value}} bytes</span>
@@ -155,21 +217,77 @@
 
                Parameters stays open: it is short and it is the readable statement of the
                call, which is what someone scanning three runs wants. The two verbatim
-               captures are peers below it, same fold, opened on demand. --]]
-          {{#if parameters.value}}
+               captures are peers below it, same fold, opened on demand.
+
+               A run may carry several parameter nodes — one per query in a batch call.
+               The query KEY is the last segment of its IRI (q0…q11, or a…d) and it is
+               also the top-level key of the response object, so naming it here is what
+               lets a reader find that query's result in the payload below. --]]
+          [[!-- ">" "0", not {{#if}}: an aggregate always binds, so a run with no parameter
+                node at all binds the STRING "0", which Handlebars treats as truthy and
+                which would render an empty Parameters block. 11 runs are in that state —
+                all of them failed calls, which carry a note and no output. --]]
+          {{#ifCond queryCount.value ">" "0"}}
             <div class="evidence-wire">
-              <div class="evidence-wire-label">
-                Parameters
-                <mp-copy-to-clipboard text='{{parameters.value}}' message='Parameters copied'>
-                  <span class="evidence-copy">
-                    <rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon>
-                    Copy
-                  </span>
-                </mp-copy-to-clipboard>
-              </div>
-              <pre class="evidence-raw evidence-raw--short">{{parameters.value}}</pre>
+              [[!-- ordered by (prefix, digit-count, digits): plain lexical ordering puts
+                    q10 and q11 between q1 and q2, which misreads as the search having
+                    doubled back. Comparing digit strings only after their length gives
+                    numeric order without a cast, and leaves the a/b/c/d keys alone. --]]
+              <semantic-query query='SELECT ?queryKey ?queryBody WHERE {
+                                        <{{run.value}}> crmdig:L13_used_parameters ?param .
+                                        ?param crm:P190_has_symbolic_content ?queryBody .
+                                        BIND(REPLACE(STR(?param), "^.*/", "") AS ?queryKey)
+                                        BIND(REPLACE(?queryKey, "[0-9]+$", "") AS ?keyPrefix)
+                                        BIND(REPLACE(?queryKey, "^[^0-9]*", "") AS ?keyDigits)
+                                     } ORDER BY ?keyPrefix STRLEN(?keyDigits) ?keyDigits'
+                              template='{{> batchQueries}}'>
+                <template id='batchQueries'>
+                  [[!-- Branch on the COUNT, because the count is what the model actually
+                        fixes. L13_used_parameters does not point at "settings"; it points at
+                        the COMPONENTS of the single L10_had_input object, which the writer
+                        also states directly as raw_request P106_is_composed_of <each>. That
+                        holds exactly — L13 and L10/P106 agree on all 169 runs, 0 through 12 —
+                        so the number of parameter nodes IS the number of parts of the
+                        request, and "more than one part" is precisely when a key column is
+                        needed to tell the parts apart.
+
+                        The key convention (a lone node keyed "parameters", batched ones
+                        enumerated q0…/a…) also holds 169/169, but it is a writer habit that
+                        no ontology or shape enforces, and keying the branch on it would
+                        silently demote all 113 single-parameter runs if the writer ever
+                        renamed that segment. --]]
+                  {{#ifCond bindings.length ">" 1}}
+                    <div class="evidence-wire-label">Queries ({{bindings.length}})</div>
+                    <div class="evidence-queries">
+                      {{#each bindings}}
+                        <div class="evidence-query">
+                          <span class="evidence-query-key">{{queryKey.value}}</span>
+                          [[!-- a span, not a <code>: Registry.ts routes a bare <code> to
+                                mp-code-highlight, which would start a CodeMirror instance
+                                per query — twelve of them for one card, to colour twelve
+                                one-line JSON objects. --]]
+                          <span class="evidence-query-body">{{queryBody.value}}</span>
+                        </div>
+                      {{/each}}
+                    </div>
+                  {{else}}
+                    [[!-- the single-parameter case is often a whole SPARQL query, so it
+                          keeps the payload box, its newlines, and the copy button --]]
+                    <div class="evidence-wire-label">
+                      Parameters
+                      <mp-copy-to-clipboard text='{{bindings.0.queryBody.value}}' message='Parameters copied'>
+                        <span class="evidence-copy">
+                          <rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon>
+                          Copy
+                        </span>
+                      </mp-copy-to-clipboard>
+                    </div>
+                    <pre class="evidence-raw evidence-raw--short">{{bindings.0.queryBody.value}}</pre>
+                  {{/ifCond}}
+                </template>
+              </semantic-query>
             </div>
-          {{/if}}
+          {{/ifCond}}
 
           [[!-- the verbatim wire capture; only rendered where one exists --]]
           {{#if rawRequest.value}}

@@ -23,28 +23,56 @@
 --]]
 
 <rs-tab event-key="federation" title="Federation">
-  <semantic-if query='ASK { { <{{node}}> <https://linked.art/ns/terms/equivalent> ?external }
-                            UNION
-                            { <{{node}}> <http://www.w3.org/2002/07/owl#sameAs> ?external } }'
+  [[!-- The gate admits EVERY linking predicate, not just the federatable ones. A member
+        aligned only by broadMatch has something to show — the identifier, and the reason
+        it cannot be federated — and telling it "no external alignment yet" would be
+        false. The inventory below draws the line; the gate only asks whether there is
+        anything at all. --]]
+  <semantic-if query='ASK { VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
+                                                    <http://www.w3.org/2002/07/owl#sameAs>
+                                                    <http://www.w3.org/2004/02/skos/core#exactMatch>
+                                                    <http://www.w3.org/2004/02/skos/core#closeMatch>
+                                                    <http://www.w3.org/2004/02/skos/core#broadMatch>
+                                                    <http://www.w3.org/2004/02/skos/core#narrowMatch> }
+                            <{{node}}> ?linkPredicate ?external }'
                then='{{> federation}}'
                else='{{> noAlignments}}'>
 
     <template id='federation'>
       <div class="federation-tab">
 
-        [[!-- local: what this record is aligned to, and which of those can be queried --]]
+        [[!-- Local: what this record is aligned to, under which predicate, and whether that
+              combination can be federated.
+
+              "federates" now takes TWO conditions, and both are necessary:
+                the host must publish a queryable endpoint  (Wikidata does; VIAF and GND do not)
+                the predicate must assert identity           (exact/sameAs/equivalent, not broader)
+              Keying it on the host alone — which is what this did — labelled a broadMatch to
+              wd:Q185623 "federates" and then fetched nothing, because the live queries
+              rightly refuse it. The chip now says which of the two is missing. --]]
         <div class="semantic-form-input-title">Aligned identifiers</div>
-        <semantic-query query='SELECT DISTINCT ?external ?authority ?federates WHERE {
+        <semantic-query query='SELECT DISTINCT ?external ?authority ?predicateLabel ?federates WHERE {
                                   BIND(<{{node}}> AS ?entity)
-                                  { ?entity <https://linked.art/ns/terms/equivalent> ?external }
-                                  UNION
-                                  { ?entity <http://www.w3.org/2002/07/owl#sameAs> ?external }
+                                  VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
+                                                          <http://www.w3.org/2002/07/owl#sameAs>
+                                                          <http://www.w3.org/2004/02/skos/core#exactMatch>
+                                                          <http://www.w3.org/2004/02/skos/core#closeMatch>
+                                                          <http://www.w3.org/2004/02/skos/core#broadMatch>
+                                                          <http://www.w3.org/2004/02/skos/core#narrowMatch> }
+                                  ?entity ?linkPredicate ?external .
+                                  BIND(REPLACE(STR(?linkPredicate), "^.*[#/]", "") AS ?predicateLabel)
 
                                   BIND(IF(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"), "Wikidata",
                                        IF(CONTAINS(STR(?external), "viaf.org"), "VIAF",
                                        IF(CONTAINS(STR(?external), "d-nb.info/gnd"), "GND",
                                        IF(CONTAINS(STR(?external), "geonames.org"), "GeoNames", "External")))) AS ?authority)
-                                  BIND(IF(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"), "yes", "no") AS ?federates)
+
+                                  BIND(?linkPredicate IN (<https://linked.art/ns/terms/equivalent>,
+                                                          <http://www.w3.org/2002/07/owl#sameAs>,
+                                                          <http://www.w3.org/2004/02/skos/core#exactMatch>) AS ?identity)
+                                  BIND(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/") AS ?queryable)
+                                  BIND(IF(?identity && ?queryable, "yes",
+                                       IF(?queryable, "weak", "no")) AS ?federates)
                                } ORDER BY ?authority ?external'
                         template='{{> inventory}}'>
           <template id='inventory'>
@@ -55,13 +83,35 @@
                     <tr class="standard-row">
                       <td class="table-title" style="width: 200px;"><b>{{authority.value}}</b></td>
                       <td class="table-description">
+                        <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
                         <a class="text-link-action" target="_blank"
                            href="{{external.value}}" title="{{external.value}}">{{external.value}}</a>
-                        {{#ifCond federates.value "===" "yes"}}
-                          <span class="badge badge--secondary federation-chip">federates</span>
-                        {{else}}
-                          <span class="badge badge--default federation-chip">link only</span>
-                        {{/ifCond}}
+                        {{#switch federates.value}}
+                          {{#case "yes" break=true}}
+                            <span class="badge badge--secondary federation-chip">federates</span>
+                          {{/case}}
+                          [[!-- queryable host, but the predicate does not assert identity: the
+                                endpoint would answer, and the answer would be about a
+                                different concept --]]
+                          {{#case "weak" break=true}}
+                            <mp-popover>
+                              <mp-popover-trigger placement="bottom" trigger='["hover", "focus", "click"]'>
+                                <span class="badge badge--default federation-chip">not identity</span>
+                              </mp-popover-trigger>
+                              <mp-popover-content>
+                                <div class="origin-badge-popover">
+                                  Wikidata could answer for this identifier, but
+                                  <b>{{predicateLabel.value}}</b> does not say the two are the same
+                                  thing — so its labels and images describe a different concept and
+                                  are not fetched.
+                                </div>
+                              </mp-popover-content>
+                            </mp-popover>
+                          {{/case}}
+                          {{#default}}
+                            <span class="badge badge--default federation-chip">link only</span>
+                          {{/default}}
+                        {{/switch}}
                       </td>
                     </tr>
                   {{/each}}
@@ -98,6 +148,44 @@
           <template id='live'>
             {{#if fetch}}
 
+              [[!-- Gate the whole live half on there being something federatable, and say
+                    so when there is not.
+
+                    Without this the two queries below run, correctly return nothing —
+                    their VALUES admit only identity predicates — and their
+                    no-result-templates report "No labels in en, fr, de or it". That is a
+                    claim ABOUT WIKIDATA, and it is false: nobody asked. It also sits two
+                    lines under a chip that says "not identity", so the panel contradicts
+                    itself on the same screen. Halberd, "Sempach type" is exactly this
+                    case: a broadMatch to wd:Q185623 and nothing else.
+
+                    The two no-result-templates keep their wording, because behind this
+                    gate they finally mean what they say — an identity-linked item that
+                    genuinely carries no label or no P18.
+
+                    It also spares two WDQS round trips per view that can only come back
+                    empty. --]]
+              <semantic-if query='ASK { VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
+                                                                <http://www.w3.org/2002/07/owl#sameAs>
+                                                                <http://www.w3.org/2004/02/skos/core#exactMatch> }
+                                        <{{node}}> ?linkPredicate ?external .
+                                        FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/")) }'
+                           then='{{> fetched}}'
+                           else='{{> notFederatable}}'>
+
+              <template id='notFederatable'>
+                <div class="federation-live">
+                  <div class="federation-empty">
+                    Nothing is fetched for this record. Its Wikidata identifier is linked by a
+                    predicate that does not assert identity, so the labels and images there
+                    describe a different concept — see the chip above. A record federates only
+                    through <code>skos:exactMatch</code>, <code>owl:sameAs</code> or
+                    <code>la:equivalent</code>.
+                  </div>
+                </div>
+              </template>
+
+              <template id='fetched'>
               <div class="federation-live">
                 <div class="federation-live-note">
                   Fetched from the Wikidata Query Service. Not stored, not part of this record.
@@ -123,8 +211,25 @@
                 <semantic-query query='SELECT ?external ?lang ?label WHERE {
                                           { SELECT DISTINCT ?external WHERE {
                                               BIND(<{{node}}> AS ?entity)
+                                              [[!-- IDENTITY predicates only. A fetched label or image is
+                                                    asserted to be THIS concept's, so the link must claim the
+                                                    two are the same thing:
+                                                      owl:sameAs        same individual
+                                                      la:equivalent     Linked Art identity link
+                                                      skos:exactMatch   "interchangeable across a WIDE range of
+                                                                        information retrieval applications"
+                                                    close/broad/narrowMatch are excluded on purpose. broadMatch
+                                                    is a DIFFERENT, wider concept — federating it would put
+                                                    "halberd" on Halberd, "Sempach type", which the canary's own
+                                                    note warns of. closeMatch is interchangeable in SOME
+                                                    applications only, so Head defence would take the label of
+                                                    aat:300036794 "helmets", which excludes the soft head
+                                                    defences the member covers.
+                                                    Measured: admitting exactMatch gives 21 more members a live
+                                                    panel; admitting the other three would federate 9 wrongly. --]]
                                               VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
-                                                                      <http://www.w3.org/2002/07/owl#sameAs> }
+                                                                      <http://www.w3.org/2002/07/owl#sameAs>
+                                                                      <http://www.w3.org/2004/02/skos/core#exactMatch> }
                                               ?entity ?linkPredicate ?external .
                                               FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
                                           } }
@@ -159,8 +264,25 @@
                 <semantic-query query='SELECT ?external ?image WHERE {
                                           { SELECT DISTINCT ?external WHERE {
                                               BIND(<{{node}}> AS ?entity)
+                                              [[!-- IDENTITY predicates only. A fetched label or image is
+                                                    asserted to be THIS concept's, so the link must claim the
+                                                    two are the same thing:
+                                                      owl:sameAs        same individual
+                                                      la:equivalent     Linked Art identity link
+                                                      skos:exactMatch   "interchangeable across a WIDE range of
+                                                                        information retrieval applications"
+                                                    close/broad/narrowMatch are excluded on purpose. broadMatch
+                                                    is a DIFFERENT, wider concept — federating it would put
+                                                    "halberd" on Halberd, "Sempach type", which the canary's own
+                                                    note warns of. closeMatch is interchangeable in SOME
+                                                    applications only, so Head defence would take the label of
+                                                    aat:300036794 "helmets", which excludes the soft head
+                                                    defences the member covers.
+                                                    Measured: admitting exactMatch gives 21 more members a live
+                                                    panel; admitting the other three would federate 9 wrongly. --]]
                                               VALUES ?linkPredicate { <https://linked.art/ns/terms/equivalent>
-                                                                      <http://www.w3.org/2002/07/owl#sameAs> }
+                                                                      <http://www.w3.org/2002/07/owl#sameAs>
+                                                                      <http://www.w3.org/2004/02/skos/core#exactMatch> }
                                               ?entity ?linkPredicate ?external .
                                               FILTER(STRSTARTS(STR(?external), "http://www.wikidata.org/entity/"))
                                           } }
@@ -242,6 +364,8 @@
                   </template>
                 </semantic-query>
               </div>
+              </template>
+              </semantic-if>
 
             {{else}}
               <div class="federation-empty">

@@ -32,6 +32,9 @@
 
 .origin-badge {
     gap: 5px;
+    /* a badge is a label; inside a flex row it would otherwise shrink and wrap its text
+       onto three lines rather than keep its own width */
+    white-space: nowrap;
 
     i {
         font-size: 15px;
@@ -222,18 +225,40 @@
     }
 }
 
-.provenance-pending-target {
-    margin-top: 6px;
-}
 
 .provenance-muted {
     color: $color-secondary-light;
 }
 
+/* The cell is a flex ROW (_table.scss sets display:flex on .table-description), so a
+   row with more than one child needs its own column wrapper or the children sit side by
+   side and get squeezed. align-items:flex-start keeps the badge at its natural width
+   instead of stretching it down the height of the note. */
+.provenance-pending {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+
+    /* the badge keeps its own width; the target row and the fold take the column, or a
+       long note would shrink-wrap to its longest word */
+    /* .evidence-fold is the class-name passed to mp-collapsible-div; its root div
+       carries that and nothing else (CollapsibleDivComponent renders D.div({className})),
+       so there is no generic collapsible class to target */
+    > .provenance-adopted-row,
+    > .evidence-fold {
+        align-self: stretch;
+    }
+}
+
 .provenance-pending-note {
-    margin-top: 6px;
     color: $color-secondary;
     line-height: 1.5;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-top: 6px;
 }
 
 
@@ -328,6 +353,44 @@
    would indent the fold out of line with the Request block above it */
 .evidence-fold .collapsible-div-content {
     padding: 0;
+}
+
+/* the queries of one batch call. A list rather than a payload box: each one is a
+   one-line JSON object, and what a reader is doing here is scanning the search terms
+   that were tried. Capped so a 12-query call cannot push the response off screen. */
+.evidence-queries {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px 12px;
+    background-color: $color-lighter;
+    border: 1px solid $color-border;
+    border-radius: $border-radius;
+}
+
+.evidence-query {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+/* fixed column so the payloads line up; this key is also the response object's key,
+   which is how each query is matched to its result */
+.evidence-query-key {
+    flex: 0 0 34px;
+    font-family: monospace;
+    color: $color-secondary-light;
+}
+
+.evidence-query-body {
+    font-family: monospace;
+    overflow-wrap: anywhere;
+    min-width: 0;
 }
 
 /* a run that returned nothing — reported, not hidden */
@@ -462,4 +525,37 @@
 .federation-empty {
     color: $color-secondary-light;
     padding: 6px 0;
+}
+
+/* ── negative findings, and run lineage ─────────────────────────────────── */
+
+/* refused candidates and completed searches: results, not absences */
+.provenance-findings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 8px;
+}
+
+.provenance-finding-note {
+    margin-top: 4px;
+    color: $color-secondary;
+    line-height: 1.5;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+/* a run that continued an earlier one — a retry, or a query refined from what
+   the previous call returned. P134 points backwards, and so does the arrow. */
+.evidence-continues {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: $color-secondary-light;
+    font-size: $font-size-small;
+    white-space: nowrap;
+
+    i {
+        font-size: 15px;
+    }
 }
