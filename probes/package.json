@@ -1,0 +1,15 @@
+{
+  "name": "researchspace-probes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Diagnostic browser probes for this deployment. Not a test suite — these print measurements to debug pages while building them.",
+  "scripts": {
+    "probe": "playwright test --reporter=list",
+    "probe:headed": "playwright test --headed --reporter=list",
+    "ui": "playwright test --ui",
+    "install-browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
