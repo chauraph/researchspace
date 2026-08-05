@@ -107,7 +107,7 @@
 
                     [[!-- members awaiting a decision: a folded jump list, one query for the
                           whole panel. Renders nothing when there are none. --]]
-                    [[> rsp:AuthorityOpenQuestions]]
+                    [[> dsanno:AuthorityOpenQuestions]]
 
                     <mp-event-target-template-render id='{{collection}}-mytree'  template='{{> treeTemplate}}'>
                       <template id='treeTemplate'>
@@ -331,7 +331,7 @@
                             [[!-- how this record was made — an origin fact, shown next to
                                   what kind of thing it is. Detail on the Metadata tab. --]]
                             {{#bind node=iri}}
-                              [[> rsp:FormOriginBadge]]
+                              [[> dsanno:OriginBadge]]
                             {{/bind}}
                           {{/if}}
                         {{/case}}

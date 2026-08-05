@@ -24,7 +24,7 @@
   would otherwise assume the call was about this record.
 
   ANCHOR. The appraisal reaches its member two ways and both are live — see the header
-  of FormAlignmentProvenance for why. Every query here UNIONs them; anchoring on the
+  of AlignmentProvenance for why. Every query here UNIONs them; anchoring on the
   creation chain alone hides every enrichment act, and on J30 alone hides bare pendings.
 
   FILTER NOT EXISTS is a guard, not a fix. Appraisal acts are themselves typed
@@ -35,7 +35,7 @@
   Making the output OPTIONAL, which a failed call needs, removes the accidental filter,
   so the intended one is stated explicitly.
 
-  Rendered inside <mp-overlay-dialog-content> by FormAlignmentProvenance.
+  Rendered inside <mp-overlay-dialog-content> by AlignmentProvenance.
   Expects the client-side variable {{node}}.
 --]]
 [[!-- One row per RUN, which needs the GROUP BY: L13_used_parameters is the one

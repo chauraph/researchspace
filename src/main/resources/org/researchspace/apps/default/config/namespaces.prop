@@ -35,3 +35,9 @@ fedsail=http://www.openrdf.org/config/sail/federation#
 crmtex = http://www.cidoc-crm.org/extensions/crmtex/
 
 assets = http://www.researchspace.org/resource/assets/
+
+# dsanno — locally authored artefacts, kept out of the researchspace.org IRI space.
+# Mirrors upstream's layout: dsanno: is the general template space (cf. rsp:),
+# dsannop: the semantic-form segment (cf. forms: = rsp:system/forms/).
+dsanno = https://w3id.org/dsanno/platform/
+dsannop = https://w3id.org/dsanno/platform/forms/
