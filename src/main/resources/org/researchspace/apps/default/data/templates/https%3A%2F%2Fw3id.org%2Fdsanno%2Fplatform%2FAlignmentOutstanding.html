@@ -1,0 +1,118 @@
+[[!--
+  One line, in the tab where the flat identifiers are edited, saying how many appraisals
+  on this record are still waiting for a person.
+
+  It is deliberately NOT a control. The five skos inputs beside it are the only writable
+  thing in this tab and they must stay exactly as upstream left them; the decisions
+  themselves are recorded in the Metadata tab, where the act, its date and its grounds are
+  visible. This line only points at them.
+
+  Absent at zero — a record with nothing outstanding says nothing, rather than saying
+  "0 outstanding", which reads as a score.
+
+  The count is the same computation as the Status rows in dsanno:AlignmentProvenance, kept
+  in the same shape on purpose:
+
+    pending-adjudication is outstanding  <->  its exact triple does not stand
+                                              AND no human D29 on the same J30/J31
+                                              AND (nothing stands on the pair, OR a skos
+                                                   triple stands at ANOTHER strength — the
+                                                   DIVERGENT case, where a move is owed;
+                                                   a cross-family triple settles it)
+    alignment            is outstanding  <->  its own triple is gone
+                                              AND no human refusal covers J32 + J31
+
+  Human acts are the ones carrying P17_was_motivated_by. Presence is checked against
+  asserted quads only.
+
+  Expects the client-side variable {{node}}.
+--]]
+
+<semantic-query query='SELECT (COUNT(DISTINCT ?annotation) AS ?outstandingCount) WHERE {
+                          {
+                            SELECT ?annotation ?kind ?matchProp
+                                   [[!-- COALESCE inside every GROUP_CONCAT, load-bearing: when a
+                                         group mixes bound and unbound rows (a pair carrying BOTH a
+                                         human alignment and a human rejection — every post-move
+                                         state), STR(unbound) errors and Blazegraph empties the
+                                         WHOLE aggregate instead of skipping the row. The emptied
+                                         refusal bag made every moved-away adoption count as
+                                         outstanding forever. --]]
+                                   (COUNT(DISTINCT ?anyMatchProp) AS ?anyCount)
+                                   (GROUP_CONCAT(DISTINCT COALESCE(STR(?anyMatchProp), ""); separator=" ") AS ?presentProps)
+                                   (COUNT(DISTINCT ?divProp)      AS ?divCount)
+                                   (COUNT(DISTINCT ?humanAct)     AS ?humanCount)
+                                   (GROUP_CONCAT(DISTINCT COALESCE(STR(?refusedProp), "");  separator=" ") AS ?refusedProps)
+                            WHERE {
+                              BIND(<{{node}}> AS ?entity)
+
+                              ?act a crmdig:D30_Annotation_Event ;
+                                   crmdig:L48_created_annotation ?annotation .
+                              FILTER NOT EXISTS { ?act crm:P17_was_motivated_by ?anyMotive }
+
+                              ?annotation crminf:J30_has_domain ?entity ;
+                                          crminf:J31_has_range ?target ;
+                                          crm:P2_has_type ?annoType .
+                              FILTER(STRENDS(STR(?annoType), "/alignment") ||
+                                     STRENDS(STR(?annoType), "/pending-adjudication"))
+                              BIND(REPLACE(STR(?annoType), "^.*/", "") AS ?kind)
+                              [[!-- match predicates only; a J32 of P1_is_identified_by is a local
+                                    identifier adoption, not a flat match triple. Same filter as
+                                    the Status rows in dsanno:AlignmentProvenance. --]]
+                              ?annotation crminf:J32_has_property_type ?matchProp .
+                              FILTER(?matchProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch, owl:sameAs, <https://linked.art/ns/terms/equivalent>))
+
+                              OPTIONAL { GRAPH ?anyGraph { ?entity ?anyMatchProp ?target }
+                                         FILTER(?anyMatchProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch,
+                                                                  skos:narrowMatch, skos:relatedMatch, owl:sameAs,
+                                                                  <https://linked.art/ns/terms/equivalent>)) }
+                              [[!-- standing skos predicates, no ?matchProp comparison in here
+                                    (the documented scope trap): the comparison happens outside,
+                                    where "not settled + any skos standing" implies divergence
+                                    by construction. Same shape as AlignmentProvenance. --]]
+                              OPTIONAL { GRAPH ?divGraph { ?entity ?divProp ?target }
+                                         FILTER(?divProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch,
+                                                             skos:narrowMatch, skos:relatedMatch)) }
+                              OPTIONAL { ?humanD29 crminf:J30_has_domain ?entity ;
+                                                   crminf:J31_has_range ?target ;
+                                                   crm:P2_has_type ?humanType .
+                                         FILTER(STRENDS(STR(?humanType), "/alignment") ||
+                                                STRENDS(STR(?humanType), "/rejected"))
+                                         ?humanAct crmdig:L48_created_annotation ?humanD29 ;
+                                                   crm:P17_was_motivated_by ?humanMotive .
+                                         OPTIONAL { ?humanD29 crm:P2_has_type ?rt .
+                                                    FILTER(STRENDS(STR(?rt), "/rejected"))
+                                                    ?humanD29 crminf:J32_has_property_type ?refusedProp } }
+                            }
+                            GROUP BY ?annotation ?kind ?matchProp
+                          }
+                          [[!-- predicate membership is tested here, not inside an OPTIONAL:
+                                a FILTER comparing against ?matchProp inside an OPTIONAL group
+                                never matches, because ?matchProp is bound by a sibling OPTIONAL
+                                and is out of scope there. Same bag trick as AlignmentProvenance. --]]
+                          BIND(CONCAT(" ", STR(?matchProp), " ") AS ?needle)
+                          BIND(COALESCE(CONTAINS(CONCAT(" ", ?presentProps, " "), ?needle), false) AS ?tripleStands)
+                          BIND(COALESCE(CONTAINS(CONCAT(" ", ?refusedProps, " "), ?needle), false) AS ?refusedHere)
+                          BIND(?matchProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch) AS ?propIsSkos)
+                          [[!-- same three-way pending rule as the Status rows: settled by its
+                                exact triple or a human decision; DIVERGENT (skos standing at
+                                another strength) counts as outstanding; a cross-family standing
+                                triple settles it. Drift between this count and the Status rows
+                                is the bug class that produced "no message before acceptance". --]]
+                          FILTER(IF(?kind = "pending-adjudication",
+                                    !?tripleStands && ?humanCount = 0 &&
+                                    ((?propIsSkos && ?divCount > 0) || ?anyCount = 0),
+                                    !?tripleStands && !?refusedHere))
+                       }'
+                template='{{> outstanding}}'>
+  <template id='outstanding'>
+    {{#ifCond bindings.0.outstandingCount.value ">" "0"}}
+      <div class="provenance-outstanding-notice">
+        <rs-icon icon-type="rounded" icon-name="pending_actions" symbol="true"></rs-icon>
+        {{bindings.0.outstandingCount.value}}
+        appraisal{{#ifCond bindings.0.outstandingCount.value "!==" "1"}}s{{/ifCond}}
+        outstanding — see Alignment provenance in the Metadata tab
+      </div>
+    {{/ifCond}}
+  </template>
+</semantic-query>

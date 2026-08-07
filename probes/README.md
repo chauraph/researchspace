@@ -47,6 +47,22 @@ Login is handled once by `tests/auth.setup.ts`, which saves the session to
 |---|---|
 | `tests/portal.probe.spec.ts` | Per shelf: card count, real thumbnails vs fallback icons, the rendered count line, and box geometry for the shelf, row, rail and scroller. Plus console errors, failed requests, and screenshots at two viewport widths. |
 | `tests/portal.ancestors.spec.ts` | Walks `html → .mp-portal` printing width, display, overflow and `min-width` for every ancestor. Written to find which container blows the page past the viewport. |
+| `tests/adjudication.probe.spec.ts` | Alignment adjudication. Four probes: an end-to-end Adopt + Refuse against a scratch member, then three read-only checks against real records. See below. |
+
+### `adjudication.probe.spec.ts`
+
+The only probe here that writes. Everything it writes goes into the scratch graph
+`<urn:dsanno:adjtest:data>` under scratch IRIs, and it drops the graph and verifies it
+empty before finishing — real records are never touched. The read-only companions open
+production records and close the dialog without submitting.
+
+It drives the real UI (`dsanno:AdjudicationTest`, a harness page that mounts
+`dsanno:AlignmentProvenance` against any member) and then reads the store back, printing
+the act it minted triple by triple. The one thing it shouts about is the timestamp:
+`P4_has_time-span/P82` must land as a clean `"…Z"^^xsd:dateTime`, because
+`xsd:date(NOW())` is accepted by Blazegraph and yields the malformed `"2026-08-06 CEST"`.
+
+`docs/ldp-authoring/alignment-adjudication.md` has the data shapes and the status rules.
 
 ## Writing a new probe
 

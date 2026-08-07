@@ -36,11 +36,24 @@
 
   <template id='provenance'>
 
+    [[!-- Everything in the section refreshes together after a decision, not just the row
+          that was decided. A recorded adjudication changes three things at once: the act
+          list gains an "Adjudicated" block, the status of the appraisal it answers flips,
+          and the deferral rows below it may settle. Refreshing only the status table left
+          the page telling two different stories about the same member until it was
+          reloaded.
+
+          mp-event-target-refresh takes exactly one child (Children.only), hence the div.
+          semantic-query does not listen for Component.Refresh itself, so the wrapper is
+          what makes the post-save refresh possible at all. --]]
+    <mp-event-target-refresh id='{{viewId}}-alignment-adjudication'>
+      <div>
+
     [[!-- ?entity is carried through the query on purpose: a semantic-query renders its
           template against the result bindings, so a bare {{node}} inside a NESTED query
           resolves to nothing. Same pattern as the authority-delete proxy in
           SimpleCollectionBrowser. --]]
-    <semantic-query query='SELECT DISTINCT ?entity ?appraisal ?appraisalId ?when ?actor ?actorName ?agent ?note
+    <semantic-query query='SELECT DISTINCT ?entity ?appraisal ?appraisalId ?when ?actor ?actorName ?agent ?note ?motivatedBy ?motivatedById
                                   (COUNT(DISTINCT ?criterion) AS ?ruleCount)
                            WHERE {
                               BIND(<{{node}}> AS ?entity)
@@ -67,6 +80,14 @@
                               OPTIONAL { ?appraisal crmdig:L23_used_software_or_firmware ?agent }
                               OPTIONAL { ?appraisal crm:P3_has_note ?note }
 
+                              [[!-- P17_was_motivated_by is the marker of a HUMAN adjudication:
+                                    only the adjudication form writes it, and it points at the
+                                    machine act whose finding was taken up. P134_continued is
+                                    NOT usable here — it is reserved for the wave capture chain
+                                    (act -> D10 service call), which ResolutionEvidence counts. --]]
+                              OPTIONAL { ?appraisal crm:P17_was_motivated_by ?motivatedBy }
+                              BIND(REPLACE(STR(?motivatedBy), "^.*/", "") AS ?motivatedById)
+
                               [[!-- gate only: the rules are listed with their notes by a nested
                                     query below. Keyed on the criterion IRI, not on its label —
                                     the rule catalogue lives in its own authority
@@ -76,7 +97,7 @@
 
                               BIND(REPLACE(STR(?appraisal), "^.*/", "") AS ?appraisalId)
                            }
-                           GROUP BY ?entity ?appraisal ?appraisalId ?when ?actor ?actorName ?agent ?note
+                           GROUP BY ?entity ?appraisal ?appraisalId ?when ?actor ?actorName ?agent ?note ?motivatedBy ?motivatedById
                            ORDER BY DESC(?when)'
 
                     template='{{> acts}}'>
@@ -89,8 +110,14 @@
             <table class="table metadata-table">
               <tbody>
 
+                [[!-- One grammar for both hands. A human adjudication is the same shape of
+                      act — dated, attributed, optionally noted — so it gets the same table,
+                      the same date format and the same actor line; only the verb changes,
+                      and the act it answers is named on the row below. --]]
                 <tr class="standard-row">
-                  <td class="table-title" style="width: 200px;"><b>Appraised</b></td>
+                  <td class="table-title" style="width: 200px;">
+                    <b>{{#if motivatedBy.value}}Adjudicated{{else}}Appraised{{/if}}</b>
+                  </td>
                   <td class="table-description">
                     {{#if when.value}}{{dateTimeFormat when.value "DD/MM/YYYY, h:mm a"}}{{/if}}
                     {{#if actor.value}}
@@ -115,6 +142,20 @@
                     {{/if}}
                   </td>
                 </tr>
+
+                [[!-- Which machine finding this decision answers. Named, not implied: an
+                      adjudication is only readable next to the appraisal it took up or set
+                      aside, and the act IRI is the only stable handle on that. --]]
+                {{#if motivatedBy.value}}
+                  <tr class="standard-row">
+                    <td class="table-title" style="width: 200px;"><b>In response to</b></td>
+                    <td class="table-description">
+                      <span class="provenance-muted">the appraisal of
+                        {{#if when.value}}{{dateTimeFormat when.value "DD/MM/YYYY"}}{{/if}}
+                        — {{motivatedById.value}}</span>
+                    </td>
+                  </tr>
+                {{/if}}
 
                 [[!-- The rules this act admitted under, tiered.
 
@@ -262,10 +303,633 @@
 
               </tbody>
             </table>
+
+            [[!-- A human refusal carries its payload (J30/J32/J31) — unlike the machine
+                  store rejections, which are bare L43 findings and are listed under
+                  "Also established". Its own table, not a row above: a semantic-query is
+                  not a <tr> and the parser hoists it straight out of <tbody>. Rendered only
+                  for adjudications, so the machine act blocks are what they always were. --]]
+                {{#if motivatedBy.value}}
+                  <semantic-query query='SELECT DISTINCT ?refusedTarget ?predicateLabel WHERE {
+                                            <{{appraisal.value}}> crmdig:L48_created_annotation ?refusal .
+                                            ?refusal crm:P2_has_type ?verdictType .
+                                            FILTER(STRENDS(STR(?verdictType), "/rejected"))
+                                            ?refusal crminf:J31_has_range ?refusedTarget .
+                                            OPTIONAL { ?refusal crminf:J32_has_property_type ?predicate }
+                                            BIND(REPLACE(STR(?predicate), "^.*[#/]", "") AS ?predicateLabel)
+                                         } ORDER BY ?predicateLabel ?refusedTarget'
+                                  template='{{> refused}}'>
+                    <template id='refused'>
+                      <table class="table metadata-table">
+                        <tbody>
+                          <tr class="standard-row">
+                            <td class="table-title" style="width: 200px;"><b>Refused</b></td>
+                            <td class="table-description">
+                              <div class="provenance-adopted">
+                                {{#each bindings}}
+                                  <div class="provenance-adopted-row">
+                                    {{#if predicateLabel.value}}
+                                      <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                                    {{/if}}
+                                    <a class="text-link-action" target="_blank"
+                                       href="{{refusedTarget.value}}" title="{{refusedTarget.value}}">{{refusedTarget.value}}</a>
+                                  </div>
+                                {{/each}}
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </template>
+                  </semantic-query>
+                {{/if}}
           </div>
         {{/each}}
       </template>
     </semantic-query>
+
+    [[!-- ── STATUS OF EACH PAYLOAD APPRAISAL, AND THE DECISIONS STILL OWED ────────────
+
+          A payload appraisal is a D29 that states a proposition about THIS member:
+          J30 = the member, J32 = a match predicate, J31 = an external target. Two kinds
+          carry one — rat:alignment (the machine adopted it) and rat:pending-adjudication
+          (the machine surfaced it and deferred). Store rejections, not-founds and
+          pending-evidence carry no payload; they are findings, and they stay in
+          "Also established" above, untouched.
+
+          STATUS IS COMPUTED, NEVER STORED. The flat skos/la triple on the member is the
+          source of truth and it is dumb — untimed, unattributed, editable by hand in the
+          External Authority tab. The D29s are the record of who said what and when. The
+          two can disagree, and every disagreement is a real editorial fact:
+
+            pending   + no triple, no human D29 on the same J30/J31  ->  awaiting a decision
+            pending   + a standing skos triple at ANOTHER strength   ->  divergent (a move is owed)
+            pending   + its exact triple / a human D29 / a cross-
+                        family triple (owl:sameAs, la:equivalent)    ->  settled
+            alignment + its exact triple stands                      ->  in force
+            alignment + gone, a human refusal covers J32+J31         ->  superseded
+            alignment + gone, nothing explains it                    ->  no longer recorded
+
+          DIVERGENT is confined to the skos:*Match family, where SKOS S46 declares the
+          strengths disjoint — both cannot stand, so adopting IS a move: the new strength
+          is written and the old is refused and removed, two D29s under one act. A
+          cross-family standing triple (owl:sameAs beside a proposed exactMatch) is NOT
+          divergence: the regimes coexist in this store (persons carry la:equivalent and
+          owl:sameAs side by side), so the proposal counts as satisfied -> settled.
+
+          The last one is the interesting case: someone deleted the triple in the form and
+          the act that asserted it is now unanswered. That is not an error to hide, it is a
+          decision to be recorded — hence Reinstate / Refuse on it too.
+
+          Presence is checked against ASSERTED quads only (GRAPH ?g { ... }), so an
+          inference-enabled store does not make a triple look present that nobody wrote.
+
+          A HUMAN adjudication is an act carrying P17_was_motivated_by. Those acts are
+          excluded here — they render as "Adjudicated" blocks above — and are read here
+          only as evidence that a question has been answered. --]]
+        <semantic-query query='SELECT ?viewId ?entity ?annotation ?annotationId ?kind ?act ?memberGraph
+                                      ?matchProp ?predicateLabel ?target ?note ?status ?outstanding ?statusClass
+                                      ?divergentProp ?divergentLabel
+                               WHERE {
+                                 {
+                                   SELECT ?viewId ?entity ?annotation ?kind ?act ?memberGraph ?matchProp ?target ?note
+                                          [[!-- the predicates that actually join member and target are
+                                                collected as a SPACE-DELIMITED BAG, not compared inside an
+                                                OPTIONAL. FILTER(?p = ?matchProp) inside an OPTIONAL group
+                                                silently never matches here: Blazegraph evaluates the filter
+                                                within the group, where ?matchProp — bound by an earlier
+                                                OPTIONAL — is not yet in scope, so every alignment came out
+                                                "no longer recorded" even with its triple plainly present.
+                                                Membership is tested in the outer query instead. --]]
+                                          [[!-- COALESCE inside GROUP_CONCAT, load-bearing: a group
+                                                mixing bound and unbound rows makes STR(unbound)
+                                                error, and Blazegraph empties the WHOLE aggregate
+                                                instead of skipping the row (bug found live via the
+                                                outstanding notice, 2026-08-07). --]]
+                                          (COUNT(DISTINCT ?anyMatchProp) AS ?anyCount)
+                                          (GROUP_CONCAT(DISTINCT COALESCE(STR(?anyMatchProp), ""); separator=" ") AS ?presentProps)
+                                          (COUNT(DISTINCT ?divProp) AS ?divCount)
+                                          (SAMPLE(?divProp) AS ?divergentProp)
+                                          (COUNT(DISTINCT ?humanRejAct)  AS ?rejCount)
+                                          (GROUP_CONCAT(DISTINCT COALESCE(STR(?refusedProp), "");  separator=" ") AS ?refusedProps)
+                                          (COUNT(DISTINCT ?humanAliAct)  AS ?aliCount)
+                                   WHERE {
+                                     BIND("{{viewId}}" AS ?viewId)
+                                     BIND(<{{node}}> AS ?entity)
+
+                                     [[!-- the graph the decision will be written into: the one that
+                                           describes the member, so the act and the flat triple travel
+                                           with the authority when it is exported --]]
+                                     GRAPH ?memberGraph { ?entity a ?anyClass }
+
+                                     ?act a crmdig:D30_Annotation_Event ;
+                                          crmdig:L48_created_annotation ?annotation .
+                                     FILTER NOT EXISTS { ?act crm:P17_was_motivated_by ?anyMotive }
+
+                                     ?annotation crminf:J30_has_domain ?entity ;
+                                                 crminf:J31_has_range ?target ;
+                                                 crm:P2_has_type ?annoType .
+                                     FILTER(STRENDS(STR(?annoType), "/alignment") ||
+                                            STRENDS(STR(?annoType), "/pending-adjudication"))
+                                     BIND(REPLACE(STR(?annoType), "^.*/", "") AS ?kind)
+
+                                     [[!-- J32 must be one of the MATCH PREDICATES, and this is a
+                                           filter, not a decoration. Appraisals also mint alignments
+                                           whose J32 is P1_is_identified_by — an act attaching a
+                                           LOCAL identifier node to the member. That is a real
+                                           adoption, but it is not a flat match triple, so the
+                                           presence check can never find it and every such row came
+                                           out "no longer recorded" with a Reinstate button that
+                                           would have written nonsense. The "Adopted" block above
+                                           excludes the same shape by target namespace. --]]
+                                     ?annotation crminf:J32_has_property_type ?matchProp .
+                                     FILTER(?matchProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch, owl:sameAs, <https://linked.art/ns/terms/equivalent>))
+
+                                     OPTIONAL { ?annotation crm:P3_has_note ?note }
+
+                                     [[!-- does ANY match predicate join member and target? --]]
+                                     OPTIONAL { GRAPH ?anyGraph { ?entity ?anyMatchProp ?target }
+                                                FILTER(?anyMatchProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch, owl:sameAs, <https://linked.art/ns/terms/equivalent>)) }
+                                     [[!-- the standing SKOS predicates joining member and target,
+                                           collected WITHOUT comparing to ?matchProp in here — that
+                                           comparison is the documented Blazegraph scope trap above.
+                                           It happens outside, and cheaply: divergence is only
+                                           consulted when the exact predicate does NOT stand, and in
+                                           that case any standing skos predicate differs from the
+                                           proposed one by construction. SAMPLE, not a bag: two
+                                           standing skos strengths at once is already inconsistent
+                                           data (SKOS S46) and a move handles one at a time. --]]
+                                     OPTIONAL { GRAPH ?divGraph { ?entity ?divProp ?target }
+                                                FILTER(?divProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch)) }
+                                     [[!-- human decisions already taken on this same J30/J31 pair. The
+                                           predicate a refusal names is collected into a second bag: a
+                                           refusal only SUPERSEDES an alignment if it answers the same
+                                           proposition, predicate and all. --]]
+                                     OPTIONAL { ?humanRej crminf:J30_has_domain ?entity ;
+                                                          crminf:J31_has_range ?target ;
+                                                          crm:P2_has_type ?hrType .
+                                                FILTER(STRENDS(STR(?hrType), "/rejected"))
+                                                ?humanRejAct crmdig:L48_created_annotation ?humanRej ;
+                                                             crm:P17_was_motivated_by ?hrMotive .
+                                                OPTIONAL { ?humanRej crminf:J32_has_property_type ?refusedProp } }
+                                     OPTIONAL { ?humanAli crminf:J30_has_domain ?entity ;
+                                                          crminf:J31_has_range ?target ;
+                                                          crm:P2_has_type ?haType .
+                                                FILTER(STRENDS(STR(?haType), "/alignment"))
+                                                ?humanAliAct crmdig:L48_created_annotation ?humanAli ;
+                                                             crm:P17_was_motivated_by ?haMotive }
+                                   }
+                                   GROUP BY ?viewId ?entity ?annotation ?kind ?act ?memberGraph ?matchProp ?target ?note
+                                 }
+                                 [[!-- COALESCE, because STR() of an unbound ?matchProp is an error and
+                                       an error would drop the whole row rather than the flag --]]
+                                 BIND(CONCAT(" ", STR(?matchProp), " ") AS ?needle)
+                                 BIND(COALESCE(CONTAINS(CONCAT(" ", ?presentProps, " "), ?needle), false) AS ?tripleStands)
+                                 BIND(COALESCE(CONTAINS(CONCAT(" ", ?refusedProps, " "), ?needle), false) AS ?refusedHere)
+                                 BIND(?matchProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch) AS ?propIsSkos)
+                                 [[!-- pending, in order: the exact triple stands or a human already
+                                       decided -> settled; a skos triple stands at another strength
+                                       -> DIVERGENT, a move is owed (this row used to be swallowed
+                                       as "settled" — the Stone ball case); a cross-family triple
+                                       stands -> settled, the regimes coexist. --]]
+                                 BIND(IF(?kind = "pending-adjudication",
+                                         IF(?tripleStands || ?rejCount > 0 || ?aliCount > 0, "settled",
+                                            IF(?propIsSkos && ?divCount > 0, "divergent",
+                                               IF(?anyCount > 0, "settled", "awaiting"))),
+                                         IF(?tripleStands, "in-force",
+                                            IF(?refusedHere, "superseded", "unrecorded"))) AS ?status)
+                                 BIND(IF(?status = "awaiting" || ?status = "unrecorded" || ?status = "divergent", "yes", "no") AS ?outstanding)
+                                 [[!-- COALESCE again: ?divergentProp is unbound on most rows and a
+                                       bare STR() error would drop the row, not the label --]]
+                                 BIND(COALESCE(REPLACE(STR(?divergentProp), "^.*[#/]", ""), "") AS ?divergentLabel)
+                                 [[!-- the row class is computed HERE and not with {{#ifCond}} in the
+                                       class attribute. A handlebars helper carrying string literals
+                                       inside an attribute does not survive this file: the template
+                                       body is re-serialised by dom-serializer before handlebars sees
+                                       it, which re-quotes the attribute and mangles the inner
+                                       quotes into ' =="' ... — a parse error that blanks the whole
+                                       section. Helpers with string arguments are safe in TEXT
+                                       content only. --]]
+                                 BIND(IF(?outstanding = "yes",
+                                         "provenance-pending provenance-status provenance-status--outstanding",
+                                         "provenance-pending provenance-status") AS ?statusClass)
+                                 BIND(REPLACE(STR(?annotation), "^.*/", "") AS ?annotationId)
+                                 BIND(REPLACE(STR(?matchProp), "^.*[#/]", "") AS ?predicateLabel)
+                               }
+                               ORDER BY DESC(?outstanding) ?kind ?predicateLabel ?target'
+                        template='{{> appraisals}}'>
+          <template id='appraisals'>
+            <div class="table-expanded">
+              <table class="table metadata-table">
+                <tbody>
+                  {{#each bindings}}
+                    <tr class="standard-row">
+                      <td class="table-title" style="width: 200px;"><b>Status</b></td>
+                      <td class="table-description">
+                        [[!-- one wrapper, load-bearing: .table-description is a flex ROW, so a
+                              cell with several children lays them side by side --]]
+                        <div class="{{statusClass.value}}">
+
+                          {{#ifCond status.value "===" "awaiting"}}
+                            <span class="badge badge--action origin-badge">
+                              <rs-icon icon-type="rounded" icon-name="question_mark" symbol="true"></rs-icon>
+                              Awaiting a decision
+                            </span>
+                          {{/ifCond}}
+                          {{#ifCond status.value "===" "settled"}}
+                            <span class="badge badge--default origin-badge">
+                              <rs-icon icon-type="rounded" icon-name="check" symbol="true"></rs-icon>
+                              Settled
+                            </span>
+                          {{/ifCond}}
+                          {{#ifCond status.value "===" "divergent"}}
+                            <span class="badge badge--action origin-badge">
+                              <rs-icon icon-type="rounded" icon-name="swap_horiz" symbol="true"></rs-icon>
+                              Awaiting a decision — {{divergentLabel.value}} stands
+                            </span>
+                          {{/ifCond}}
+                          {{#ifCond status.value "===" "in-force"}}
+                            <span class="badge badge--default origin-badge provenance-inforce">
+                              <rs-icon icon-type="rounded" icon-name="check" symbol="true"></rs-icon>
+                              In force
+                            </span>
+                          {{/ifCond}}
+                          {{#ifCond status.value "===" "superseded"}}
+                            <span class="badge badge--default origin-badge">
+                              <rs-icon icon-type="rounded" icon-name="history" symbol="true"></rs-icon>
+                              Superseded by a refusal
+                            </span>
+                          {{/ifCond}}
+                          {{#ifCond status.value "===" "unrecorded"}}
+                            <span class="badge badge--action origin-badge">
+                              <rs-icon icon-type="rounded" icon-name="link_off" symbol="true"></rs-icon>
+                              No longer recorded
+                            </span>
+                          {{/ifCond}}
+
+                          <div class="provenance-adopted-row">
+                            {{#if predicateLabel.value}}
+                              <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                            {{/if}}
+                            <a class="text-link-action" target="_blank"
+                               href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                          </div>
+
+                          {{#if note.value}}
+                            <mp-collapsible-div expanded='false' class-name="evidence-fold">
+                              <mp-collapsible-div-trigger>
+                                <div class="evidence-wire-label evidence-wire-toggle">
+                                  {{#ifCond kind.value "===" "pending-adjudication"}}Why it was deferred{{else}}Grounds{{/ifCond}}
+                                </div>
+                              </mp-collapsible-div-trigger>
+                              <mp-collapsible-div-content>
+                                <div class="provenance-pending-note">{{note.value}}</div>
+                              </mp-collapsible-div-content>
+                            </mp-collapsible-div>
+                          {{/if}}
+
+                          [[!-- Buttons only where a decision is actually owed. Dated and
+                                non-imperative in tone: the record says what is unanswered,
+                                it does not tell anyone to answer it today.
+
+                                Every dialog lives inside this <template> body, which is the
+                                isolation boundary — template sources are lifted out before
+                                React conversion, so the enclosing FormMetadataTab form never
+                                walks into these inputs. Dialog titles vary per row because
+                                the overlay system keys dialogs by TITLE, not by id. --]]
+                          {{#ifCond outstanding.value "===" "yes"}}
+                            <div class="provenance-decisions">
+                              {{#ifCond kind.value "===" "pending-adjudication"}}
+                              {{#ifCond status.value "===" "divergent"}}
+
+                          [[!-- THE MOVE. A standing skos triple at another strength is disjoint
+                                (SKOS S46) with the proposed one, so adopting IS a move: one act,
+                                TWO D29s — the granted proposition (new strength, triple written)
+                                and the vacated one (old strength, rejected, triple DELETEd in the
+                                same update). The button and the dialog both state both effects;
+                                a plain "Adopt" here would be a removal in disguise.
+
+                                The commit field uses deleteInsertPattern — the fork's atomic
+                                DELETE/INSERT field key (one SPARQL Modify operation = one
+                                transaction). The DELETE names its GRAPH explicitly because
+                                targetInsertGraphIri wraps only the INSERT clause. On a platform
+                                without the extension this form fails the editable-field check and
+                                renders a visible configuration error — the move is disabled loud,
+                                never written half-way. --]]
+                          <mp-overlay-dialog id='{{viewId.value}}-adj-move-{{annotationId.value}}'
+                                             type='modal'
+                                             title='Adopt {{predicateLabel.value}}, replacing {{divergentLabel.value}} — {{target.value}}'>
+                            <mp-overlay-dialog-trigger>
+                              <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Adopt {{predicateLabel.value}} (replaces {{divergentLabel.value}})</button>
+                            </mp-overlay-dialog-trigger>
+                            <mp-overlay-dialog-content>
+                              <div>
+                                <semantic-context repository='default'>
+                                  <div>
+                                    <mp-event-proxy id='adj-form-move-{{annotationId.value}}-close-proxy'
+                                                    on-event-source='adj-form-move-{{annotationId.value}}'
+                                                    on-event-types='["Form.ResourceCreated","Form.ResourceUpdated"]'
+                                                    proxy-event-type='OverlayDialog.Close'
+                                                    proxy-targets='["{{viewId.value}}-adj-move-{{annotationId.value}}"]'></mp-event-proxy>
+
+                                    <div class="provenance-decision-blurb">One decision, both effects recorded: {{predicateLabel.value}} is written onto the record, and the standing {{divergentLabel.value}} — disjoint with it — is refused and removed. The act keeps both, dated and attributed.</div>
+                                    <div class="provenance-adopted-row">
+                                      <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                                      <a class="text-link-action" target="_blank"
+                                         href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                                    </div>
+
+                                    <semantic-form id='adj-form-move-{{annotationId.value}}'
+                                                   post-action='event'
+                                                   browser-persistence='false'
+                                                   new-subject-template='{{{entity.value}}}/adjudication/\{{UUID}}'
+                                                   persistence='{"type":"sparql","targetInsertGraphIri":"{{memberGraph.value}}"}'
+                                                   fields='[{"id":"adjudication_commit","iri":"https://w3id.org/dsanno/platform/field/adjudication_commit","label":"Verdict","xsdDatatype":"http://www.w3.org/2001/XMLSchema#anyURI","minOccurs":1,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P2_has_type ?value }","deleteInsertPattern":"DELETE { GRAPH <{{{memberGraph.value}}}> { <{{{entity.value}}}> <{{{divergentProp.value}}}> <{{{target.value}}}> } } INSERT { $subject a crmdig:D30_Annotation_Event ; crm:P14_carried_out_by <[[userUri]]> ; crm:P4_has_time-span ?ts ; crm:P17_was_motivated_by <{{{act.value}}}> ; crmdig:L48_created_annotation ?annoNew, ?annoOld . ?ts a crm:E52_Time-Span ; crm:P82_at_some_time_within ?now . ?annoNew a crmdig:D29_Annotation_Object, crminf:I17_One-Proposition_Set ; crm:P2_has_type $value ; crminf:J30_has_domain <{{{entity.value}}}> ; crminf:J32_has_property_type <{{{matchProp.value}}}> ; crminf:J31_has_range <{{{target.value}}}> ; crmdig:L43_annotates <{{{entity.value}}}> ; crm:P129_is_about <{{{entity.value}}}> . ?annoOld a crmdig:D29_Annotation_Object, crminf:I17_One-Proposition_Set ; crm:P2_has_type <https://w3id.org/murtenpanorama/resource/vocab/resolution_annotation_type/rejected> ; crminf:J30_has_domain <{{{entity.value}}}> ; crminf:J32_has_property_type <{{{divergentProp.value}}}> ; crminf:J31_has_range <{{{target.value}}}> ; crmdig:L43_annotates <{{{entity.value}}}> ; crm:P129_is_about <{{{entity.value}}}> . <{{{entity.value}}}> crm:P129i_is_subject_of ?annoNew, ?annoOld ; <{{{matchProp.value}}}> <{{{target.value}}}> . } WHERE { BIND(NOW() AS ?now) BIND(URI(CONCAT(STR($subject), \"/at_some_time_within\")) AS ?ts) BIND(URI(CONCAT(STR($subject), \"/alignment/\", STRUUID())) AS ?annoNew) BIND(URI(CONCAT(STR($subject), \"/annotation/\", STRUUID())) AS ?annoOld) }","deletePattern":"DELETE { $subject crm:P2_has_type $value } WHERE { $subject crm:P2_has_type $value }"},{"id":"adjudication_note","iri":"https://w3id.org/dsanno/platform/field/adjudication_note","label":"Note","xsdDatatype":"http://www.w3.org/2001/XMLSchema#string","minOccurs":0,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P3_has_note ?value }","insertPattern":"INSERT { $subject crm:P3_has_note $value } WHERE { }","deletePattern":"DELETE { $subject crm:P3_has_note $value } WHERE { $subject crm:P3_has_note $value }"}]'>
+                                      <semantic-form-hidden-input for='adjudication_commit'
+                                                                  default-value='https://w3id.org/murtenpanorama/resource/vocab/resolution_annotation_type/alignment'></semantic-form-hidden-input>
+                                      <semantic-form-text-input for='adjudication_note'
+                                                                multiline='true'
+                                                                rows='4'
+                                                                label='Note (optional)'
+                                                                placeholder='Why this decision, in one or two sentences.'></semantic-form-text-input>
+                                      <div class="provenance-decision-actions">
+                                        <button name='submit' class='btn btn-action'>Record decision</button>
+                                      </div>
+                                    </semantic-form>
+                                  </div>
+                                </semantic-context>
+                              </div>
+                            </mp-overlay-dialog-content>
+                          </mp-overlay-dialog>
+
+                          <mp-event-proxy id='adj-form-move-{{annotationId.value}}-refresh-proxy'
+                                          on-event-source='adj-form-move-{{annotationId.value}}-close-proxy'
+                                          on-event-type='OverlayDialog.Close'
+                                          proxy-event-type='Component.Refresh'
+                                          proxy-targets='["{{viewId.value}}-alignment-adjudication"]'></mp-event-proxy>
+
+                              {{else}}
+
+                          <mp-overlay-dialog id='{{viewId.value}}-adj-adopt-{{annotationId.value}}'
+                                             type='modal'
+                                             title='Adopt — {{predicateLabel.value}} {{target.value}}'>
+                            <mp-overlay-dialog-trigger>
+                              <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Adopt</button>
+                            </mp-overlay-dialog-trigger>
+                            <mp-overlay-dialog-content>
+                              <div>
+                                [[!-- the overlay renders in a separate React root at app root, so
+                                      the repository context of the page is NOT inherited; it is
+                                      re-declared here (ProjectImages does the same). --]]
+                                <semantic-context repository='default'>
+                                  <div>
+                                    [[!-- Half of the AuthorityManagerTemplate save->close->refresh
+                                          recipe. This half CLOSES, and it must live inside the
+                                          dialog body (ImageAnnotationTemplate does the same). The
+                                          other half — the refresh — is deliberately NOT here: see
+                                          the proxy after </mp-overlay-dialog>. --]]
+                                    <mp-event-proxy id='adj-form-adopt-{{annotationId.value}}-close-proxy'
+                                                    on-event-source='adj-form-adopt-{{annotationId.value}}'
+                                                    on-event-types='["Form.ResourceCreated","Form.ResourceUpdated"]'
+                                                    proxy-event-type='OverlayDialog.Close'
+                                                    proxy-targets='["{{viewId.value}}-adj-adopt-{{annotationId.value}}"]'></mp-event-proxy>
+
+                                    <div class="provenance-decision-blurb">Recording this decision writes the alignment onto the record and keeps a dated, attributed act beside it.</div>
+                                    <div class="provenance-adopted-row">
+                                      {{#if predicateLabel.value}}
+                                        <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                                      {{/if}}
+                                      <a class="text-link-action" target="_blank"
+                                         href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                                    </div>
+
+                                    [[!-- ONE act, ONE update. new-subject-template mints the D30;
+                                          every other node in the graph is derived from it by
+                                          CONCAT inside the insert pattern, so the optional note
+                                          (a second update) still lands on the same act.
+                                          \{{UUID}} is escaped: this body is compiled by the
+                                          client-side handlebars of the enclosing semantic-query,
+                                          and an unescaped {{UUID}} would resolve to nothing. --]]
+                                    <semantic-form id='adj-form-adopt-{{annotationId.value}}'
+                                                   post-action='event'
+                                                   browser-persistence='false'
+                                                   new-subject-template='{{{entity.value}}}/adjudication/\{{UUID}}'
+                                                   persistence='{"type":"sparql","targetInsertGraphIri":"{{memberGraph.value}}"}'
+                                                   fields='[{"id":"adjudication_commit","iri":"https://w3id.org/dsanno/platform/field/adjudication_commit","label":"Verdict","xsdDatatype":"http://www.w3.org/2001/XMLSchema#anyURI","minOccurs":1,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P2_has_type ?value }","insertPattern":"INSERT { $subject a crmdig:D30_Annotation_Event ; crm:P14_carried_out_by <[[userUri]]> ; crm:P4_has_time-span ?ts ; crm:P17_was_motivated_by <{{{act.value}}}> ; crmdig:L48_created_annotation ?anno . ?ts a crm:E52_Time-Span ; crm:P82_at_some_time_within ?now . ?anno a crmdig:D29_Annotation_Object, crminf:I17_One-Proposition_Set ; crm:P2_has_type $value ; crminf:J30_has_domain <{{{entity.value}}}> ; crminf:J32_has_property_type <{{{matchProp.value}}}> ; crminf:J31_has_range <{{{target.value}}}> ; crmdig:L43_annotates <{{{entity.value}}}> ; crm:P129_is_about <{{{entity.value}}}> . <{{{entity.value}}}> crm:P129i_is_subject_of ?anno . <{{{entity.value}}}> <{{{matchProp.value}}}> <{{{target.value}}}> . } WHERE { BIND(NOW() AS ?now) BIND(URI(CONCAT(STR($subject), \"/at_some_time_within\")) AS ?ts) BIND(URI(CONCAT(STR($subject), \"/alignment/\", STRUUID())) AS ?anno) }","deletePattern":"DELETE { $subject crm:P2_has_type $value } WHERE { $subject crm:P2_has_type $value }"},{"id":"adjudication_note","iri":"https://w3id.org/dsanno/platform/field/adjudication_note","label":"Note","xsdDatatype":"http://www.w3.org/2001/XMLSchema#string","minOccurs":0,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P3_has_note ?value }","insertPattern":"INSERT { $subject crm:P3_has_note $value } WHERE { }","deletePattern":"DELETE { $subject crm:P3_has_note $value } WHERE { $subject crm:P3_has_note $value }"}]'>
+                                      <semantic-form-hidden-input for='adjudication_commit'
+                                                                  default-value='https://w3id.org/murtenpanorama/resource/vocab/resolution_annotation_type/alignment'></semantic-form-hidden-input>
+                                      <semantic-form-text-input for='adjudication_note'
+                                                                multiline='true'
+                                                                rows='4'
+                                                                label='Note (optional)'
+                                                                placeholder='Why this decision, in one or two sentences.'></semantic-form-text-input>
+                                      <div class="provenance-decision-actions">
+                                        <button name='submit' class='btn btn-action'>Record decision</button>
+                                      </div>
+                                    </semantic-form>
+                                  </div>
+                                </semantic-context>
+                              </div>
+                            </mp-overlay-dialog-content>
+                          </mp-overlay-dialog>
+
+                          [[!-- The refresh half, OUTSIDE the dialog and CHAINED off the close.
+
+                                Both proxies inside the dialog does not work, and the failure is
+                                silent: whichever fires first tears the other's subtree down before
+                                it is reached. Refresh-first remounts the status table, which
+                                unmounts this row's mp-overlay-dialog and takes the close proxy with
+                                it (and the overlay stays open, because the overlay content lives in
+                                a separate React root at app root). Close-first hides the overlay and
+                                takes the refresh proxy with it.
+
+                                So they are staged: the form's save closes the dialog, and the CLOSE
+                                event — heard here, outside the overlay — refreshes the table. --]]
+                          <mp-event-proxy id='adj-form-adopt-{{annotationId.value}}-refresh-proxy'
+                                          on-event-source='adj-form-adopt-{{annotationId.value}}-close-proxy'
+                                          on-event-type='OverlayDialog.Close'
+                                          proxy-event-type='Component.Refresh'
+                                          proxy-targets='["{{viewId.value}}-alignment-adjudication"]'></mp-event-proxy>
+
+                              {{/ifCond}}
+                              {{else}}
+
+                          <mp-overlay-dialog id='{{viewId.value}}-adj-reinstate-{{annotationId.value}}'
+                                             type='modal'
+                                             title='Reinstate — {{predicateLabel.value}} {{target.value}}'>
+                            <mp-overlay-dialog-trigger>
+                              <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Reinstate</button>
+                            </mp-overlay-dialog-trigger>
+                            <mp-overlay-dialog-content>
+                              <div>
+                                [[!-- the overlay renders in a separate React root at app root, so
+                                      the repository context of the page is NOT inherited; it is
+                                      re-declared here (ProjectImages does the same). --]]
+                                <semantic-context repository='default'>
+                                  <div>
+                                    [[!-- Half of the AuthorityManagerTemplate save->close->refresh
+                                          recipe. This half CLOSES, and it must live inside the
+                                          dialog body (ImageAnnotationTemplate does the same). The
+                                          other half — the refresh — is deliberately NOT here: see
+                                          the proxy after </mp-overlay-dialog>. --]]
+                                    <mp-event-proxy id='adj-form-reinstate-{{annotationId.value}}-close-proxy'
+                                                    on-event-source='adj-form-reinstate-{{annotationId.value}}'
+                                                    on-event-types='["Form.ResourceCreated","Form.ResourceUpdated"]'
+                                                    proxy-event-type='OverlayDialog.Close'
+                                                    proxy-targets='["{{viewId.value}}-adj-reinstate-{{annotationId.value}}"]'></mp-event-proxy>
+
+                                    <div class="provenance-decision-blurb">The appraisal that asserted this alignment is unanswered — the triple is no longer on the record. Reinstating writes it back and records who decided so.</div>
+                                    <div class="provenance-adopted-row">
+                                      {{#if predicateLabel.value}}
+                                        <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                                      {{/if}}
+                                      <a class="text-link-action" target="_blank"
+                                         href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                                    </div>
+
+                                    [[!-- ONE act, ONE update. new-subject-template mints the D30;
+                                          every other node in the graph is derived from it by
+                                          CONCAT inside the insert pattern, so the optional note
+                                          (a second update) still lands on the same act.
+                                          \{{UUID}} is escaped: this body is compiled by the
+                                          client-side handlebars of the enclosing semantic-query,
+                                          and an unescaped {{UUID}} would resolve to nothing. --]]
+                                    <semantic-form id='adj-form-reinstate-{{annotationId.value}}'
+                                                   post-action='event'
+                                                   browser-persistence='false'
+                                                   new-subject-template='{{{entity.value}}}/adjudication/\{{UUID}}'
+                                                   persistence='{"type":"sparql","targetInsertGraphIri":"{{memberGraph.value}}"}'
+                                                   fields='[{"id":"adjudication_commit","iri":"https://w3id.org/dsanno/platform/field/adjudication_commit","label":"Verdict","xsdDatatype":"http://www.w3.org/2001/XMLSchema#anyURI","minOccurs":1,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P2_has_type ?value }","insertPattern":"INSERT { $subject a crmdig:D30_Annotation_Event ; crm:P14_carried_out_by <[[userUri]]> ; crm:P4_has_time-span ?ts ; crm:P17_was_motivated_by <{{{act.value}}}> ; crmdig:L48_created_annotation ?anno . ?ts a crm:E52_Time-Span ; crm:P82_at_some_time_within ?now . ?anno a crmdig:D29_Annotation_Object, crminf:I17_One-Proposition_Set ; crm:P2_has_type $value ; crminf:J30_has_domain <{{{entity.value}}}> ; crminf:J32_has_property_type <{{{matchProp.value}}}> ; crminf:J31_has_range <{{{target.value}}}> ; crmdig:L43_annotates <{{{entity.value}}}> ; crm:P129_is_about <{{{entity.value}}}> . <{{{entity.value}}}> crm:P129i_is_subject_of ?anno . <{{{entity.value}}}> <{{{matchProp.value}}}> <{{{target.value}}}> . } WHERE { BIND(NOW() AS ?now) BIND(URI(CONCAT(STR($subject), \"/at_some_time_within\")) AS ?ts) BIND(URI(CONCAT(STR($subject), \"/alignment/\", STRUUID())) AS ?anno) }","deletePattern":"DELETE { $subject crm:P2_has_type $value } WHERE { $subject crm:P2_has_type $value }"},{"id":"adjudication_note","iri":"https://w3id.org/dsanno/platform/field/adjudication_note","label":"Note","xsdDatatype":"http://www.w3.org/2001/XMLSchema#string","minOccurs":0,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P3_has_note ?value }","insertPattern":"INSERT { $subject crm:P3_has_note $value } WHERE { }","deletePattern":"DELETE { $subject crm:P3_has_note $value } WHERE { $subject crm:P3_has_note $value }"}]'>
+                                      <semantic-form-hidden-input for='adjudication_commit'
+                                                                  default-value='https://w3id.org/murtenpanorama/resource/vocab/resolution_annotation_type/alignment'></semantic-form-hidden-input>
+                                      <semantic-form-text-input for='adjudication_note'
+                                                                multiline='true'
+                                                                rows='4'
+                                                                label='Note (optional)'
+                                                                placeholder='Why this decision, in one or two sentences.'></semantic-form-text-input>
+                                      <div class="provenance-decision-actions">
+                                        <button name='submit' class='btn btn-action'>Record decision</button>
+                                      </div>
+                                    </semantic-form>
+                                  </div>
+                                </semantic-context>
+                              </div>
+                            </mp-overlay-dialog-content>
+                          </mp-overlay-dialog>
+
+                          [[!-- The refresh half, OUTSIDE the dialog and CHAINED off the close.
+
+                                Both proxies inside the dialog does not work, and the failure is
+                                silent: whichever fires first tears the other's subtree down before
+                                it is reached. Refresh-first remounts the status table, which
+                                unmounts this row's mp-overlay-dialog and takes the close proxy with
+                                it (and the overlay stays open, because the overlay content lives in
+                                a separate React root at app root). Close-first hides the overlay and
+                                takes the refresh proxy with it.
+
+                                So they are staged: the form's save closes the dialog, and the CLOSE
+                                event — heard here, outside the overlay — refreshes the table. --]]
+                          <mp-event-proxy id='adj-form-reinstate-{{annotationId.value}}-refresh-proxy'
+                                          on-event-source='adj-form-reinstate-{{annotationId.value}}-close-proxy'
+                                          on-event-type='OverlayDialog.Close'
+                                          proxy-event-type='Component.Refresh'
+                                          proxy-targets='["{{viewId.value}}-alignment-adjudication"]'></mp-event-proxy>
+
+                              {{/ifCond}}
+
+                          <mp-overlay-dialog id='{{viewId.value}}-adj-refuse-{{annotationId.value}}'
+                                             type='modal'
+                                             title='Refuse — {{predicateLabel.value}} {{target.value}}'>
+                            <mp-overlay-dialog-trigger>
+                              <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Refuse</button>
+                            </mp-overlay-dialog-trigger>
+                            <mp-overlay-dialog-content>
+                              <div>
+                                [[!-- the overlay renders in a separate React root at app root, so
+                                      the repository context of the page is NOT inherited; it is
+                                      re-declared here (ProjectImages does the same). --]]
+                                <semantic-context repository='default'>
+                                  <div>
+                                    [[!-- Half of the AuthorityManagerTemplate save->close->refresh
+                                          recipe. This half CLOSES, and it must live inside the
+                                          dialog body (ImageAnnotationTemplate does the same). The
+                                          other half — the refresh — is deliberately NOT here: see
+                                          the proxy after </mp-overlay-dialog>. --]]
+                                    <mp-event-proxy id='adj-form-refuse-{{annotationId.value}}-close-proxy'
+                                                    on-event-source='adj-form-refuse-{{annotationId.value}}'
+                                                    on-event-types='["Form.ResourceCreated","Form.ResourceUpdated"]'
+                                                    proxy-event-type='OverlayDialog.Close'
+                                                    proxy-targets='["{{viewId.value}}-adj-refuse-{{annotationId.value}}"]'></mp-event-proxy>
+
+                                    <div class="provenance-decision-blurb">Refusing records the decision without changing the record. Nothing is deleted; the finding stays readable, marked as answered.</div>
+                                    <div class="provenance-adopted-row">
+                                      {{#if predicateLabel.value}}
+                                        <span class="badge badge--default provenance-predicate">{{predicateLabel.value}}</span>
+                                      {{/if}}
+                                      <a class="text-link-action" target="_blank"
+                                         href="{{target.value}}" title="{{target.value}}">{{target.value}}</a>
+                                    </div>
+
+                                    [[!-- ONE act, ONE update. new-subject-template mints the D30;
+                                          every other node in the graph is derived from it by
+                                          CONCAT inside the insert pattern, so the optional note
+                                          (a second update) still lands on the same act.
+                                          \{{UUID}} is escaped: this body is compiled by the
+                                          client-side handlebars of the enclosing semantic-query,
+                                          and an unescaped {{UUID}} would resolve to nothing. --]]
+                                    <semantic-form id='adj-form-refuse-{{annotationId.value}}'
+                                                   post-action='event'
+                                                   browser-persistence='false'
+                                                   new-subject-template='{{{entity.value}}}/adjudication/\{{UUID}}'
+                                                   persistence='{"type":"sparql","targetInsertGraphIri":"{{memberGraph.value}}"}'
+                                                   fields='[{"id":"adjudication_commit","iri":"https://w3id.org/dsanno/platform/field/adjudication_commit","label":"Verdict","xsdDatatype":"http://www.w3.org/2001/XMLSchema#anyURI","minOccurs":1,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P2_has_type ?value }","insertPattern":"INSERT { $subject a crmdig:D30_Annotation_Event ; crm:P14_carried_out_by <[[userUri]]> ; crm:P4_has_time-span ?ts ; crm:P17_was_motivated_by <{{{act.value}}}> ; crmdig:L48_created_annotation ?anno . ?ts a crm:E52_Time-Span ; crm:P82_at_some_time_within ?now . ?anno a crmdig:D29_Annotation_Object, crminf:I17_One-Proposition_Set ; crm:P2_has_type $value ; crminf:J30_has_domain <{{{entity.value}}}> ; crminf:J32_has_property_type <{{{matchProp.value}}}> ; crminf:J31_has_range <{{{target.value}}}> ; crmdig:L43_annotates <{{{entity.value}}}> ; crm:P129_is_about <{{{entity.value}}}> . <{{{entity.value}}}> crm:P129i_is_subject_of ?anno . } WHERE { BIND(NOW() AS ?now) BIND(URI(CONCAT(STR($subject), \"/at_some_time_within\")) AS ?ts) BIND(URI(CONCAT(STR($subject), \"/annotation/\", STRUUID())) AS ?anno) }","deletePattern":"DELETE { $subject crm:P2_has_type $value } WHERE { $subject crm:P2_has_type $value }"},{"id":"adjudication_note","iri":"https://w3id.org/dsanno/platform/field/adjudication_note","label":"Note","xsdDatatype":"http://www.w3.org/2001/XMLSchema#string","minOccurs":0,"maxOccurs":1,"selectPattern":"SELECT ?value WHERE { $subject crm:P3_has_note ?value }","insertPattern":"INSERT { $subject crm:P3_has_note $value } WHERE { }","deletePattern":"DELETE { $subject crm:P3_has_note $value } WHERE { $subject crm:P3_has_note $value }"}]'>
+                                      <semantic-form-hidden-input for='adjudication_commit'
+                                                                  default-value='https://w3id.org/murtenpanorama/resource/vocab/resolution_annotation_type/rejected'></semantic-form-hidden-input>
+                                      <semantic-form-text-input for='adjudication_note'
+                                                                multiline='true'
+                                                                rows='4'
+                                                                label='Note (optional)'
+                                                                placeholder='Why this decision, in one or two sentences.'></semantic-form-text-input>
+                                      <div class="provenance-decision-actions">
+                                        <button name='submit' class='btn btn-action'>Record decision</button>
+                                      </div>
+                                    </semantic-form>
+                                  </div>
+                                </semantic-context>
+                              </div>
+                            </mp-overlay-dialog-content>
+                          </mp-overlay-dialog>
+
+                          [[!-- The refresh half, OUTSIDE the dialog and CHAINED off the close.
+
+                                Both proxies inside the dialog does not work, and the failure is
+                                silent: whichever fires first tears the other's subtree down before
+                                it is reached. Refresh-first remounts the status table, which
+                                unmounts this row's mp-overlay-dialog and takes the close proxy with
+                                it (and the overlay stays open, because the overlay content lives in
+                                a separate React root at app root). Close-first hides the overlay and
+                                takes the refresh proxy with it.
+
+                                So they are staged: the form's save closes the dialog, and the CLOSE
+                                event — heard here, outside the overlay — refreshes the table. --]]
+                          <mp-event-proxy id='adj-form-refuse-{{annotationId.value}}-refresh-proxy'
+                                          on-event-source='adj-form-refuse-{{annotationId.value}}-close-proxy'
+                                          on-event-type='OverlayDialog.Close'
+                                          proxy-event-type='Component.Refresh'
+                                          proxy-targets='["{{viewId.value}}-alignment-adjudication"]'></mp-event-proxy>
+
+                            </div>
+                          {{/ifCond}}
+
+                        </div>
+                      </td>
+                    </tr>
+                  {{/each}}
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </semantic-query>
 
     [[!-- Evidence, once per member rather than once per act: a resolution run is shared —
           one reconciliation call is the evidence behind up to sixteen members here — so it
@@ -416,6 +1080,18 @@
                               ?pending crm:P2_has_type ?pendingType .
                               FILTER(STRENDS(STR(?pendingType), "/pending-adjudication"))
 
+                              [[!-- BARE pendings only. A pending that carries a payload
+                                    (J30 + J31) states a proposition that can be adopted or
+                                    refused, and it is rendered by the Status block above with
+                                    its buttons; showing it twice would put the same fact under
+                                    two different headings. A bare pending states no
+                                    proposition — there is nothing to click — so it keeps this
+                                    read-only row, and the ?later/?resolved logic with it. --]]
+                              FILTER NOT EXISTS { ?pending crminf:J30_has_domain ?anyDomain ;
+                                                           crminf:J31_has_range ?anyRange ;
+                                                           crminf:J32_has_property_type ?anyProp .
+                                                  FILTER(?anyProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch, owl:sameAs, <https://linked.art/ns/terms/equivalent>)) }
+
                               OPTIONAL { ?pending crm:P3_has_note ?pendingNote }
                               OPTIONAL { ?pending crminf:J31_has_range ?target }
                               OPTIONAL { ?pending crminf:J32_has_property_type ?predicate }
@@ -496,6 +1172,9 @@
         </div>
       </template>
     </semantic-query>
+
+      </div>
+    </mp-event-target-refresh>
 
   </template>
 </semantic-if>

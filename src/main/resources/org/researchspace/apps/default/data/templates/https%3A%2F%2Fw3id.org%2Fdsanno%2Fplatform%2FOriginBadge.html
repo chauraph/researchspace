@@ -83,13 +83,26 @@
                                      [[!-- monotone model: a settled deferral keeps its D29, so
                                            without this the badge would ask for a decision that
                                            was already made. A pending with no J30/J31 cannot
-                                           match the inner pattern, so it correctly stays open. --]]
+                                           match the inner pattern, so it correctly stays open.
+                                           TWO ways a pending settles: a later alignment D29 on
+                                           the same pair (machine or human adoption), or a HUMAN
+                                           refusal — a rejected D29 minted by a P17-carrying act.
+                                           Without the second arm, a refused proposal wore an
+                                           "Open question" badge forever. --]]
                                      FILTER NOT EXISTS { ?pending crminf:J30_has_domain ?pendingDomain ;
                                                                   crminf:J31_has_range  ?pendingTarget .
                                                          ?later crminf:J30_has_domain ?pendingDomain ;
                                                                 crminf:J31_has_range  ?pendingTarget ;
                                                                 crm:P2_has_type ?laterType .
-                                                         FILTER(STRENDS(STR(?laterType), "/alignment")) } }
+                                                         FILTER(STRENDS(STR(?laterType), "/alignment")) }
+                                     FILTER NOT EXISTS { ?pending crminf:J30_has_domain ?pendingDomain2 ;
+                                                                  crminf:J31_has_range  ?pendingTarget2 .
+                                                         ?humanRej crminf:J30_has_domain ?pendingDomain2 ;
+                                                                   crminf:J31_has_range  ?pendingTarget2 ;
+                                                                   crm:P2_has_type ?humanRejType .
+                                                         FILTER(STRENDS(STR(?humanRejType), "/rejected"))
+                                                         ?humanRejAct crmdig:L48_created_annotation ?humanRej ;
+                                                                      crm:P17_was_motivated_by ?humanMotive } }
 
                           OPTIONAL { ?creation crm:P134_continued ?import .
                                      ?import a crmdig:D12_Data_Transfer_Event ;

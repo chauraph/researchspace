@@ -559,3 +559,71 @@
         font-size: 15px;
     }
 }
+
+
+/* ── adjudication ───────────────────────────────────────────────────────── */
+
+/* Outstanding first, and marked — but marked in the margin, not in the type.
+   An unanswered appraisal is a piece of work, not an error, so it gets a rule
+   down its left edge and nothing else: no red, no bold, no exclamation. The
+   settled rows sit in the same column with the rule transparent, so the list
+   does not jump when a decision is recorded. */
+.provenance-status {
+    border-left: 3px solid transparent;
+    padding-left: 11px;
+}
+
+.provenance-status--outstanding {
+    border-left-color: $color-action;
+}
+
+/* "In force" is the only status that is quietly good news: the machine's
+   alignment is on the record and nobody has disturbed it. Green at low
+   saturation — legible as a state, invisible as a decoration. */
+.provenance-inforce {
+    color: #2f6b45;
+    border-color: rgba(47, 107, 69, 0.35);
+    background-color: rgba(47, 107, 69, 0.08);
+}
+
+.provenance-decisions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 2px;
+}
+
+.provenance-decision-btn {
+    min-width: 92px;
+}
+
+/* what recording the decision will actually do, said before the button is
+   pressed rather than in a confirmation afterwards */
+.provenance-decision-blurb {
+    color: $color-secondary;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    max-width: 46em;
+}
+
+.provenance-decision-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+}
+
+/* the pointer in the External Authority tab. One line, no border, no button —
+   it reports a count and says where the decisions are made. */
+.provenance-outstanding-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 4px;
+    color: $color-action;
+    font-size: $font-size-small;
+
+    i {
+        font-size: 17px;
+    }
+}
