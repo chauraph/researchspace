@@ -69,6 +69,17 @@ export class LdpPersistence implements TriplestorePersistence {
   }
 
   private createFormConstructQueries(entries: ModelDiffEntry[]): Immutable.List<SparqlJs.ConstructQuery> {
+    // fork extension (dsanno): deleteInsertPattern is sparql-persistence only. LDP persistence
+    // cannot honor the DELETE clause (it constructs graphs from the insert side alone), so a
+    // field carrying it here would half-apply SILENTLY. Fail loud instead.
+    const deleteInsertField = entries.find((entry) => Boolean(entry.definition.deleteInsertPattern));
+    if (deleteInsertField) {
+      throw new Error(
+        `Field '${deleteInsertField.definition.id}' carries deleteInsertPattern, which LDP form ` +
+        `persistence cannot honor (the DELETE clause would be silently dropped). ` +
+        `Use persistence='{"type":"sparql", ...}' for this form.`
+      );
+    }
     return Immutable.List(
       entries
         .filter((entry) => entry.definition.insertPattern)

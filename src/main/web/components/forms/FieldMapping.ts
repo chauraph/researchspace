@@ -311,6 +311,9 @@ export function collectDefinitionErrors(definition: FieldDefinition, errors: Fie
   if (definition.insertPattern) {
     store('insertPattern', validateInsertPattern(definition.insertPattern));
   }
+  if (definition.deleteInsertPattern) {
+    store('deleteInsertPattern', validateDeleteInsertPattern(definition.deleteInsertPattern));
+  }
   if (definition.autosuggestionPattern) {
     store('autosuggestionPattern', validateQueryPattern(definition.autosuggestionPattern, 'SELECT'));
   }
@@ -334,6 +337,33 @@ function validateInsertPattern(pattern: string): ValidationError | undefined {
       update.delete.length === 0;
     if (!isInsertWhere) {
       return new ValidationError('query should include only INSERT WHERE operations');
+    }
+  }
+  return undefined;
+}
+
+// fork extension (dsanno), not upstream — see FieldDefinition.deleteInsertPattern
+function validateDeleteInsertPattern(pattern: string): ValidationError | undefined {
+  const query = parseQuery(pattern);
+  if (query instanceof ValidationError) {
+    return query;
+  }
+  if (query.type !== 'update') {
+    return new ValidationError(`should be DELETE/INSERT query but was: '${query.type}'`);
+  }
+  if (query.updates.length !== 1) {
+    return new ValidationError('query should be exactly one DELETE INSERT WHERE operation');
+  }
+  for (const update of query.updates) {
+    const isDeleteInsertWhere =
+      SparqlTypeGuards.isInsertDeleteOperation(update) &&
+      update.updateType === 'insertdelete' &&
+      update.delete.length > 0 &&
+      update.insert.length > 0;
+    if (!isDeleteInsertWhere) {
+      return new ValidationError(
+        'query should be one DELETE INSERT WHERE operation with both clauses non-empty'
+      );
     }
   }
   return undefined;

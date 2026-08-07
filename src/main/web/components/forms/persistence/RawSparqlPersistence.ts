@@ -81,13 +81,19 @@ export class RawSparqlPersistence implements TriplestorePersistence {
   ): Kefir.Property<any> {
     const entries = computeModelDiff(initialModel, currentModel);
     const operations = entries
-      .filter(({ definition }) => Boolean(definition.insertPattern && definition.deletePattern))
+      // fork extension (dsanno): deleteInsertPattern admits a field on its own — see FieldDefinition
+      .filter(({ definition }) => Boolean(
+        (definition.insertPattern || definition.deleteInsertPattern) && definition.deletePattern
+      ))
       .map(({ definition, subject, inserted, deleted }) => {
         const deleteQuery = withNamedGraph(
           parseQueryStringAsUpdateOperation(definition.deletePattern), targetGraphIri
         );
 
-        const updateOperation = parseQueryStringAsUpdateOperation(definition.insertPattern);
+        // deleteInsertPattern supersedes insertPattern when both present (they never are, by convention)
+        const updateOperation = parseQueryStringAsUpdateOperation(
+          definition.deleteInsertPattern || definition.insertPattern
+        );
         const insertQuery =
           targetInsertGraphIri ?
           addInsertIntoGraph(updateOperation, targetInsertGraphIri):
@@ -177,13 +183,19 @@ export class RawSparqlPersistence implements TriplestorePersistence {
   ): Immutable.List<SparqlJs.Update> {
     const entries = computeModelDiff(initialModel, currentModel);
     return Immutable.List(entries)
-      .filter(({ definition }) => Boolean(definition.insertPattern && definition.deletePattern))
+      // fork extension (dsanno): deleteInsertPattern admits a field on its own — see FieldDefinition
+      .filter(({ definition }) => Boolean(
+        (definition.insertPattern || definition.deleteInsertPattern) && definition.deletePattern
+      ))
       .map(({ definition, subject, inserted, deleted }) => {
         const deleteQuery = withNamedGraph(
           parseQueryStringAsUpdateOperation(definition.deletePattern), targetGraphIri
         );
 
-        const updateOperation = parseQueryStringAsUpdateOperation(definition.insertPattern);
+        // deleteInsertPattern supersedes insertPattern when both present (they never are, by convention)
+        const updateOperation = parseQueryStringAsUpdateOperation(
+          definition.deleteInsertPattern || definition.insertPattern
+        );
         const insertQuery =
           targetInsertGraphIri ?
           addInsertIntoGraph(updateOperation, targetInsertGraphIri):

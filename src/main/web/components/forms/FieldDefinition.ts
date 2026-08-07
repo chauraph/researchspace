@@ -128,6 +128,26 @@ export interface FieldDefinition {
    */
   insertPattern?: string;
   /**
+   * Fork extension (dsanno project), not upstream; candidate for an upstream PR.
+   *
+   * SparQL DELETE/INSERT update (SPARQL 1.1 "Modify": exactly one
+   * DELETE { } INSERT { } WHERE { } operation, both clauses non-empty) executed
+   * INSTEAD of insertPattern when a value is added. For replace semantics that
+   * must be atomic: the delete and insert are one operation, one transaction.
+   *
+   * Supported by the `sparql` form persistence only; an ldp-persisted field
+   * carrying this key fails loudly. On platforms without this extension the
+   * field fails the editable-field validation and the form renders a visible
+   * configuration error — never a silent partial write.
+   *
+   * NOTE with targetInsertGraphIri, only the INSERT clause is auto-wrapped into
+   * the target graph; the DELETE clause must name its GRAPH explicitly, or (in
+   * quads mode) it silently targets the default graph and deletes nothing.
+   *
+   * Query bindings: $subject, $value as for insertPattern.
+   */
+  deleteInsertPattern?: string;
+  /**
    * SparQL SELECT query to generate a dynamic suggestion list based on
    * textindex or regex search.
    *
@@ -172,6 +192,8 @@ export interface FieldDefinitionProp {
   valueSetPattern?: string;
   deletePattern?: string;
   insertPattern?: string;
+  /** Fork extension (dsanno) — see FieldDefinition.deleteInsertPattern */
+  deleteInsertPattern?: string;
   autosuggestionPattern?: string;
   treePatterns?: TreeQueriesConfig;
   testSubject?: string | Rdf.Iri;

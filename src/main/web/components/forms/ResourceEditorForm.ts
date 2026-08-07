@@ -715,8 +715,9 @@ function getSubject(props: ResourceEditorFormProps): Rdf.Iri {
   return subjectIri || Rdf.iri('');
 }
 
-function getInvalidFields(fields: ReadonlyArray<FieldDefinitionProp>) { 
-  return fields.filter((field) => !field.insertPattern || !field.deletePattern);
+function getInvalidFields(fields: ReadonlyArray<FieldDefinitionProp>) {
+  // fork extension (dsanno): deleteInsertPattern satisfies the insert side — see FieldDefinition
+  return fields.filter((field) => !(field.insertPattern || field.deleteInsertPattern) || !field.deletePattern);
 }
 
 function loadTextFileFromInput(file: File): Kefir.Stream<string> {
