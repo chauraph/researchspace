@@ -3,3 +3,6 @@ output/
 .auth/
 playwright-report/
 test-results/
+
+# scratch
+_*.mjs
