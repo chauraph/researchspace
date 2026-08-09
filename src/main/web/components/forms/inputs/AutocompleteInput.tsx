@@ -58,6 +58,7 @@ export interface AutocompleteInputProps extends AtomicValueInputProps {
    * If set to true, the resource can not be edited and the Edit button will not be shown and will not possible to open the resource in a new tab
    */
   readonlyResource?: boolean;
+  readonly?: boolean;
 }
 
 interface SelectValue {
@@ -255,6 +256,7 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
             onSelected: this.onChange as (val: any) => void,
           }}
           minimumInput={this.props.minimumInput || MINIMUM_LIMIT}
+          disabled={!this.canEdit()}
         />
         { showCreateNewButton && (
           <Button className={`${CLASS_NAME}__create-button btn-textAndIcon`} onClick={() => this.onDropdownSelectHandler(this.state.nestedFormTemplates[0].label)}>

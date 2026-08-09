@@ -97,6 +97,11 @@ export abstract class MultipleValuesInput<P extends MultipleValuesProps, S> exte
     return DataState.Ready;
   }
 
+  protected canEdit() {
+    const {dataState, readonly} = this.props;
+    return readonly !== true && (dataState === DataState.Ready || dataState === DataState.Verifying);
+  }
+
   static readonly defaultHandler: MultipleValuesHandler = {
     validate: (values) => values,
     finalize: (values, owner) => Kefir.constant(values),

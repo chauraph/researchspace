@@ -240,6 +240,7 @@ export class TreePickerInput extends MultipleValuesInput<TreePickerInputProps, S
    
     return (
       <SemanticTreeInput
+        disabled={!this.canEdit()}
         key={treeVersionKey}
         droppable={{
           // enable droppable for autocomplete input
@@ -298,6 +299,9 @@ export class TreePickerInput extends MultipleValuesInput<TreePickerInputProps, S
   }
 
   private renderCreateNewButton() {
+    if (!this.canEdit()) {
+      return null;
+    }
     return (
       <Button className={`${CLASS_NAME}__create-button btn-textAndIcon`} onClick={this.toggleNestedForm}>
         <Icon iconType='round' iconName='add_box'/>

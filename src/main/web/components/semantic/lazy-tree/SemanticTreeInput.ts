@@ -128,6 +128,8 @@ export interface SemanticTreeInputProps extends ComplexTreePatterns {
    */
     queryItemLabel?: string;
     openResourceOnClick?: boolean;
+    
+  disabled?: boolean;
 }
 
 interface SelectedItem {
@@ -506,7 +508,16 @@ export class SemanticTreeInput extends Component<SemanticTreeInputProps, State> 
     return mappedLabels[0]?.value ?? selectedNode.label.value
   }
 
+  protected canEdit() {
+    const {disabled} = this.props;
+    // Note: SemanticTreeInput doesn't have dataState prop, so simpler check
+    return disabled !== true;
+  }
+
   private toggleDropdown() {
+    if (!this.canEdit()) {
+      return;
+    }
     const modeType = this.state.mode.type;
     if (modeType === 'collapsed' || modeType === 'search') {
       this.search.cancelAll();
@@ -559,11 +570,13 @@ export class SemanticTreeInput extends Component<SemanticTreeInputProps, State> 
                 onSelectionClick ? () => onSelectionClick(selection, item) : undefined
               },
               onRemove: () => {
-                const previous = this.state.confirmedSelection;
-                const newSelection = TreeSelection.unselect(previous, previous.keyOf(item));
-                this.setState({ confirmedSelection: newSelection }, () => {
-                  this.onSelectionChanged(newSelection)
-                });
+                if (this.canEdit()) {
+                  const previous = this.state.confirmedSelection;
+                  const newSelection = TreeSelection.unselect(previous, previous.keyOf(item));
+                  this.setState({ confirmedSelection: newSelection }, () => {
+                    this.onSelectionChanged(newSelection)
+                  });
+                }
               },
             },
             this.getLabelNoteToDisplay(item)
@@ -638,7 +651,10 @@ export class SemanticTreeInput extends Component<SemanticTreeInputProps, State> 
       );
   }
 
-  renderBrowseButton() {
+  private renderBrowseButton() {
+    if (!this.canEdit()) {
+      return null;
+    }
     return createElement(
       OverlayTrigger,
       {

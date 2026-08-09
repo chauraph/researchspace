@@ -285,6 +285,9 @@ export class DragAndDropInput extends MultipleValuesInput<DragAndDropInputProps,
   }
 
   private onRemoveItem = (iriString: string) => {
+    if (this.props.readonly) {
+      return; // Prevent removing items when readonly
+    }
     const iri = Rdf.iri(iriString);
     const itemIndex =
       this.props.values.findIndex(
