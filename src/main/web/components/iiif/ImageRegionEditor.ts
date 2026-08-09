@@ -443,7 +443,34 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
           const windowForImage = windows.find(w => w.canvasID === event.data.imageIri);
 
           if (windowForImage) {
-            this.scrollToImageRegion(event.data.imageIri, event.data.regionIri)
+            const currentAnnotations = windowForImage.annotationsList || [];
+            const annotation = find(currentAnnotations, a => a['@id'] === event.data.regionIri);
+
+            if (annotation) {
+              // Annotation is found in the existing window's list, scroll immediately.
+              this.scrollToImageRegion(event.data.imageIri, event.data.regionIri);
+            } else {
+              // Annotation not found in the list yet, set up a one-time listener for when annotations update.
+              const onAnnotationsReadyForExistingWindow = () => {
+                // Re-fetch the window instance to ensure it's current and its annotationsList is updated.
+                const updatedWindow = this.miradorInstance.viewer.workspace.windows.find(w => w.id === windowForImage.id && w.canvasID === event.data.imageIri);
+                if (updatedWindow) {
+                  const updatedAnnotations = updatedWindow.annotationsList || [];
+                  const currentAnnotation = find(updatedAnnotations, a => a['@id'] === event.data.regionIri);
+                  if (currentAnnotation) {
+                    this.scrollToImageRegion(event.data.imageIri, event.data.regionIri);
+                  } else {
+                    // Annotation still not found after the update event.
+                    // You might want to log this or handle it if scrolling without the annotation explicitly in the list is problematic.
+                    console.warn(`ZoomToRegionEvent: Annotation ${event.data.regionIri} still not found in window ${updatedWindow.id} after ANNOTATIONS_LIST_UPDATED event.`);
+                  }
+                } else {
+                  // The window itself might have been closed or replaced.
+                  console.warn(`ZoomToRegionEvent: Window with original id ${windowForImage.id} (canvasID: ${event.data.imageIri}) no longer found after ANNOTATIONS_LIST_UPDATED event.`);
+                }
+              };
+              this.miradorInstance.eventEmitter.one('ANNOTATIONS_LIST_UPDATED', onAnnotationsReadyForExistingWindow);
+            }
           } else {
             // Mirador handles events asynchronously, so here:
             //  1. we trigger "SPLIT_RIGHT_FROM_WINDOW" event to add new mirador window
