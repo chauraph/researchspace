@@ -2,7 +2,7 @@
 
 End-to-end procedure: revert to the pre-migration state, migrate, verify.
 Companion docs: [`README.md`](README.md) (policy), [`WORKLIST.md`](WORKLIST.md)
-(findings per round), [`../../../docs/researchspace-storage-layers.md`](../../../docs/researchspace-storage-layers.md)
+(findings per round), [`../../../docs/ldp-authoring/storage-layers.md`](../../../docs/ldp-authoring/storage-layers.md)
 (override model).
 
 **Mental model.** Three stores with different lifecycles:

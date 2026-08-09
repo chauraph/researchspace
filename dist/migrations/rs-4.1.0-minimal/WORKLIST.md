@@ -72,7 +72,7 @@ Consequences for this migration:
 3. This is why the snapshot audit matters more than the DB census: the DB is
    downstream of these files.
 
-Full reference: [`docs/researchspace-storage-layers.md`](../../../docs/researchspace-storage-layers.md)
+Full reference: [`docs/ldp-authoring/storage-layers.md`](../../../docs/ldp-authoring/storage-layers.md)
 
 ---
 
@@ -226,7 +226,7 @@ been corrected accordingly (it previously said "must be identical").
 UI checks passed: thumbnails render (proves the `crmdig` prefix binding), new
 image annotation writes `S4_Single_Observation`.
 
-### Audit of `docs/crm-minimal-migration.md` — 11 flaws
+### Audit of `docs/archive/crm-migration/crm-minimal-migration.md` — 11 flaws
 
 Four fail **silently**:
 
