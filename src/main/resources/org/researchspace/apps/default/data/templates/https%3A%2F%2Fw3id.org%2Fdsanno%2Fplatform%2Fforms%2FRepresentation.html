@@ -140,95 +140,111 @@
                                 provider='d3-sankey'
               ></semantic-tree>
 --]]
-              <semantic-tree  query="
-                                SELECT DISTINCT ?node_seg ?node ?parent ?repr WHERE {
-                                  {
-                                  BIND(<{{node}}> as ?q_repr)
-                                
-                                  ?qnode_seg crm:P140i_was_attributed_by ?qnode_featobs.
-                                  ?qnode_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
-                                    crm:P141_assigned ?q_repr.
-                                  ?qnode_seg crmdig:L49_is_primary_area_of ?repr.
-                                      
-                                  ?qnode_seg ((crm:P140i_was_attributed_by/crm:P141_assigned)+) ?node_seg.
-                                  ?node_seg crm:P140i_was_attributed_by ?node_featobs.
-                                  ?node_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
-                                    crm:P141_assigned ?node_repr.
-                                  ?node_seg crmdig:L49_is_primary_area_of ?repr.
-                                  
-                                  ?parent_seg crm:P140i_was_attributed_by ?parent_segobs.
-                                  ?parent_segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>;
-                                      crm:P141_assigned ?node_seg.
-                                  ?parent_seg crm:P140i_was_attributed_by ?parent_featobs.
-                                  ?parent_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
-                                    crm:P141_assigned ?parent_repr.
-                                      
-                                  BIND(?parent_repr AS ?parent)
-                                  BIND(?node_repr AS ?node)
-                                  
-                                  }
-                                  UNION
-                                  {
+              {{#if node}}
+                <semantic-tree  query="
+                                  SELECT DISTINCT ?node_seg ?node ?parent ?repr WHERE {
+                                    {
                                     BIND(<{{node}}> as ?q_repr)
-
+                                  
                                     ?qnode_seg crm:P140i_was_attributed_by ?qnode_featobs.
                                     ?qnode_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
                                       crm:P141_assigned ?q_repr.
                                     ?qnode_seg crmdig:L49_is_primary_area_of ?repr.
-
-                                    OPTIONAL {
-                                      ?areaOrDigitalObject (crm:P140i_was_attributed_by/crm:P141_assigned)+ ?qnode_seg.
-                                      values ?areaOrDigitalObjectType { rso:EX_Digital_Image_Region rso:EX_Digital_Image }.
-                                      ?areaOrDigitalObject a ?areaOrDigitalObjectType.
-                                      ?areaOrDigitalObject (crm:P138_represents|rso:PX_main_represents) ?source_item.
-                                    }
-                                
-                                    OPTIONAL {
-                                      ?qnode_seg ((crm:P140i_was_attributed_by/crm:P141_assigned)+) ?node_seg.
-                                      ?node_seg crm:P140i_was_attributed_by ?node_featobs.
-                                      ?node_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
-                                        crm:P141_assigned ?node_repr.
-                                      ?node_seg crmdig:L49_is_primary_area_of ?repr.
-                                      
-                                    OPTIONAL {
-                                          ?node_seg crm:P140i_was_attributed_by ?node_segobs.
-                                          ?node_segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>;
-                                            crm:P141_assigned ?children_seg.
-                                        }
-                                    }
-                                    BIND(!BOUND(?children_seg) AS ?leaf_node)
+                                        
+                                    ?qnode_seg ((crm:P140i_was_attributed_by/crm:P141_assigned)+) ?node_seg.
+                                    ?node_seg crm:P140i_was_attributed_by ?node_featobs.
+                                    ?node_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                      crm:P141_assigned ?node_repr.
+                                    ?node_seg crmdig:L49_is_primary_area_of ?repr.
                                     
-                                    FILTER(?leaf_node)
-                                    BIND(COALESCE(?node_repr,?q_repr) AS ?parent)
-                                    BIND(?source_item AS ?node)
-                                  }
-                                }
-                                "
-                                provider='d3-sankey'
-              ></semantic-tree>
+                                    ?parent_seg crm:P140i_was_attributed_by ?parent_segobs.
+                                    ?parent_segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>;
+                                        crm:P141_assigned ?node_seg.
+                                    ?parent_seg crm:P140i_was_attributed_by ?parent_featobs.
+                                    ?parent_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                      crm:P141_assigned ?parent_repr.
+                                        
+                                    BIND(?parent_repr AS ?parent)
+                                    BIND(?node_repr AS ?node)
+                                    
+                                    }
+                                    UNION
+                                    {
+                                      BIND(<{{node}}> as ?q_repr)
 
-            <semantic-form-text-input for="entity_primary_appellation" label="Representation name" placeholder="Enter representation name"></semantic-form-text-input>
+                                      ?qnode_seg crm:P140i_was_attributed_by ?qnode_featobs.
+                                      ?qnode_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                        crm:P141_assigned ?q_repr.
+                                      ?qnode_seg crmdig:L49_is_primary_area_of ?repr.
+
+                                      OPTIONAL {
+                                        ?areaOrDigitalObject (crm:P140i_was_attributed_by/crm:P141_assigned)+ ?qnode_seg.
+                                        values ?areaOrDigitalObjectType { rso:EX_Digital_Image_Region rso:EX_Digital_Image }.
+                                        ?areaOrDigitalObject a ?areaOrDigitalObjectType.
+                                        ?areaOrDigitalObject (crm:P138_represents|rso:PX_main_represents) ?source_item.
+                                      }
+                                  
+                                      OPTIONAL {
+                                        ?qnode_seg ((crm:P140i_was_attributed_by/crm:P141_assigned)+) ?node_seg.
+                                        ?node_seg crm:P140i_was_attributed_by ?node_featobs.
+                                        ?node_featobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/feature_recognition>;
+                                          crm:P141_assigned ?node_repr.
+                                        ?node_seg crmdig:L49_is_primary_area_of ?repr.
+                                        
+                                      OPTIONAL {
+                                            ?node_seg crm:P140i_was_attributed_by ?node_segobs.
+                                            ?node_segobs crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/segment_observation>;
+                                              crm:P141_assigned ?children_seg.
+                                          }
+                                      }
+                                      BIND(!BOUND(?children_seg) AS ?leaf_node)
+                                      
+                                      FILTER(?leaf_node)
+                                      BIND(COALESCE(?node_repr,?q_repr) AS ?parent)
+                                      BIND(?source_item AS ?node)
+                                    }
+                                  }
+                                  "
+                                  provider='d3-sankey'
+                ></semantic-tree>
+              {{/if}}
+
+            {{#if node}}
+              <semantic-form-text-input for="entity_primary_appellation" label="Representation name" placeholder="Enter representation name" readonly='true'></semantic-form-text-input>
+            {{/if}}
 
             <div class="inline-composite-container">
               <semantic-form-composite-input  for="visual_item_PC138_represents" 
-                                              label="Visually represents"
+                                              label="First-order signification"
                                               new-subject-template="/PC138_represents/{{{{raw}}}}{{UUID}}{{{{/raw}}}}"
                                               fields='[[fieldDefinitions
                                                         classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-                                                                  
+
                                                         represents_entity_range="http://www.researchspace.org/pattern/system/represents/range"
                                                         mode_of_representation="http://www.researchspace.org/pattern/system/represents/mode_of_representation"
-                                                      ]]'>
+
+                                                        representation_auto_appellation="https://w3id.org/dsanno/platform/pattern/representation/auto_appellation"
+
+                                                      ]]'
+                                                      readonly='{{#if node}}true{{else}}false{{/if}}'>
     
               <semantic-form-hidden-input for="classtype" default-value='http://www.cidoc-crm.org/cidoc-crm/PC138_represents'> </semantic-form-hidden-input>
     
               <div class="form-inline-inputs">
                 <div style="flex: 1;">
-                  <semantic-form-drag-and-drop-input for='represents_entity_range' 
-                                                    render-header="false"
-                                                    placeholder="Select what is visually represented by this item" 
-                                                    nested-form-templates='[[> Platform:NestedFormTemplates_allEntities]]'>
-                  </semantic-form-drag-and-drop-input>
+                  {{#if node}}
+                    <semantic-form-drag-and-drop-input for='represents_entity_range' 
+                                                      render-header="false"
+                                                      placeholder="Select what is visually represented by this item"
+                                                      readonly="true">
+                    </semantic-form-drag-and-drop-input>
+                  {{else}}
+                    <semantic-form-autocomplete-input for='represents_entity_range' 
+                                                      render-header="false"
+                                                      placeholder="Select what is visually represented by this item">
+                    </semantic-form-autocomplete-input>                  
+                  {{/if}}
+
                 </div>
                 <div style="flex: 1;">
                   <semantic-form-tree-picker-input  for="mode_of_representation" 
@@ -251,10 +267,13 @@
     
                                                     query-item-label='SELECT ?label WHERE {
                                                                         ?item skos:prefLabel ?label .
-                                                                    }'>
+                                                                    }'
+                                                    readonly='{{#if node}}true{{else}}false{{/if}}'>
                     </semantic-form-tree-picker-input>
                 </div>
               </div>
+
+              <semantic-form-hidden-input for="representation_auto_appellation" default-value="test"></semantic-form-hidden-input>
               </semantic-form-composite-input>
             </div>
 [[!-- 
@@ -481,7 +500,7 @@
       <rs-tab event-key="detail" title="Details">
         <div class="form-details-container">
           <div style="overflow-x: auto;">
-            <semantic-form-text-input for="entity_primary_appellation" label="Representation name" placeholder="Enter representation name"></semantic-form-text-input>
+            [[!-- <semantic-form-text-input for="entity_primary_appellation" label="Representation name" placeholder="Enter representation name"></semantic-form-text-input> --]]
 
             <div class="inline-composite-container">
               <semantic-form-composite-input  for="human-made_thing_title" 
@@ -562,6 +581,7 @@
                                           
             ></semantic-form-tree-picker-input>
 
+            [[!--
             <div class="inline-composite-container">
               <semantic-form-composite-input  for="visual_item_PC138_represents" 
                                               label="Visually represents"
@@ -604,12 +624,14 @@
     
                                                     query-item-label='SELECT ?label WHERE {
                                                                         ?item skos:prefLabel ?label .
-                                                                    }'>
+                                                                    }'
+                                                    disabled=true>
                     </semantic-form-tree-picker-input>
                 </div>
               </div>
               </semantic-form-composite-input>
             </div>
+            --]]
 
             <semantic-form-text-input for="symbolic_object_content" multiline=true label="Content/value" placeholder="Enter the complete, identifying representation of its content"></semantic-form-text-input>
             

@@ -179,6 +179,11 @@
                                                         activity_used_specific_object_domain="http://www.researchspace.org/pattern/system/activity/PC16_used_specific_object"
                                                         activity_carried_out_by_domain="http://www.researchspace.org/pattern/system/activity/PC14_carried_out_by"
 
+                                                        visual_item_PC138_represents="http://www.researchspace.org/pattern/system/visual_item/PC138_represents"
+                                                        feature_recognition_assigned_denoted_entity_with_mode="https://w3id.org/dsanno/platform/pattern/feature_recognition/assigned_denoted_entity_with_mode"
+
+                                                        attribute_assignment_assigned_representation_Min1Max1="https://w3id.org/dsanno/platform/pattern/attribute_assignment/assigned_representation_Min1Max1"
+
                                                         entity_formRecord="http://www.researchspace.org/pattern/system/entity/formRecord"
                                                         ]]'>
 
@@ -187,10 +192,78 @@
 
                 <div class="form-inline-inputs">
                   <div style="flex: 1;">
+                    <semantic-form-autocomplete-input   for='attribute_assignment_assigned_representation_Min1Max1' 
+                                                      label="Represents"
+                                                      placeholder="Select the representation"
+                                                      nested-form-templates='[ 
+                                                                    {
+                                                                        "label": "Representation",
+                                                                        "nestedForm": "{{{{raw}}}}{{> \"https://w3id.org/dsanno/platform/forms/Representation\" nested=true editable=true mode=\"new\" }}{{{{/raw}}}}"
+                                                                    }
+                                                                ]'> 
+                    </semantic-form-autocomplete-input>
+
+
+                    [[!--
                     <semantic-form-autocomplete-input   for='feature_recognition_assigned_denoted_entity' 
                                                       label="First-order signification"
                                                       placeholder="Select what the image denotes">
                     </semantic-form-autocomplete-input>
+                    --]]
+
+[[!-- 
+                    <div class="inline-composite-container">
+                      <semantic-form-composite-input  for="feature_recognition_assigned_denoted_entity_with_mode" 
+                                                      label="Visually represents"
+                                                      new-subject-template="{{{{raw}}}}{{FIELD_VALUE_RAW represents_entity_range}}{{{{/raw}}}}/PC138_represents{{{{raw}}}}{{IF_FIELD_VALUE_EXISTS mode_of_representation /mode/}}{{FIELD_VALUE_END mode_of_representation}}{{{{/raw}}}}"
+                                                      fields='[[fieldDefinitions
+                                                                classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                                          
+                                                                represents_entity_range="http://www.researchspace.org/pattern/system/represents/range"
+                                                                mode_of_representation="http://www.researchspace.org/pattern/system/represents/mode_of_representation"
+                                                              ]]'>
+            
+                      <semantic-form-hidden-input for="classtype" default-value='http://www.cidoc-crm.org/cidoc-crm/PC138_represents'> </semantic-form-hidden-input>
+            
+                      <div class="form-inline-inputs">
+                        <div style="flex: 1;">
+                          <semantic-form-autocomplete-input for='represents_entity_range' 
+                                                            render-header="false"
+                                                            placeholder="Select what is visually represented by this item" 
+                                                            nested-form-templates='[[> Platform:NestedFormTemplates_allEntities]]'
+                                                            disabled='true'>
+                          </semantic-form-autocomplete-input>
+                        </div>
+                        <div style="flex: 1;">
+                          <semantic-form-tree-picker-input  for="mode_of_representation" 
+                                                            render-header="false"
+                                                            placeholder="Select mode of representation"
+                                                            close-dropdown-on-selection='true'
+                                                            tree-patterns='{"scheme": "<http://www.researchspace.org/resource/vocab/mode_of_representation>", 
+                                                                            "schemePattern": "?item <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/vocab/mode_of_representation>",
+                                                                            "relationPattern": "?item crm:P127_has_broader_term ?parent"}'
+            
+                                                            scheme-page-button-config='{"iri": "http://www.researchspace.org/resource/ThinkingFrames",
+                                                                                        "view": "authority-list",
+                                                                                        "scheme": "http://www.researchspace.org/resource/vocab/mode_of_representation",
+                                                                                        "tooltip": "Open list of mode of representations"
+                                                                                      }'
+                                                            
+                                                            nested-form-template='{{{{raw}}}}{{> forms:Type nested=true editable=true mode="new"
+                                                                                                  scheme="http://www.researchspace.org/resource/vocab/mode_of_representation"
+                                                                                                  entityType="mode of representation" }}{{{{/raw}}}}'
+            
+                                                            query-item-label='SELECT ?label WHERE {
+                                                                                ?item skos:prefLabel ?label .
+                                                                            }'
+                                                            disabled='true'>
+                            </semantic-form-tree-picker-input>
+                        </div>
+                      </div>
+                      </semantic-form-composite-input>
+                    </div>
+
+--]]
 
                     [[> dsannop:UsedSpecificObject_partial]]
 
@@ -275,7 +348,7 @@
 
                   [[> dsannop:UsedSpecificObject_partial]]
 
-              <semantic-form-hidden-input for="entity_primary_appellation" default-value='feature recognition'></semantic-form-hidden-input>    
+              <semantic-form-hidden-input for="entity_primary_appellation" default-value='Similarity Assessment (Source)'></semantic-form-hidden-input>    
               
               {{> rsp:FormEntityRecord}}
 
@@ -353,14 +426,13 @@
 
                 [[> dsannop:UsedSpecificObject_partial]]
 
-            <semantic-form-hidden-input for="entity_primary_appellation" default-value='feature recognition'></semantic-form-hidden-input>    
+            <semantic-form-hidden-input for="entity_primary_appellation" default-value='Similarity Assessment (Influence)'></semantic-form-hidden-input>    
             
             {{> rsp:FormEntityRecord}}
 
           </semantic-form-composite-input>
         </div>
       </div>
-
 
         <div class="inline-composite-container">
           <semantic-form-composite-input  for="entity_refers_to_range_linguistic_object" 

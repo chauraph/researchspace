@@ -41,14 +41,24 @@ type SubjectReplacer = (placeholder: Placeholder, composite?: CompositeValue) =>
 
 //{{FIELD_VALUE_LOCAL_NAME fieldName}} placeholder allows to use field value local name in subject template
 //{{FIELD_VALUE_RAW}} placeholder allows to use field value in subject template
+//{{FIELD_VALUE_UUID}} placeholder allows to use trailing UUID from field value in subject template
+//{{FIELD_VALUE_END}} placeholder allows to use last part of URL path from field value in subject template
+//{{IF_FIELD_VALUE_EXISTS fieldName returnValue}} placeholder returns returnValue if field has a value, empty string otherwise
 
 const FIELD_VALUE_LOCAL_NAME = 'FIELD_VALUE_LOCAL_NAME';
 const FIELD_VALUE_RAW = 'FIELD_VALUE_RAW';
+const FIELD_VALUE_UUID = 'FIELD_VALUE_UUID';
+const FIELD_VALUE_END = 'FIELD_VALUE_END';
+const IF_FIELD_VALUE_EXISTS = 'IF_FIELD_VALUE_EXISTS';
+
 type Placeholder =
   | { type: 'UUID' }
   | { type: 'FieldValue'; id: string }
   | { type: typeof FIELD_VALUE_LOCAL_NAME; id: string }
-  | { type: typeof FIELD_VALUE_RAW; id: string };
+  | { type: typeof FIELD_VALUE_RAW; id: string }
+  | { type: typeof FIELD_VALUE_UUID; id: string }
+  | { type: typeof FIELD_VALUE_END; id: string }
+  | { type: typeof IF_FIELD_VALUE_EXISTS; id: string; returnValue: string };
 
 export function generateSubjectByTemplate(
   template: string | undefined,
@@ -65,6 +75,26 @@ export function generateSubjectByTemplate(
     let p: Placeholder;
     if (placeholder === 'UUID') {
       p = { type: 'UUID' };
+    } else if (placeholder.startsWith(IF_FIELD_VALUE_EXISTS)) {
+      const remainingText = placeholder.replace(IF_FIELD_VALUE_EXISTS, '').trim();
+      // Parse "fieldName returnValue" - split by first space
+      const spaceIndex = remainingText.indexOf(' ');
+      if (spaceIndex > 0) {
+        const fieldId = remainingText.substring(0, spaceIndex).trim();
+        const returnValue = remainingText.substring(spaceIndex + 1).trim();
+        p = {
+          type: IF_FIELD_VALUE_EXISTS,
+          id: fieldId,
+          returnValue: returnValue,
+        };
+      } else {
+        // If no return value specified, just use the field name
+        p = {
+          type: IF_FIELD_VALUE_EXISTS,
+          id: remainingText,
+          returnValue: '',
+        };
+      }
     } else if (placeholder.startsWith(FIELD_VALUE_LOCAL_NAME)) {
       p = {
         type: FIELD_VALUE_LOCAL_NAME,
@@ -74,6 +104,16 @@ export function generateSubjectByTemplate(
       p = {
         type: FIELD_VALUE_RAW,
         id: placeholder.replace(FIELD_VALUE_RAW, '').trim(),
+      };
+    } else if (placeholder.startsWith(FIELD_VALUE_UUID)) {
+      p = {
+        type: FIELD_VALUE_UUID,
+        id: placeholder.replace(FIELD_VALUE_UUID, '').trim(),
+      };
+    } else if (placeholder.startsWith(FIELD_VALUE_END)) {
+      p = {
+        type: FIELD_VALUE_END,
+        id: placeholder.replace(FIELD_VALUE_END, '').trim(),
       };
     } else {
       p = { type: 'FieldValue', id: placeholder };
@@ -103,6 +143,9 @@ export function wasIriGeneratedByTemplate(
     FieldValue: undefined,
     FIELD_VALUE_LOCAL_NAME: undefined,
     FIELD_VALUE_RAW: undefined,
+    FIELD_VALUE_UUID: undefined,
+    FIELD_VALUE_END: undefined,
+    IF_FIELD_VALUE_EXISTS: undefined,
   };
   const newGeneratedIri = generateSubjectByTemplate(template, ownerSubject, composite, (p, comp) => {
     const escaped = escapeTable[p.type];
@@ -123,18 +166,50 @@ export function makeDefaultSubjectReplacer(): SubjectReplacer {
       composite &&
       (placeholder.type === 'FieldValue' || 
        placeholder.type === FIELD_VALUE_LOCAL_NAME || 
-       placeholder.type === FIELD_VALUE_RAW) &&
+       placeholder.type === FIELD_VALUE_RAW ||
+       placeholder.type === FIELD_VALUE_UUID ||
+       placeholder.type === FIELD_VALUE_END ||
+       placeholder.type === IF_FIELD_VALUE_EXISTS) &&
       composite.definitions.has(placeholder.id)
     ) {
       const state = composite.fields.get(placeholder.id);
       const first = (state ? state.values.first() : undefined) || FieldValue.empty;
       const valueContent = FieldValue.isAtomic(first) ? first.value.value : '';
       
+      // Handle IF_FIELD_VALUE_EXISTS first (before the empty check)
+      if (placeholder.type === IF_FIELD_VALUE_EXISTS) {
+        // Return the specified value if field has content, empty string otherwise
+        const hasValue = valueContent && first.type !== 'empty';
+        return hasValue ? placeholder.returnValue : '';
+      }
+      
+      // Return empty string if no value is present OR if the field value is empty
+      if (!valueContent || first.type === 'empty') {
+        return '';
+      }
+      
       if (placeholder.type === FIELD_VALUE_LOCAL_NAME && valueContent) {
         return Rdf.getLocalName(valueContent);
       } else if (placeholder.type === FIELD_VALUE_RAW && valueContent) {
         // Return raw value without encoding
         return valueContent;
+      } else if (placeholder.type === FIELD_VALUE_UUID && valueContent) {
+        // Extract trailing UUID from the value
+        const uuidMatch = valueContent.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+        return uuidMatch ? uuidMatch[0] : '';
+      } else if (placeholder.type === FIELD_VALUE_END && valueContent) {
+        // Extract last part of URL path
+        try {
+          const uri = URI(valueContent);
+          const pathSegments = uri.segment();
+          const result = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : '';
+          return result;
+        } catch (error) {
+          // If not a valid URI, try to extract last part after last slash
+          const lastSlashIndex = valueContent.lastIndexOf('/');
+          const result = lastSlashIndex >= 0 ? valueContent.substring(lastSlashIndex + 1) : valueContent;
+          return result;
+        }
       } else {
         return encodeIri(valueContent);
       }
