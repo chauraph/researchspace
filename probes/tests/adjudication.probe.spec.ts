@@ -14,7 +14,7 @@
  *   cd probes && RS_BASE_URL=http://127.0.0.1:10214 npx playwright test adjudication
  */
 
-import { test, expect, Page, APIRequestContext } from '@playwright/test';
+import { test, expect, Page, APIRequestContext, Locator } from '@playwright/test';
 
 const GRAPH = 'urn:dsanno:adjtest:data';
 const BASE = 'https://w3id.org/murtenpanorama/resource/vocab/adjtest/';
@@ -74,6 +74,52 @@ async function describeUnder(api: APIRequestContext, prefix: string) {
 
 function line(...parts: unknown[]) {
   console.log(parts.join(' '));
+}
+
+/**
+ * Wait for a real condition instead of sleeping a guessed number of milliseconds.
+ *
+ * A probe must never throw, so a timeout here prints and continues — the caller's own
+ * output then shows what was missing. Fixed waitForTimeout() calls were wrong in both
+ * directions: dead time when the app was fast, and an intermittent lie when it was slow.
+ */
+async function settle(what: string, fn: () => Promise<unknown>) {
+  try {
+    await fn();
+  } catch {
+    line(`  (gave up waiting for ${what} — continuing; counts below may be short)`);
+  }
+}
+
+/**
+ * Wait until a locator's count STOPS CHANGING, then return it.
+ *
+ * The status table re-queries SPARQL asynchronously after every decision, so "the first row
+ * is visible" is not the same as "the table has finished rendering". Waiting on the first
+ * element made this probe read a half-built table and report phantom template regressions
+ * (missing orphan/divergent rows, 0 skos inputs). A fixed sleep hid that by accident; this
+ * waits for the real condition instead.
+ */
+async function stable(
+  what: string,
+  loc: Locator,
+  { min = 1, settleMs = 700, timeout = 30_000 } = {}
+): Promise<number> {
+  const deadline = Date.now() + timeout;
+  let last = -1;
+  let lastChange = Date.now();
+  while (Date.now() < deadline) {
+    const n = await loc.count();
+    if (n !== last) {
+      last = n;
+      lastChange = Date.now();
+    } else if (n >= min && Date.now() - lastChange >= settleMs) {
+      return n;
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  line(`  (${what} never settled at >=${min} within ${timeout}ms; last count ${last})`);
+  return last;
 }
 
 /** Statuses as the page currently renders them, read out of the live DOM. */
@@ -183,6 +229,11 @@ async function decide(page: Page, target: string, label: string, note: string) {
 
   await submit.click();
   await dialog.waitFor({ state: 'detached', timeout: 60_000 });
+
+  // The dialog detaching means the update committed, which is enough for a read via the
+  // SPARQL API — but callers also read the UI status table, and that re-queries on its own
+  // schedule. Wait for it to stop changing before returning.
+  await stable('status rows after the decision', page.locator('.provenance-status'));
 }
 
 test('probe: alignment adjudication end to end', async ({ page }) => {
@@ -212,7 +263,7 @@ test('probe: alignment adjudication end to end', async ({ page }) => {
   await page.goto(HARNESS, { waitUntil: 'domcontentloaded' });
   // wait for content, never for the container: the section mounts only once SPARQL returns
   await page.waitForSelector('.provenance-status', { timeout: 90_000 });
-  await page.waitForTimeout(2500);
+  line(`  status rows rendered: ${await stable('the status table', page.locator('.provenance-status'))}`);
 
   const notice = await page
     .locator('.provenance-outstanding-notice')
@@ -224,7 +275,8 @@ test('probe: alignment adjudication end to end', async ({ page }) => {
 
   line('\n=== 3. Adopt pending A ===============================================');
   await decide(page, TARGET_A, 'Adopt', 'ADJTEST adopt: the Wikidata item is the same thing; the second candidate is a namesake.');
-  await page.waitForTimeout(3000);
+  // no wait needed: decide() returns only once the dialog has detached, which means the
+  // form submitted and the update committed. The read below goes to the API, not the UI.
 
   const acts = await select(
     api,
@@ -292,7 +344,6 @@ test('probe: alignment adjudication end to end', async ({ page }) => {
     `SELECT (COUNT(*) AS ?n) WHERE { GRAPH ?g { <${MEMBER}> ?p <${TARGET_B}> } }`
   );
   await decide(page, TARGET_B, 'Refuse', 'ADJTEST refuse: the AAT concept is a different sortal; recorded so the next wave does not re-surface it.');
-  await page.waitForTimeout(3000);
 
   const afterRefuse = await select(
     api,
@@ -332,7 +383,6 @@ test('probe: alignment adjudication end to end', async ({ page }) => {
   if (!orphanRows.length) line('  *** no status row for the orphaned adoption — template regression ***');
 
   await decide(page, TARGET_C, 'Refuse', 'ADJTEST refuse orphan: the removal was deliberate; upholding it.');
-  await page.waitForTimeout(3000);
 
   const afterOrphan = await select(
     api,
@@ -368,7 +418,6 @@ test('probe: alignment adjudication end to end', async ({ page }) => {
 
   await decide(page, TARGET_D, 'Adopt exactMatch (replaces closeMatch)',
     'ADJTEST move: identity is supported by the captured bytes; closeMatch was too weak.');
-  await page.waitForTimeout(3000);
 
   const standing = await select(
     api,
@@ -447,7 +496,8 @@ test('probe: alignment provenance on a real member (read-only)', async ({ page }
     { waitUntil: 'domcontentloaded' }
   );
   await page.waitForSelector('.provenance-act, .provenance-status', { timeout: 90_000 });
-  await page.waitForTimeout(3000);
+  await settle('an act block to render', () =>
+    page.locator('.provenance-act').first().waitFor({ state: 'visible', timeout: 30_000 }));
 
   const notice = await page.locator('.provenance-outstanding-notice').first().textContent().catch(() => null);
   line(`  outstanding notice: ${notice ? notice.trim().replace(/\s+/g, ' ') : '(absent)'}`);
@@ -517,18 +567,27 @@ test('probe: the dialog inside the real record editor (read-only)', async ({ pag
   await page.setViewportSize({ width: 1600, height: 1300 });
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.semantic-form', { timeout: 120_000 });
-  await page.waitForTimeout(6000);
+  await settle('the editor tab strip', () =>
+    page.locator('[role=tab]').first().waitFor({ state: 'visible', timeout: 60_000 }));
 
   line(`  outer form blanked by config errors: ${await page.locator('text=Errors in form configuration').count()} (0 is what we want)`);
 
   const ext = page.locator('[role=tab]', { hasText: 'External Authority' });
-  if (await ext.count()) { await ext.first().click(); await page.waitForTimeout(3000); }
+  if (await ext.count()) {
+    await ext.first().click();
+    await stable('the External Authority skos inputs',
+      page.locator('input[placeholder*="match URL" i], input[placeholder*="sameAs URL" i]'));
+  }
   const notice = await page.locator('.provenance-outstanding-notice').first().textContent().catch(() => null);
   line(`  External Authority tab — notice: ${notice ? notice.trim().replace(/\s+/g, ' ') : '(absent)'}`);
   line(`  External Authority tab — skos text inputs still present: ${await page.locator('input[placeholder*="match URL" i], input[placeholder*="sameAs URL" i]').count()}`);
 
   const md = page.locator('[role=tab]', { hasText: /^Metadata$/ });
-  if (await md.count()) { await md.first().click(); await page.waitForTimeout(6000); }
+  if (await md.count()) {
+    await md.first().click();
+    await stable('the Metadata act blocks', page.locator('.provenance-act'), { timeout: 60_000 });
+    await stable('the Metadata status rows', page.locator('.provenance-status'), { timeout: 60_000 });
+  }
   line(`  Metadata tab — act blocks: ${await page.locator('.provenance-act').count()}, status rows: ${await page.locator('.provenance-status').count()}`);
   line(`  Metadata tab — decision buttons: ${JSON.stringify(await page.locator('.provenance-decisions button').allTextContents())}`);
 
@@ -536,14 +595,21 @@ test('probe: the dialog inside the real record editor (read-only)', async ({ pag
   if (await adopt.count()) {
     await adopt.click();
     await page.locator('.modal-dialog').waitFor({ state: 'visible', timeout: 30_000 });
-    await page.waitForTimeout(2500);
+    // The submit button is visible well before the nested semantic-form has mounted its note
+    // field and become submittable, so waiting on the button alone read 0 fields / disabled.
+    // Wait for the field to settle and the button to enable; if either genuinely never happens
+    // this prints and the measurements below still report the real state.
+    await stable('the note field in the dialog', page.locator('.modal-dialog textarea'));
+    await settle('the dialog submit to enable', () =>
+      expect(page.locator('.modal-dialog button:has-text("Record decision")')).toBeEnabled({ timeout: 30_000 }));
     line(`  dialog title:            ${(await page.locator('.modal-title').first().textContent())?.trim()}`);
     line(`  nested semantic-form:    ${await page.locator('.modal-dialog .semantic-form').count()}`);
     line(`  note field:              ${await page.locator('.modal-dialog textarea').count()}`);
     line(`  submit enabled:          ${await page.locator('.modal-dialog button:has-text("Record decision")').isEnabled()}`);
     line(`  config errors in dialog: ${await page.locator('.modal-dialog').getByText('Errors in form configuration').count()}`);
     await page.locator('.modal-header button.close').click(); // closed, never submitted
-    await page.waitForTimeout(1000);
+    await settle('the dialog to close', () =>
+      page.locator('.modal-dialog').waitFor({ state: 'hidden', timeout: 30_000 }));
     line(`  dialog closed again:     ${!(await page.locator('.modal-dialog').isVisible().catch(() => false))}`);
   } else {
     line('  no Adopt button rendered on this record');
