@@ -1,0 +1,12 @@
+# Single-use migration scaffolding: never committed.
+#
+# land.sh reconstructs the four migration commits from the patches below; once
+# those commits exist, git history carries the same changes with real authorship
+# and these files are redundant. They stay on disk as an undo path until you are
+# satisfied the viewer still behaves, then delete the directory contents.
+#
+# Committed neighbours in this directory: extract.mjs (reusable at the next
+# upstream merge) and RECONSTRUCTION.md (how the source was recovered).
+land.sh
+*.patch
+.land-dry.sh

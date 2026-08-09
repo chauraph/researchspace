@@ -1,0 +1,158 @@
+{
+  "note": "concatenated in this order, joined with \"\\n\", before js/src",
+  "order": [
+    {
+      "file": "00-banner.js",
+      "lines": 2,
+      "bundleStart": 1,
+      "contains": [],
+      "sha256": "88ee1807dd860b43"
+    },
+    {
+      "file": "01-jquery.js",
+      "lines": 10873,
+      "bundleStart": 3,
+      "contains": [
+        "jquery@3.5.1"
+      ],
+      "sha256": "416a3b2c3bf16d64"
+    },
+    {
+      "file": "02-jquery-migrate.js",
+      "lines": 836,
+      "bundleStart": 10876,
+      "contains": [
+        "jquery-migrate@3.3.1"
+      ],
+      "sha256": "bdf0c1f34252299b"
+    },
+    {
+      "file": "03-jquery-ui.js",
+      "lines": 20111,
+      "bundleStart": 11712,
+      "contains": [
+        "jquery-ui@1.12.1",
+        "bootstrap",
+        "bootbox",
+        "handlebars@3.4.1"
+      ],
+      "sha256": "7b79502c01154817"
+    },
+    {
+      "file": "04-jquery-scrollto.js",
+      "lines": 202,
+      "bundleStart": 31823,
+      "contains": [
+        "jquery-scrollto"
+      ],
+      "sha256": "d6e7691afef24c14"
+    },
+    {
+      "file": "05-jstree.js",
+      "lines": 39776,
+      "bundleStart": 32025,
+      "contains": [
+        "jstree@3.3.10",
+        "qtip2",
+        "javascript-state-machine",
+        "tinymce"
+      ],
+      "sha256": "46b67d1a06363d48"
+    },
+    {
+      "file": "06-handlebars.js",
+      "lines": 5210,
+      "bundleStart": 71801,
+      "contains": [
+        "handlebars@4.7.6"
+      ],
+      "sha256": "65a7eb3bc6571116"
+    },
+    {
+      "file": "07-openseadragon.js",
+      "lines": 22594,
+      "bundleStart": 77011,
+      "contains": [
+        "openseadragon@2.4.1"
+      ],
+      "sha256": "484acde9449a7a41"
+    },
+    {
+      "file": "08-tiny-pubsub.js",
+      "lines": 20,
+      "bundleStart": 99605,
+      "contains": [
+        "tiny-pubsub@0.7.0"
+      ],
+      "sha256": "4ef55a9c44baed3d"
+    },
+    {
+      "file": "09-urijs.js",
+      "lines": 3610,
+      "bundleStart": 99625,
+      "contains": [
+        "urijs",
+        "mousetrap",
+        "isfahan"
+      ],
+      "sha256": "16204b8dbe54f997"
+    },
+    {
+      "file": "10-paper.js",
+      "lines": 21147,
+      "bundleStart": 103235,
+      "contains": [
+        "paper@0.12.11",
+        "spectrum-colorpicker",
+        "i18next",
+        "simple-pagination"
+      ],
+      "sha256": "3138f307d12051ec"
+    },
+    {
+      "file": "11-modernizr.js",
+      "lines": 3,
+      "bundleStart": 124382,
+      "contains": [
+        "modernizr@3.3.1"
+      ],
+      "sha256": "b16960d9614d6355"
+    },
+    {
+      "file": "12-sanitize-html.js",
+      "lines": 780,
+      "bundleStart": 124385,
+      "contains": [
+        "sanitize-html"
+      ],
+      "sha256": "d8b55e890173d6ce"
+    },
+    {
+      "file": "13-iiif-layout-functions.js",
+      "lines": 910,
+      "bundleStart": 125165,
+      "contains": [
+        "iiif-layout-functions"
+      ],
+      "sha256": "54ba028e701cbd2e"
+    },
+    {
+      "file": "14-select2.js",
+      "lines": 6520,
+      "bundleStart": 126075,
+      "contains": [
+        "select2@4.0.13"
+      ],
+      "sha256": "005f23df825133c4"
+    },
+    {
+      "file": "15-jquery-mousewheel.js",
+      "lines": 301,
+      "bundleStart": 132595,
+      "contains": [
+        "jquery-mousewheel@3.1.13"
+      ],
+      "sha256": "1edc8c827caaf05e"
+    }
+  ]
+}
