@@ -408,17 +408,18 @@
                                [[/if]]                   
                               </div>
                               
-                              [[!--
+                          [[#if (hasPermission "ontologies:*:*")]]     
                               <form method='post' action='/rs/kp/generateKps?ontologyIri={{encodeUriComponent subject.value}}'>
                                 <button type=submit style="background-color: transparent;">
                                   <rs-icon icon-type="rounded" icon-name="polyline" symbol="true" title='Generate Knowledge Patterns'></rs-icon>
                                 </button>
-                              </form> --]]
+                              </form> 
 
-                              [[!-- <semantic-link iri='http://www.researchspace.org/resource/assets/OntodiaDiagrams'
+                              <semantic-link iri='http://www.researchspace.org/resource/assets/OntodiaDiagrams'
                                 title='Create / Edit Diagram' urlqueryparam-ontology-iri='{{subject.value}}'>
                                 <i class='fa fa-2x fa-object-group' title='Diagrams' aria-hidden=true></i>
-                              </semantic-link> --]]
+                              </semantic-link>
+                          [[/if]]
                         
                             </div>
                         </template>
