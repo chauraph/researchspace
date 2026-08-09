@@ -141586,7 +141586,7 @@ $.SimpleASEndpoint = function (options) {
             tinymce.execCommand('mceFocus', false, args.target.id);
             jQuery('.tags-editor').select2({
               tags: true,
-              placeholder: "Add tags here..."
+              placeholder: "Add tags"
               // tokenSeparators: [',', ' ']  // spaces for backward compatibility
             });
           });
@@ -147957,7 +147957,7 @@ $.SearchWithinResults.prototype = {
     makeUriWithWidth: function(uri, width, version) {
       uri = uri.replace(/\/$/, '');
       if (version[0] == '1') {
-        return uri + '/full/' + width + ',/0/native.jpg';
+        return uri + '/full/' + width + ',/0/default.jpg';
       } else {
         return uri + '/full/' + width + ',/0/default.jpg';
       }

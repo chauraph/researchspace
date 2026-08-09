@@ -58,7 +58,7 @@
     makeUriWithWidth: function(uri, width, version) {
       uri = uri.replace(/\/$/, '');
       if (version[0] == '1') {
-        return uri + '/full/' + width + ',/0/native.jpg';
+        return uri + '/full/' + width + ',/0/default.jpg';
       } else {
         return uri + '/full/' + width + ',/0/default.jpg';
       }

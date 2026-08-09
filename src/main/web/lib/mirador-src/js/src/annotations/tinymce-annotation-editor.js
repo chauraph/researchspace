@@ -65,7 +65,7 @@
             tinymce.execCommand('mceFocus', false, args.target.id);
             jQuery('.tags-editor').select2({
               tags: true,
-              placeholder: "Add tags here..."
+              placeholder: "Add tags"
               // tokenSeparators: [',', ' ']  // spaces for backward compatibility
             });
           });
