@@ -157,6 +157,32 @@
       return this.svgOverlay.createRectangle(shape, annotation);
     },
 
+      highlightAnnotation: function(annotationId) {
+          var _this = this;
+          var hoverColor = _this.state.getStateProperty('drawingToolsSettings').hoverColor;
+          for (var key in _this.annotationsToShapesMap) {
+              if (_this.annotationsToShapesMap.hasOwnProperty(key)) {
+                  var shapeArray = _this.annotationsToShapesMap[key];
+                  for (var idx = 0; idx < shapeArray.length; idx++) {
+                      var shapeTool = this.svgOverlay.getTool(shapeArray[idx]);
+                      var hoverWidth = shapeArray[idx].data.strokeWidth / this.svgOverlay.paperScope.view.zoom;
+                      if (key === annotationId) {
+                          if(shapeTool.onHover){
+                              for(var k=0;k<shapeArray.length;k++){
+                                  shapeTool.onHover(true,shapeArray[k],hoverWidth,hoverColor);
+                              }
+                          }
+                          break;
+                      }else{
+                          if(shapeTool.onHover){
+                              shapeTool.onHover(false,shapeArray[idx],hoverWidth);
+                          }
+                      }
+                  }
+              }
+          }
+    },
+
     showTooltipsFromMousePosition: function(event, location, absoluteLocation) {
       var _this = this;
       var originWindow = this.state.getWindowObjectById(this.windowId);
@@ -301,6 +327,9 @@
         if(tool === 'mirror') {
           _this.horizontallyFlipped = false;
         }
+      }));
+      this.eventsSubscriptions.push(this.eventEmitter.subscribe("highlightAnnotation",function(event, annotationId){
+          _this.highlightAnnotation(annotationId);
       }));
     },
 

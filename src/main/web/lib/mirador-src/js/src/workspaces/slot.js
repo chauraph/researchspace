@@ -111,22 +111,22 @@
       this.element.find('.remove-slot-option').on('click', function(){
         _this.eventEmitter.publish('REMOVE_NODE', _this);
       });
-      this.element.on('dragover', function(e) {
-        e.preventDefault();
-        dropTarget.show();
-      });
-      dropTarget.on('dragenter', function(e) {
-        e.preventDefault();
-        _this.element.addClass('draggedOver');
-      });
-      dropTarget.on('dragleave', function(e) {
-        e.preventDefault();
-        _this.element.removeClass('draggedOver');
-        dropTarget.hide();
-      });
-      this.element.on('drop', function(e) {
-        _this.dropItem(e);
-      });
+      // this.element.on('dragover', function(e) {
+      //   e.preventDefault();
+      //   dropTarget.show();
+      // });
+      // dropTarget.on('dragenter', function(e) {
+      //   e.preventDefault();
+      //   _this.element.addClass('draggedOver');
+      // });
+      // dropTarget.on('dragleave', function(e) {
+      //   e.preventDefault();
+      //   _this.element.removeClass('draggedOver');
+      //   dropTarget.hide();
+      // });
+      // this.element.on('drop', function(e) {
+      //   _this.dropItem(e);
+      // });
     },
 
     dropItem: function(e) {

@@ -193,7 +193,7 @@
       jQuery(selector + ' a.delete').on("click", function(event) {
         event.preventDefault();
         var elem = this;
-        new $.DialogBuilder(viewerParams.container).dialog({
+        new $.DialogBuilder(jQuery('body')).dialog({
           message: i18next.t('deleteAnnotation'),
           closeButton: false,
           buttons: {
@@ -206,7 +206,7 @@
             },
             'yes': {
               label: i18next.t('yes'),
-              className: 'btn-primary',
+              className: 'btn-action',
               callback: function() {
                 var display = jQuery(elem).parents('.annotation-display');
                 var id = display.attr('data-anno-id');

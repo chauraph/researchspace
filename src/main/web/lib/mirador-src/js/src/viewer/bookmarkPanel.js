@@ -67,7 +67,7 @@
          '<h3>{{t "bookmarkTitle"}}</h3>',
          '<span>',
          '{{t "url"}}: <input id="share-url" type="text"></input>',
-         '<a href="javascript:;" class="mirador-btn mirador-icon-copy" data-clipboard-target="share-url"><i class="fa fa-files-o fa-lg"></i></a>',
+         '<a href="javascript:;" class="mirador-btn mirador-icon-copy" data-clipboard-target="share-url"><rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon></a>',
          '</span>',
        '</div>'
     ].join(''))

@@ -48,6 +48,7 @@
                 userLogo:    this.state.getStateProperty('mainMenuSettings').userLogo
             }));
 
+            var _this = this;
             this.element.find('.mainmenu-button').each(function() {
               jQuery(this).qtip({
                 content: {
@@ -55,7 +56,8 @@
                 },
                 position: {
                   my: 'top center',
-                  at: 'bottom center'
+                  at: 'bottom center',
+                  container: _this.element
                 },
                 style: {
                   classes: 'qtip-dark qtip-shadow qtip-rounded'

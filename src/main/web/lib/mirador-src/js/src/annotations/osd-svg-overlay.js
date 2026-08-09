@@ -46,7 +46,7 @@
         handles: true,
         stroke: true,
         segments: true,
-        tolerance: 5
+        tolerance: 5,
       }
     });
 
@@ -163,7 +163,7 @@
           },
           'yes': {
             label: i18next.t('yes'),
-            className: 'btn-primary',
+            className: 'btn-action',
             callback: function() {
               _this.deleteShape(shape);
             }
@@ -407,7 +407,7 @@
               },
               'yes': {
                 label: i18next.t('yes'),
-                className: 'btn-primary',
+                className: 'btn-action',
                 callback: function() {
                   cancel();
                   if (cancelCallback) {

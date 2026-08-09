@@ -134102,7 +134102,7 @@ S2.define('jquery.select2',[
          '<h3>{{t "bookmarkTitle"}}</h3>',
          '<span>',
          '{{t "url"}}: <input id="share-url" type="text"></input>',
-         '<a href="javascript:;" class="mirador-btn mirador-icon-copy" data-clipboard-target="share-url"><i class="fa fa-files-o fa-lg"></i></a>',
+         '<a href="javascript:;" class="mirador-btn mirador-icon-copy" data-clipboard-target="share-url"><rs-icon icon-type="rounded" icon-name="content_copy" symbol="true"></rs-icon></a>',
          '</span>',
        '</div>'
     ].join(''))
@@ -134740,6 +134740,7 @@ S2.define('jquery.select2',[
                 userLogo:    this.state.getStateProperty('mainMenuSettings').userLogo
             }));
 
+            var _this = this;
             this.element.find('.mainmenu-button').each(function() {
               jQuery(this).qtip({
                 content: {
@@ -134747,7 +134748,8 @@ S2.define('jquery.select2',[
                 },
                 position: {
                   my: 'top center',
-                  at: 'bottom center'
+                  at: 'bottom center',
+                  container: _this.element
                 },
                 style: {
                   classes: 'qtip-dark qtip-shadow qtip-rounded'
@@ -136351,7 +136353,7 @@ S2.define('jquery.select2',[
       jQuery(selector + ' a.delete').on("click", function(event) {
         event.preventDefault();
         var elem = this;
-        new $.DialogBuilder(viewerParams.container).dialog({
+        new $.DialogBuilder(jQuery('body')).dialog({
           message: i18next.t('deleteAnnotation'),
           closeButton: false,
           buttons: {
@@ -136364,7 +136366,7 @@ S2.define('jquery.select2',[
             },
             'yes': {
               label: i18next.t('yes'),
-              className: 'btn-primary',
+              className: 'btn-action',
               callback: function() {
                 var display = jQuery(elem).parents('.annotation-display');
                 var id = display.attr('data-anno-id');
@@ -137786,6 +137788,32 @@ S2.define('jquery.select2',[
       return this.svgOverlay.createRectangle(shape, annotation);
     },
 
+      highlightAnnotation: function(annotationId) {
+          var _this = this;
+          var hoverColor = _this.state.getStateProperty('drawingToolsSettings').hoverColor;
+          for (var key in _this.annotationsToShapesMap) {
+              if (_this.annotationsToShapesMap.hasOwnProperty(key)) {
+                  var shapeArray = _this.annotationsToShapesMap[key];
+                  for (var idx = 0; idx < shapeArray.length; idx++) {
+                      var shapeTool = this.svgOverlay.getTool(shapeArray[idx]);
+                      var hoverWidth = shapeArray[idx].data.strokeWidth / this.svgOverlay.paperScope.view.zoom;
+                      if (key === annotationId) {
+                          if(shapeTool.onHover){
+                              for(var k=0;k<shapeArray.length;k++){
+                                  shapeTool.onHover(true,shapeArray[k],hoverWidth,hoverColor);
+                              }
+                          }
+                          break;
+                      }else{
+                          if(shapeTool.onHover){
+                              shapeTool.onHover(false,shapeArray[idx],hoverWidth);
+                          }
+                      }
+                  }
+              }
+          }
+    },
+
     showTooltipsFromMousePosition: function(event, location, absoluteLocation) {
       var _this = this;
       var originWindow = this.state.getWindowObjectById(this.windowId);
@@ -137930,6 +137958,9 @@ S2.define('jquery.select2',[
         if(tool === 'mirror') {
           _this.horizontallyFlipped = false;
         }
+      }));
+      this.eventsSubscriptions.push(this.eventEmitter.subscribe("highlightAnnotation",function(event, annotationId){
+          _this.highlightAnnotation(annotationId);
       }));
     },
 
@@ -138696,7 +138727,7 @@ S2.define('jquery.select2',[
         handles: true,
         stroke: true,
         segments: true,
-        tolerance: 5
+        tolerance: 5,
       }
     });
 
@@ -138813,7 +138844,7 @@ S2.define('jquery.select2',[
           },
           'yes': {
             label: i18next.t('yes'),
-            className: 'btn-primary',
+            className: 'btn-action',
             callback: function() {
               _this.deleteShape(shape);
             }
@@ -139057,7 +139088,7 @@ S2.define('jquery.select2',[
               },
               'yes': {
                 label: i18next.t('yes'),
-                className: 'btn-primary',
+                className: 'btn-action',
                 callback: function() {
                   cancel();
                   if (cancelCallback) {
@@ -141151,22 +141182,22 @@ $.SimpleASEndpoint = function (options) {
       this.element.find('.remove-slot-option').on('click', function(){
         _this.eventEmitter.publish('REMOVE_NODE', _this);
       });
-      this.element.on('dragover', function(e) {
-        e.preventDefault();
-        dropTarget.show();
-      });
-      dropTarget.on('dragenter', function(e) {
-        e.preventDefault();
-        _this.element.addClass('draggedOver');
-      });
-      dropTarget.on('dragleave', function(e) {
-        e.preventDefault();
-        _this.element.removeClass('draggedOver');
-        dropTarget.hide();
-      });
-      this.element.on('drop', function(e) {
-        _this.dropItem(e);
-      });
+      // this.element.on('dragover', function(e) {
+      //   e.preventDefault();
+      //   dropTarget.show();
+      // });
+      // dropTarget.on('dragenter', function(e) {
+      //   e.preventDefault();
+      //   _this.element.addClass('draggedOver');
+      // });
+      // dropTarget.on('dragleave', function(e) {
+      //   e.preventDefault();
+      //   _this.element.removeClass('draggedOver');
+      //   dropTarget.hide();
+      // });
+      // this.element.on('drop', function(e) {
+      //   _this.dropItem(e);
+      // });
     },
 
     dropItem: function(e) {
