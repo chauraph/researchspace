@@ -59,3 +59,6 @@ export_pre_migration_data/
 
 # temporary files
 temp/
+
+# reference material (symlinks to sibling repos)
+ref/
