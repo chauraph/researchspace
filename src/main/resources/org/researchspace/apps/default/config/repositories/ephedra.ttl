@@ -38,6 +38,14 @@
             [
               ephedra:delegateRepositoryID "wikidata-entity";
               ephedra:serviceReference <http://www.researchspace.org/resource/system/service/wikidataentity/WikidataEntity>
+            ],
+            [
+              ephedra:delegateRepositoryID "gnd-lobid";
+              ephedra:serviceReference <http://www.researchspace.org/resource/system/service/gndlobid/GndSearch>
+            ],
+            [
+              ephedra:delegateRepositoryID "viaf-autosuggest";
+              ephedra:serviceReference <http://www.researchspace.org/resource/system/service/viafautosuggest/ViafAutoSuggest>
             ];
             fedsail:member [
                 ephedra:delegateRepositoryID "tna-discovery-search-record";

@@ -1,0 +1,32 @@
+# RESTSail repository wrapping VIAF AutoSuggest.
+#
+# ephedra:mediaType is the Accept header. VIAF 403s anything that does not ask for JSON, so
+# this line is load-bearing even though application/json is also RESTSail's default.
+# requestRateLimit is set to 1/s because the service enforces ~1000 requests/day per IP.
+
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix repo: <http://www.openrdf.org/config/repository#> .
+@prefix sr: <http://www.openrdf.org/config/repository/sail#> .
+@prefix sail: <http://www.openrdf.org/config/sail#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ephedra: <http://www.researchspace.org/resource/system/ephedra#> .
+@prefix : <http://www.researchspace.org/resource/system/service/viafautosuggest/> .
+
+[] a repo:Repository ;
+   repo:repositoryID "viaf-autosuggest" ;
+   rdfs:label "VIAF AutoSuggest name search service repository" ;
+   repo:repositoryImpl [
+    repo:repositoryType "openrdf:SailRepository" ;
+    sr:sailImpl [
+      sail:sailType "researchspace:RESTSail" ;
+      # No trailing '?' or '&': this service takes no fixed parameters, so the base URL is
+      # bare and Jersey appends '?query=...' itself (same shape as osm-nominatim-search.ttl).
+      # Only URLs that bake in fixed parameters need the trailing '&' that wikidata-entity uses.
+      ephedra:serviceURL "https://viaf.org/viaf/AutoSuggest" ;
+      ephedra:httpMethod "GET" ;
+      ephedra:mediaType "application/json" ;
+      ephedra:userAgent "ResearchSpace/dsanno (external authority alignment)" ;
+      ephedra:requestRateLimit "1"^^xsd:int ;
+      ephedra:implementsService :ViafAutoSuggest
+    ]
+  ] .

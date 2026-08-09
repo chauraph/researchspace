@@ -1,0 +1,296 @@
+[[!-- External authority search for the External Authority tab.
+      Follows the ImportFromVAM.html pattern: a semantic-search keyword input feeding a
+      semantic-table over the 'ephedra' federation repository.
+
+      SOURCE KNOB. semantic-search-query-keyword owns exactly one query, so a source selector
+      has to be a choice between panels rather than a control inside one. Hence nested rs-tabs:
+        Wikidata + GND  UNION of the two general-purpose sources in one query
+        Wikidata        wbsearchentities — broad, English, concepts and agents
+        GND             lobid.org — German labels; search "Vergoldung", not "gilding"
+        VIAF            AutoSuggest — personal/corporate NAMES only, useless for concepts
+        AAT             Getty — concepts with real definitions (inline SERVICE, see below)
+      The single-source tabs are also the fallback when a service is down: UNION is
+      all-or-nothing, so one failing branch returns zero rows for the combined tab, while the
+      other tabs keep working.
+
+      VIAF is deliberately NOT in the union, for two reasons: it returns personal/corporate names
+      only, which is pure noise when the record being aligned is an E55 concept; and every union
+      search would spend one unit of its shared ~1000/day quota even when nobody wanted names.
+      It stays available on demand in its own tab.
+
+      resultsPerPage is 30, not 10, because UNION branches come back contiguously grouped by
+      source — at 10 the first page was entirely Wikidata and the GND rows sat on page 2+, which
+      reads as "GND returns nothing". Deliberately NO ORDER BY: sorting would group the sources
+      but destroy each service's own relevance ranking within the group.
+
+      Every row's URI comes from its own authority, so there is no third-party crosswalk claim
+      to verify. Mint = copy the URI and paste it into a match field below; the field you paste
+      into IS the alignment property, so no property chooser is needed here.
+
+      Two things to know before editing the queries:
+        1. ?__token__ is substituted at every occurrence (SparqlClient.setBindings), so one box
+           feeds all three branches of the UNION.
+        2. Sparse fields are safe to bind. A jsonPath that resolves to null omits just that
+           binding and leaves the row in place with the variable unbound — verified against
+           wikidata-entity: 31 rows both with and without the ?description binding, 28 of which
+           carried a description. This is why ?description can be projected freely.
+           (What is NOT possible is OPTIONAL inside a RESTSail SERVICE block.)
+
+      Descriptions per source: Wikidata has a real one; GND has no `definition` field, so the
+      query COALESCEs its three substitutes (biographical note / subject category / profession);
+      VIAF AutoSuggest carries none, so the cell stays empty by design.
+
+      The "Match / kind" column is deliberately source-specific — Wikidata's match.type (did this
+      hit the label or an alias?), GND's entity type, VIAF's name type. It answers "why is this
+      row here?", which is the question a noisy result list actually raises. Wikidata's QID is
+      NOT shown: it is already in the row's href, and it disambiguates nothing.
+
+      No image column, on purpose. GND's depiction covers 6/98 records, VIAF has no image field at
+      all, AAT has none by nature, and Wikidata's P18 needs a second call per row — while
+      preferredThumbnails in config/ui.prop already fetches P18 for any minted Wikidata
+      owl:sameAs, which is where a picture actually helps. See §7 of the doc.
+
+      VIAF enforces ~1000 requests/day per deployment IP, shared by all users, and each search
+      costs one. Fine for hand-driven alignment; never put a batch process behind it.
+
+      See docs/features/external-authority-federation.md --]]
+
+<div style="margin-bottom: 20px;">
+  <div class="semantic-form-input-title">Search external authorities</div>
+  <div class="text-muted" style="margin-bottom: 8px; font-size: 90%;">
+    Pick a source, or search all three at once. GND labels are German (try
+    &ldquo;Vergoldung&rdquo; rather than &ldquo;gilding&rdquo;); VIAF covers names, not concepts.
+  </div>
+
+  <rs-tabs id="external-authority-sources" default-active-key="all">
+
+    <rs-tab event-key="all" title="Wikidata + GND">
+      <semantic-search id='external-authority-search-all'>
+        <semantic-search-query-keyword
+            placeholder="Search Wikidata and GND together (min. 3 characters)"
+            min-search-term-length=3
+            debounce=600
+            tokenize-lucene-query=false
+            escape-lucene-syntax=false
+            query='PREFIX wde: <http://www.researchspace.org/resource/system/service/wikidataentity/>
+                   PREFIX gnd: <http://www.researchspace.org/resource/system/service/gndlobid/>
+                   SELECT ?uri ?label ?description ?detail ?source WHERE {
+                     {
+                       SERVICE wde:WikidataEntity {
+                         ?w wde:search ?__token__ .
+                         ?w wde:language "en" .
+                         ?w wde:concepturi ?wRaw .
+                         ?w wde:label ?label .
+                         ?w wde:description ?description .
+                         ?w wde:match_type ?detail .
+                       }
+                       BIND(IRI(STR(?wRaw)) AS ?uri)
+                       BIND("Wikidata" AS ?source)
+                     } UNION {
+                       SERVICE gnd:GndSearch {
+                         ?g gnd:search ?__token__ .
+                         ?g gnd:id ?gRaw .
+                         ?g gnd:label ?label .
+                         ?g gnd:entityType ?detail .
+                         ?g gnd:biographical ?gBio .
+                         ?g gnd:subjectCategory ?gCat .
+                         ?g gnd:profession ?gProf .
+                       }
+                       BIND(IRI(STR(?gRaw)) AS ?uri)
+                       BIND(COALESCE(?gBio, ?gCat, ?gProf) AS ?description)
+                       BIND("GND" AS ?source)
+                     }
+                   }'>
+        </semantic-search-query-keyword>
+        [[> resultTable repo="ephedra"]]
+      </semantic-search>
+    </rs-tab>
+
+    <rs-tab event-key="wikidata" title="Wikidata">
+      <semantic-search id='external-authority-search-wikidata'>
+        <semantic-search-query-keyword
+            placeholder="Search Wikidata (min. 3 characters)"
+            min-search-term-length=3
+            debounce=600
+            tokenize-lucene-query=false
+            escape-lucene-syntax=false
+            query='PREFIX wde: <http://www.researchspace.org/resource/system/service/wikidataentity/>
+                   SELECT ?uri ?label ?description ?detail ?source WHERE {
+                     SERVICE wde:WikidataEntity {
+                       ?w wde:search ?__token__ .
+                       ?w wde:language "en" .
+                       ?w wde:concepturi ?wRaw .
+                       ?w wde:label ?label .
+                       ?w wde:description ?description .
+                       ?w wde:match_type ?detail .
+                     }
+                     BIND(IRI(STR(?wRaw)) AS ?uri)
+                     BIND("Wikidata" AS ?source)
+                   }'>
+        </semantic-search-query-keyword>
+        [[> resultTable repo="ephedra"]]
+      </semantic-search>
+    </rs-tab>
+
+    <rs-tab event-key="gnd" title="GND">
+      <semantic-search id='external-authority-search-gnd'>
+        <semantic-search-query-keyword
+            placeholder="GND-Suche — German labels, e.g. Vergoldung (min. 3 characters)"
+            min-search-term-length=3
+            debounce=600
+            tokenize-lucene-query=false
+            escape-lucene-syntax=false
+            query='PREFIX gnd: <http://www.researchspace.org/resource/system/service/gndlobid/>
+                   SELECT ?uri ?label ?description ?detail ?source WHERE {
+                     SERVICE gnd:GndSearch {
+                       ?g gnd:search ?__token__ .
+                       ?g gnd:id ?gRaw .
+                       ?g gnd:label ?label .
+                       ?g gnd:entityType ?detail .
+                       ?g gnd:biographical ?gBio .
+                       ?g gnd:subjectCategory ?gCat .
+                       ?g gnd:profession ?gProf .
+                     }
+                     BIND(IRI(STR(?gRaw)) AS ?uri)
+                     BIND(COALESCE(?gBio, ?gCat, ?gProf) AS ?description)
+                     BIND("GND" AS ?source)
+                   }'>
+        </semantic-search-query-keyword>
+        [[> resultTable repo="ephedra"]]
+      </semantic-search>
+    </rs-tab>
+
+    <rs-tab event-key="viaf" title="VIAF">
+      <semantic-search id='external-authority-search-viaf'>
+        <semantic-search-query-keyword
+            placeholder="Search VIAF names — people and organisations (min. 3 characters)"
+            min-search-term-length=3
+            debounce=600
+            tokenize-lucene-query=false
+            escape-lucene-syntax=false
+            query='PREFIX viaf: <http://www.researchspace.org/resource/system/service/viafautosuggest/>
+                   SELECT ?uri ?label ?detail ?source WHERE {
+                     SERVICE viaf:ViafAutoSuggest {
+                       ?v viaf:search ?__token__ .
+                       ?v viaf:label ?label .
+                       ?v viaf:viafId ?vid .
+                       ?v viaf:nameType ?detail .
+                     }
+                     BIND(IRI(CONCAT("https://viaf.org/viaf/", STR(?vid))) AS ?uri)
+                     BIND("VIAF" AS ?source)
+                   }'>
+        </semantic-search-query-keyword>
+        [[> resultTable repo="ephedra"]]
+      </semantic-search>
+    </rs-tab>
+
+    [[!-- AAT via a just-in-time SERVICE call — deliberately NOT a registered repository.
+
+          A `researchspace:SPARQLRepository` for Getty would block platform startup: RS probes
+          every non-Sail repository with a test query at boot (RepositoryManager.sendTestQuery),
+          and on failure it sleeps 10s and retries WITH NO ATTEMPT LIMIT — an unreachable
+          endpoint hangs startup forever. RESTSail and the ephedra federation are exempt because
+          sentTestQueries() skips SailRepository instances, which is why the three tabs above are
+          startup-safe. Getty is not exempt, so it gets no repository entry at all.
+
+          Instead the endpoint is named inline as SERVICE <https://vocab.getty.edu/sparql>, which
+          registers nothing and is resolved only when someone searches. Worst case is an error in
+          this tab; the platform still boots and the other sources keep working.
+
+          Consequences: the table runs against repo="default" (plain Blazegraph does the
+          federating), so AAT cannot join the UNION in the first tab, and §2 of the doc records
+          that Blazegraph SERVICE is unreliable for unbounded queries — this one is bounded by
+          luc:term, which is the shape that does work.
+
+          UNVERIFIED: vocab.getty.edu has returned HTTP 499 "Service temporarily degraded" on
+          every route since 2026-08-07, so neither the query nor the SERVICE call has been run
+          against a live endpoint. Check luc:term and the skos:scopeNote/rdf:value path first.
+          skos:scopeNote is a real definition — the best descriptive field of any source here. --]]
+
+    <rs-tab event-key="aat" title="AAT">
+      <semantic-search id='external-authority-search-aat'>
+        <semantic-search-query-keyword
+            placeholder="Search Getty AAT — concepts, with real definitions (min. 3 characters)"
+            min-search-term-length=3
+            debounce=600
+            tokenize-lucene-query=false
+            escape-lucene-syntax=false
+            query='PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+                   PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                   PREFIX gvp: <http://vocab.getty.edu/ontology#>
+                   PREFIX xl: <http://www.w3.org/2008/05/skos-xl#>
+                   PREFIX luc: <http://www.ontotext.com/owlim/lucene#>
+                   SELECT ?uri ?label ?description ?detail ?source WHERE {
+                     SERVICE <https://vocab.getty.edu/sparql> {
+                       ?uri a skos:Concept ;
+                            skos:inScheme <http://vocab.getty.edu/aat/> ;
+                            luc:term ?__token__ ;
+                            gvp:prefLabelGVP/xl:literalForm ?label .
+                       OPTIONAL { ?uri skos:scopeNote/rdf:value ?description }
+                     }
+                     BIND("concept" AS ?detail)
+                     BIND("AAT" AS ?source)
+                   } LIMIT 20'>
+        </semantic-search-query-keyword>
+        [[> resultTable repo="default"]]
+      </semantic-search>
+    </rs-tab>
+
+  </rs-tabs>
+</div>
+
+[[!-- The results table is identical for every source: one Handlebars inline partial, stamped
+      into each tab above. ?description and ?detail are simply unbound for sources that do not
+      supply them, which renders as an empty cell. --]]
+[[#*inline "resultTable"]]
+  <semantic-search-result-holder>
+    <div style="margin-top: 15px;">
+      <semantic-search-result>
+        <semantic-context repository='[[repo]]'>
+          <semantic-table id='semantic-search-result-table'
+                          query='SELECT DISTINCT ?uri ?label ?description ?detail ?source WHERE { BIND(?uri AS ?iri) }'
+                          options='{"showFilter": true, "resultsPerPage": 30}'
+                          no-result-template='{{> noResults}}'
+                          column-configuration='[
+                            {"displayName": "Source", "variableName": "source", "cellTemplate": "{{> sourceBadge}}"},
+                            {"displayName": "Label", "variableName": "label", "cellTemplate": "{{> resourceName}}"},
+                            {"displayName": "Description", "variableName": "description", "cellTemplate": "{{> description}}"},
+                            {"displayName": "Match / kind", "variableName": "detail"},
+                            {"displayName": "Actions", "cellTemplate": "{{> actions}}"}
+                          ]'>
+
+            <template id='sourceBadge'>
+              <span class="label label-default">{{source.value}}</span>
+            </template>
+
+            <template id='resourceName'>
+              <a class="text-link-action" target="_blank"
+                 href="{{uri.value}}" title="{{uri.value}}">{{label.value}}</a>
+            </template>
+
+            <template id='description'>
+              {{#if description}}{{description.value}}{{else}}<span class="text-muted">&mdash;</span>{{/if}}
+            </template>
+
+            <template id='actions'>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <mp-copy-to-clipboard text='{{uri.value}}'
+                                      message='URI copied — paste it into a match field below'>
+                  <button class="btn btn-default btn-xs" title="Copy {{uri.value}}">Copy URI</button>
+                </mp-copy-to-clipboard>
+              </div>
+            </template>
+
+            <template id="noResults">
+              <div style="padding: 12px 0">
+                No matches. On the combined tab a single unavailable service returns no rows at
+                all — try the per-source tabs to see which one is failing. Remember GND is
+                German-labelled, and VIAF and AAT have their own tabs.
+              </div>
+            </template>
+          </semantic-table>
+        </semantic-context>
+      </semantic-search-result>
+    </div>
+  </semantic-search-result-holder>
+[[/inline]]

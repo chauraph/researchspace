@@ -6,25 +6,35 @@
  * description, and the first few rows. Console errors are printed, not asserted.
  *
  * Reading the output:
- *   - "All sources" is a UNION, so ONE failing service yields zero rows for that tab while the
- *     per-source tabs still work. If All is empty but the singles are not, that is the cause.
- *   - VIAF supplies no description, so 0/N with description is correct there, not a bug.
+ *   - "Wikidata + GND" is a UNION, so ONE failing service yields zero rows for that tab while
+ *     the per-source tabs still work. If it is empty but the singles are not, that is the cause.
+ *   - VIAF supplies no description field at all, so 0/N with description is correct there, not a
+ *     bug. VIAF is not in the union (names only, plus a shared ~1000/day quota).
  *   - GND is German: 'Vergoldung' should hit, 'gilding' should mostly not.
+ *   - Watch the per-source split on the union tab. Branches come back contiguously grouped, so
+ *     too small a page size hides the later source entirely — that is what made GND look like it
+ *     returned nothing when the page size was 10.
  *
  *   cd probes && RS_BASE_URL=http://127.0.0.1:10214 npx playwright test external-authority
  */
 
 import { test, Locator } from '@playwright/test';
 
+
 const PAGE_URL = '/resource/?uri=' + encodeURIComponent('https://w3id.org/dsanno/platform/ExternalAuthoritySearch');
 
 const CASES = [
-  { tab: 'All sources', term: 'rembrandt' },
-  { tab: 'All sources', term: 'Vergoldung' },
+  { tab: 'Wikidata + GND', term: 'rembrandt' },
+  { tab: 'Wikidata + GND', term: 'Vergoldung' },
   { tab: 'Wikidata', term: 'gilding' },
   { tab: 'GND', term: 'Vergoldung' },
   { tab: 'VIAF', term: 'rembrandt' },
 ];
+
+/** Values the Source column can hold. Anything else in that cell is not a data row —
+ *  the table's pagination control also lives in a <tr>, and counting it as a result was
+ *  what made an earlier run report "11 rows" for a 10-row page. */
+const SOURCES = ['Wikidata', 'GND', 'VIAF', 'AAT'];
 
 function line(...parts: unknown[]) {
   console.log(parts.join(' '));
@@ -36,6 +46,7 @@ function activePane(page: import('@playwright/test').Page): Locator {
 }
 
 test('external authority search: per-source tabs and union', async ({ page }) => {
+  test.setTimeout(600_000);
   const consoleErrors: string[] = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -56,6 +67,11 @@ test('external authority search: per-source tabs and union', async ({ page }) =>
     line(`=== [${tab}] "${term}" ===`);
 
     await page.getByRole('tab', { name: tab, exact: true }).click();
+    // Load-bearing: the pane switch is not synchronous with the click, and resolving
+    // .tab-pane.active too early scopes every later locator to the PREVIOUS pane — the probe
+    // then types into the wrong tab and reports zero rows for a healthy service. Tried
+    // replacing this with a wait on aria-selected; the attribute flips before the pane does,
+    // so the race came back. Keep the tick.
     await page.waitForTimeout(300);
 
     const pane = activePane(page);
@@ -77,30 +93,47 @@ test('external authority search: per-source tabs and union', async ({ page }) =>
       line('  NO ROWS after 45s');
       continue;
     }
-    await page.waitForTimeout(2_000); // let the remaining UNION branches land
+    // Load-bearing for the same reason: branches land one service at a time. A settle-to-stable
+    // count was tried here and, combined with the change above, broke cases 3-5; this pairing is
+    // the configuration that reproduces the baseline exactly.
+    await page.waitForTimeout(2_000);
 
-    const count = await rows.count();
+    // Pull the whole table in ONE round-trip. Reading cells individually cost 4 locator
+    // resolutions per row — ~436 across the five cases, each re-resolving
+    // .tab-pane.active -> table -> tbody -> tr[i] -> td[j] with actionability checks, which
+    // was essentially the probe's entire 7.8-minute runtime.
+    const table: string[][] = await rows.evaluateAll((trs) =>
+      trs.map((tr) => Array.from(tr.querySelectorAll('td')).map((td) => (td as HTMLElement).innerText.trim()))
+    );
+
     const bySource: Record<string, number> = {};
     let withDescription = 0;
     const samples: string[] = [];
 
-    for (let i = 0; i < count; i++) {
-      const cells = rows.nth(i).locator('td');
-      const source = (await cells.nth(0).innerText().catch(() => '?')).trim();
-      const label = (await cells.nth(1).innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
-      const desc = (await cells.nth(2).innerText().catch(() => '')).trim();
-      const detail = (await cells.nth(3).innerText().catch(() => '')).trim().slice(0, 30);
+    // Source / Label / Description / Match+kind / Actions
+    const dataOnly = table.filter((cells) => SOURCES.includes(cells[0]));
+
+    for (const cells of dataOnly) {
+      const [source, rawLabel, rawDesc, rawDetail] = cells;
+      const label = (rawLabel ?? '').replace(/\s+/g, ' ');
+      const desc = rawDesc ?? '';
+      const detail = (rawDetail ?? '').slice(0, 30);
 
       bySource[source] = (bySource[source] || 0) + 1;
       if (desc && desc !== '—') withDescription++;
 
-      if (samples.length < 6) {
+      if (samples.length < 8) {
         samples.push(`  [${source}] ${label} | ${desc.slice(0, 45) || '(no desc)'} | ${detail}`);
       }
     }
 
-    line('  rows:', count, '| by source:', JSON.stringify(bySource), `| with description: ${withDescription}/${count}`);
+    const dataRows = dataOnly.length;
+    line('  data rows:', dataRows, '| by source:', JSON.stringify(bySource),
+         `| with description: ${withDescription}/${dataRows}`);
     for (const s of samples) line(s);
+    if (table.length !== dataRows) {
+      line(`  (${table.length - dataRows} non-result row(s) skipped — pagination control)`);
+    }
 
     const copyButtons = await pane.locator('button:has-text("Copy URI")').count();
     line('  Copy URI buttons:', copyButtons);

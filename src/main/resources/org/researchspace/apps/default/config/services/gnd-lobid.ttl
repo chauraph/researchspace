@@ -1,0 +1,131 @@
+# Ephedra service descriptor for GND search via lobid.org.
+#
+# GND has no public SPARQL endpoint and the DNB's own search is SRU/XML, which RESTSail
+# cannot parse. lobid.org re-indexes the DNB's GND as JSON; the IRIs it returns are genuine
+# d-nb.info/gnd/... IRIs, so minting from here mints a real GND identifier.
+#
+# See docs/features/external-authority-federation.md §3.2.
+#
+# NOTE ON PARAMETER NAMES: the HTTP query parameter sent to lobid is the local name of the
+# spl:predicate MINUS its leading underscore (ServiceDescriptor.parseParameter). So :_q sends
+# "q=...". The SPARQL-facing predicate (sp:predicate) is independent and chosen for readability.
+
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX spl: <http://spinrdf.org/spl#>
+PREFIX ephedra: <http://www.researchspace.org/resource/system/ephedra#>
+PREFIX sail: <http://www.openrdf.org/config/sail#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX : <http://www.researchspace.org/resource/system/service/gndlobid/>
+
+:GndSearch a ephedra:Service ;
+	sail:sailType "researchspace:RESTSail" ;
+	rdfs:label "A wrapper for GND authority search via the lobid.org REST API." ;
+	ephedra:hasSPARQLPattern (
+
+		[ sp:subject :_member ; sp:predicate :search      ; sp:object :_q ]
+		[ sp:subject :_member ; sp:predicate :filter      ; sp:object :_filter ]
+		[ sp:subject :_member ; sp:predicate :id          ; sp:object :_id ]
+		[ sp:subject :_member ; sp:predicate :label       ; sp:object :_label ]
+		[ sp:subject :_member ; sp:predicate :entityType  ; sp:object :_entityType ]
+		[ sp:subject :_member ; sp:predicate :gndId       ; sp:object :_gndIdentifier ]
+		[ sp:subject :_member ; sp:predicate :biographical    ; sp:object :_bio ]
+		[ sp:subject :_member ; sp:predicate :subjectCategory ; sp:object :_subjectCategory ]
+		[ sp:subject :_member ; sp:predicate :profession      ; sp:object :_profession ]
+
+	) ;
+
+	spin:constraint [
+		a spl:Argument ;
+		rdfs:comment "Search term. lobid accepts Elasticsearch syntax, e.g. preferredName:Vergoldung" ;
+		spl:predicate :_q ;
+		spl:valueType xsd:string
+	] ;
+
+	# Optional in practice: an input parameter with no matching triple pattern in the query is
+	# skipped, not defaulted or rejected (SparqlServiceUtils.retrieveVarForParameter returns
+	# null and the caller drops it). So omitting gnd:filter simply sends no filter.
+	spin:constraint [
+		a spl:Argument ;
+		rdfs:comment "Elasticsearch filter, e.g. +(type:SubjectHeading) to restrict to concepts" ;
+		spl:predicate :_filter ;
+		spl:valueType xsd:string
+	] ;
+
+	# --- row root -------------------------------------------------------------
+	# Every jsonPath below is relative to ONE element of this array.
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "One result record" ;
+		spl:predicate :_member ;
+		spl:valueType rdfs:Resource ;
+		ephedra:jsonPath "$.member[*]"
+	] ;
+
+	# --- columns --------------------------------------------------------------
+	# A jsonPath that resolves to null omits only that one binding
+	# (RESTSailConnection.createBindingSetFromJSONObject) — the row still comes back, with the
+	# variable UNBOUND. So sparsely populated fields are safe to declare and safe to project.
+	# Frequencies below are from a 78-record census of live lobid responses, 2026-08-07.
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "The GND IRI (https://d-nb.info/gnd/...) — this is what to mint" ;
+		spl:predicate :_id ;
+		spl:valueType rdfs:Resource ;
+		ephedra:jsonPath "$.id"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Preferred label. Note: GND labels are German" ;
+		spl:predicate :_label ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.preferredName"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Entity type hint, e.g. SubjectHeading / DifferentiatedPerson. lobid does not guarantee the order of the type array, so treat this as a hint, not a classification" ;
+		spl:predicate :_entityType ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.type[0]"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Bare GND identifier, e.g. 4202709-3 (always present)" ;
+		spl:predicate :_gndIdentifier ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.gndIdentifier"
+	] ;
+
+	# --- description candidates ------------------------------------------------
+	# lobid has no `definition` field. These are the three usable substitutes, none of them
+	# always present; COALESCE them in the query. Frequency out of 78 sampled records.
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Scope/biographical note (29/78) — the closest thing GND offers to a definition" ;
+		spl:predicate :_bio ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.biographicalOrHistoricalInformation[0]"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "GND subject category label, e.g. Kunsthandwerk (38/78)" ;
+		spl:predicate :_subjectCategory ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.gndSubjectCategory[0].label"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Profession/occupation label, for person records (11/78)" ;
+		spl:predicate :_profession ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.professionOrOccupation[0].label"
+	] .

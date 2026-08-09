@@ -1,0 +1,89 @@
+# Ephedra service descriptor for VIAF AutoSuggest.
+#
+# VIAF returns HTTP 403 to any request that does not send `Accept: application/json` — the
+# User-Agent is irrelevant. RESTSail's mediaType defaults to application/json, so no extra
+# configuration is needed; the repository sets it explicitly anyway to make the dependency
+# visible to whoever reads this next.
+#
+# HARD QUOTA: ~1000 requests/day and 10000/month, scored per source IP and shared by the
+# whole deployment. Every endpoint (AutoSuggest, SRU search, cluster fetch) decrements the
+# same counter. Do not put anything automated behind this service.
+#
+# AutoSuggest covers personal/corporate NAMES, not concepts — for E55 use AAT and GND.
+# Each hit also carries the cluster's source IDs (lc, dnb, bnf, jpg=Getty, ...). Those are
+# VIAF's crosswalk assertions, not first-party IRIs; they are deliberately NOT exposed as
+# columns here, because a mintable column would imply first-party agreement.
+#
+# See docs/features/external-authority-federation.md §3.4.
+
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX spl: <http://spinrdf.org/spl#>
+PREFIX ephedra: <http://www.researchspace.org/resource/system/ephedra#>
+PREFIX sail: <http://www.openrdf.org/config/sail#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX : <http://www.researchspace.org/resource/system/service/viafautosuggest/>
+
+:ViafAutoSuggest a ephedra:Service ;
+	sail:sailType "researchspace:RESTSail" ;
+	rdfs:label "A wrapper for the VIAF AutoSuggest name search service." ;
+	ephedra:hasSPARQLPattern (
+
+		[ sp:subject :_result ; sp:predicate :search   ; sp:object :_query ]
+		[ sp:subject :_result ; sp:predicate :label    ; sp:object :_term ]
+		[ sp:subject :_result ; sp:predicate :viafId   ; sp:object :_viafid ]
+		[ sp:subject :_result ; sp:predicate :nameType ; sp:object :_nametype ]
+		[ sp:subject :_result ; sp:predicate :score    ; sp:object :_score ]
+
+	) ;
+
+	spin:constraint [
+		a spl:Argument ;
+		rdfs:comment "Name to search for" ;
+		spl:predicate :_query ;
+		spl:valueType xsd:string
+	] ;
+
+	# --- row root -------------------------------------------------------------
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "One suggestion" ;
+		spl:predicate :_result ;
+		spl:valueType rdfs:Resource ;
+		ephedra:jsonPath "$.result[*]"
+	] ;
+
+	# --- columns (all always present in an AutoSuggest hit) -------------------
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Heading as VIAF displays it" ;
+		spl:predicate :_term ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.term"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Bare VIAF cluster ID. The IRI is https://viaf.org/viaf/<id> — build it in the outer query" ;
+		spl:predicate :_viafid ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.viafid"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "personal / corporate / geographic / uniformtitle ..." ;
+		spl:predicate :_nametype ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.nametype"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "VIAF relevance score" ;
+		spl:predicate :_score ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.score"
+	] .

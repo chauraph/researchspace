@@ -3,7 +3,10 @@
 
 {{#ifCond resourceConfig "!==" "http://www.researchspace.org/resource/system/resource_configurations_container/data/Feature_authority"}}
     <rs-tab event-key="externalAuthority" title="External Authority">
-        [[!-- {{#if asSKOS}} 
+
+        [[> dsanno:ExternalAuthoritySearch]]
+
+        [[!-- {{#if asSKOS}}
         <semantic-form-hidden-input for="classtype" default-value='http://www.w3.org/2004/02/skos/core#Concept'></semantic-form-hidden-input>
         --]]
 

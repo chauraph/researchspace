@@ -1,0 +1,26 @@
+# RESTSail repository wrapping the lobid.org GND search API.
+# Fixed parameters are baked into the serviceURL and MUST end with a trailing "&";
+# only the varying parameters come from the service descriptor's magic predicates.
+
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix repo: <http://www.openrdf.org/config/repository#> .
+@prefix sr: <http://www.openrdf.org/config/repository/sail#> .
+@prefix sail: <http://www.openrdf.org/config/sail#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ephedra: <http://www.researchspace.org/resource/system/ephedra#> .
+@prefix : <http://www.researchspace.org/resource/system/service/gndlobid/> .
+
+[] a repo:Repository ;
+   repo:repositoryID "gnd-lobid" ;
+   rdfs:label "GND authority search service repository (via lobid.org)" ;
+   repo:repositoryImpl [
+    repo:repositoryType "openrdf:SailRepository" ;
+    sr:sailImpl [
+      sail:sailType "researchspace:RESTSail" ;
+      ephedra:serviceURL "https://lobid.org/gnd/search?format=json&size=20&" ;
+      ephedra:httpMethod "GET" ;
+      ephedra:userAgent "ResearchSpace/dsanno (external authority alignment)" ;
+      ephedra:requestRateLimit "5"^^xsd:int ;
+      ephedra:implementsService :GndSearch
+    ]
+  ] .
