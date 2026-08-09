@@ -61,15 +61,50 @@
     },
 
     // Parse the annotation into the OsdRegionDrawTool instance (only if its format is supported by this strategy)
-    parseRegion: function(annotation, osdRegionDrawTool) {
-      if (this.isThisType(annotation)) {
-        var regionArray = [];
-        jQuery.each(annotation.on, function(index, target) {
-          regionArray = regionArray.concat(osdRegionDrawTool.svgOverlay.parseSVG(target.selector.item.value, annotation));
-        });
-        return regionArray;
-      }
-    },
+	parseRegion: function(annotation, osdRegionDrawTool) {
+		if (this.isThisType(annotation)) {
+		  var regionArray = [];
+		  
+		  jQuery.each(annotation.on, function(index, target) {
+			// Get the SVG string
+			var svgString = target.selector.item.value;
+			
+			// Create a DOM parser to extract the individual paths
+			var parser = new DOMParser();
+			var svgDoc = parser.parseFromString(svgString, "text/xml");
+			
+			// Check if parsing succeeded
+			if (svgDoc.documentElement.nodeName === 'parsererror') {
+			  console.error("Error parsing SVG");
+			  return [];
+			}
+			
+			// Get the SVG's xmlns attribute
+			var xmlns = svgDoc.documentElement.getAttribute("xmlns") || "http://www.w3.org/2000/svg";
+			
+			// Get all path elements
+			var paths = svgDoc.querySelectorAll("path");
+			//console.log("Found", paths.length, "paths in SVG for annotation", annotation['@id']);
+			
+			// Process each path individually
+			for (var i = 0; i < paths.length; i++) {
+			  // Create a new SVG with just this path
+			  var individualSvg = '<svg xmlns="' + xmlns + '">' + paths[i].outerHTML + '</svg>';
+			  
+			  // Log for debugging
+			  //console.log("Processing path", i + 1, "for annotation", annotation['@id']);
+			  
+			  // Parse this SVG and add resulting regions to our array
+			  var pathRegions = osdRegionDrawTool.svgOverlay.parseSVG(individualSvg, annotation);
+			  if (pathRegions) {
+				regionArray = regionArray.concat(pathRegions);
+			  }
+			}
+		  });
+		  
+		  return regionArray;
+		}
+	  },
   };
 
 }(Mirador));

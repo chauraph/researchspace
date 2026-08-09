@@ -4,7 +4,7 @@
       return this.svgOverlayTools;
     }
     options.partOfPrefix = '_partOf';
-    this.svgOverlayTools = [new $.Rectangle(options), new $.Freehand(options), new $.Polygon(options), new $.Ellipse(options), new $.Pin(options)];
+    this.svgOverlayTools = [new $.Rectangle(options), new $.Freehand(options), new $.Polygon(options), new $.Ellipse(options), new $.Pin(options), new $.Sam(options)];
     return this.svgOverlayTools;
   };
 
@@ -1049,30 +1049,39 @@
       return svg;
     },
 
-    onDrawFinish: function() {
+	onDrawFinish: function() {
+		var shapeOrShapes = this.path;
+	  	if (!shapeOrShapes) {
+			return;
+		}
 
-      var shape = this.path;
-      if (!shape) {
-        return;
-      }
-      this.inEditOrCreateMode = true;
-      if (this.hoveredPath) {
-        this.updateSelection(false, this.hoveredPath);
-      }
-
-      // Set special style for newly created shapes
-      var newlyCreatedStrokeFactor = this.drawingToolsSettings.newlyCreatedShapeStrokeWidthFactor || 5;
-      shape.data.newlyCreatedStrokeFactor = newlyCreatedStrokeFactor;
-      shape.data.newlyCreated = true;
-      shape.strokeWidth = shape.data.strokeWidth * newlyCreatedStrokeFactor;
-
-      this.hoveredPath = shape;
-      this.segment = null;
-      this.path = null;
-      this.mode = '';
-      this.draftPaths.push(shape);
-
-      shape.data.editable = true;
+		// Ensure shapeOrShapes is always an array
+		if (!Array.isArray(shapeOrShapes)) {
+		  shapeOrShapes = [shapeOrShapes];
+		}
+	  
+		this.inEditOrCreateMode = true;
+		if (this.hoveredPath) {
+		  this.updateSelection(false, this.hoveredPath);
+		}
+	  
+		// Set special style for newly created shapes
+		var newlyCreatedStrokeFactor = this.drawingToolsSettings.newlyCreatedShapeStrokeWidthFactor || 5;
+	  
+		shapeOrShapes.forEach(function(shape) {
+		  shape.data.newlyCreatedStrokeFactor = newlyCreatedStrokeFactor;
+		  shape.data.newlyCreated = true;
+		  shape.strokeWidth = shape.data.strokeWidth * newlyCreatedStrokeFactor;
+		  this.draftPaths.push(shape);
+		}, this);
+	  
+		this.hoveredPath = shapeOrShapes[shapeOrShapes.length - 1];
+		this.segment = null;
+		this.path = null;
+		this.mode = '';
+		shapeOrShapes.forEach(function(shape) {
+		  shape.data.editable = true;
+		});
 
       this.updateSelection(true, this.hoveredPath);
       if (typeof this.annoTooltip === 'undefined' || !this.annoTooltip) {
@@ -1085,7 +1094,7 @@
       }
 
       if (this.availableExternalCommentsPanel) {
-        this.eventEmitter.publish('annotationShapeCreated.' + this.windowId, [this, shape]);
+		this.eventEmitter.publish('annotationShapeCreated.' + this.windowId, [this, shapeOrShapes]);
         return;
       }
       var _this = this;

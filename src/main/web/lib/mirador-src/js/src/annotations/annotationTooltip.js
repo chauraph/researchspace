@@ -331,6 +331,7 @@
     },
 
     setTooltipContent: function(annotations) {
+		console.log("set")
       var _this = this;
       var api = jQuery(this.targetElement).qtip('api');
       if (api) {
