@@ -27,8 +27,16 @@ export default defineConfig({
     { name: 'auth', testMatch: /auth\.setup\.ts/ },
     {
       name: 'probe',
+      testIgnore: /\.standalone\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], storageState: '.auth/user.json' },
       dependencies: ['auth'],
+    },
+    {
+      // Probes that need no ResearchSpace stack and no login — they serve
+      // everything themselves via route interception (e.g. the SAM2 WebGPU probe).
+      name: 'standalone',
+      testMatch: /\.standalone\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 });
