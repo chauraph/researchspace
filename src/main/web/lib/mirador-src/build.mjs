@@ -58,6 +58,7 @@ export const SOURCES = [
   // RS-local: SAM2 segmentation tool. Pinned here rather than in alphabetical
   // position so the output stays byte-comparable with the 2020-built artifact.
   'js/src/annotations/osd-svg-sam.js',
+  'js/src/annotations/osd-svg-sam-local.js',
   'js/src/annotations/osd-svg-polygon.js',
   'js/src/annotations/osd-svg-rectangle.js',
   'js/src/annotations/simpleASEndpoint.js',

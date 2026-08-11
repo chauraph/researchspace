@@ -49,16 +49,21 @@ export class SamClientEngine {
   onDownloadProgress: ((progress: SamModelDownloadProgress) => void) | undefined;
 
   /**
-   * True when the engine can run here. Spawns the worker and loads the models
-   * on first call (kept cheap for repeat calls), so callers should treat it
-   * as the gate before offering the tool. Requires WebGPU by default; pass
-   * `allowWasmEncoder` to accept the ~8.5s-per-viewport CPU fallback.
+   * True when the engine can plausibly run here: a real WebGPU adapter is
+   * present. Deliberately cheap — no worker spawn, no model download — so it
+   * can gate the Mirador toolbar at page setup. The heavy initialization
+   * (worker, ~88MB model fetch, ORT sessions) happens lazily on first
+   * encode(); if ORT then fails despite the adapter, the tool surfaces the
+   * error in its status pill at the moment of use.
    */
-  isAvailable(allowWasmEncoder = false): Promise<boolean> {
-    return this.init().then(
-      ({ webgpu }) => webgpu || allowWasmEncoder,
-      () => false
-    );
+  isAvailable(): Promise<boolean> {
+    const gpu = (navigator as any).gpu;
+    if (!gpu) {
+      return Promise.resolve(false);
+    }
+    return Promise.resolve(gpu.requestAdapter())
+      .then((adapter: unknown) => !!adapter)
+      .catch(() => false);
   }
 
   /**

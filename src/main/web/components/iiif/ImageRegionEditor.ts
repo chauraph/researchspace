@@ -42,6 +42,7 @@ import { ManifestUpdatedEvent, ZoomToRegionEvent, IiifManifestResource, AddResou
 import { renderMirador, removeMirador, scrollToRegions, scrollToRegion } from './mirador/Mirador';
 import { computeDisplayedRegionWithMargin } from './ImageThumbnail';
 import { OARegionAnnotation, getAnnotationTextResource } from 'platform/data/iiif/LDPImageRegionService';
+import { getSamClientEngine } from './sam/SamClientEngine';
 import { LayoutChanged } from '../dashboard/DashboardEvents';
 
 export interface ImageRegionEditorConfig {
@@ -106,6 +107,7 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
 
   private miradorElement: HTMLElement;
   private miradorInstance: Mirador.Instance;
+  private samAvailability: Promise<boolean>;
 
   constructor(props: ImageRegionEditorProps, context: any) {
     super(props, context);
@@ -128,6 +130,13 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
   }
 
   componentDidMount() {
+    // In-browser SAM2 segmentation (docs/features/sam2-client-side-plan.md):
+    // expose the engine to the plain-JS Mirador tool ($.SamLocal) and resolve
+    // the cheap WebGPU-availability gate before Mirador is configured. The
+    // heavy model download only happens on first use of the tool.
+    const samEngine = getSamClientEngine();
+    (window as any).RsSamEngine = samEngine;
+    this.samAvailability = samEngine.isAvailable().catch(() => false);
     this.queryAllImagesInfo();
   }
 
@@ -252,11 +261,16 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
     this.manifestQueryingCancellation = this.cancellation.deriveAndCancel(this.manifestQueryingCancellation);
     this.manifestQueryingCancellation.map(Kefir.zip(manifestQuerying)).onValue((allManifests) => {
       const manifests = allManifests.filter((manifest) => manifest !== undefined);
-      const miradorConfig = this.miradorConfigFromManifest(manifests);
-      this.miradorInstance = renderMirador({
-        targetElement: element,
-        miradorConfig,
-        onInitialized: this.onMiradorInitialized,
+      this.samAvailability.then((samAvailable) => {
+        if (!element.isConnected) {
+          return; // unmounted while the availability check resolved
+        }
+        const miradorConfig = this.miradorConfigFromManifest(manifests, samAvailable);
+        this.miradorInstance = renderMirador({
+          targetElement: element,
+          miradorConfig,
+          onInitialized: this.onMiradorInitialized,
+        });
       });
     });
   }
@@ -562,7 +576,7 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
       .orElse(() => Maybe.fromNullable(this.context.semanticContext).chain((c) => Maybe.fromNullable([c.repository])))
       .getOrElse(['default']);
 
-  private miradorConfigFromManifest(manifests: Array<Manifest>): Mirador.Options {
+  private miradorConfigFromManifest(manifests: Array<Manifest>, samAvailable: boolean): Mirador.Options {
     const {
       id, annotationEndpoint, useDetailsSidebar,
       annotationViewTooltipTemplate,
@@ -609,7 +623,9 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
           endpoint: this.annotationEndpoint,
         },
       },
-      availableAnnotationDrawingTools: ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam'],
+      availableAnnotationDrawingTools: samAvailable
+        ? ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam', 'SamLocal']
+        : ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam'],
       windowObjects,
       annotationBodyEditor: {
         module: 'researchspaceAnnotationBodyEditor',
@@ -625,6 +641,7 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
 
   componentWillUnmount() {
     this.cancellation.cancelAll();
+    getSamClientEngine().releaseAll();
     removeMirador(this.miradorInstance, this.miradorElement);
   }
 

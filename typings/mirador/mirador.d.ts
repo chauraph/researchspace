@@ -186,7 +186,7 @@ declare global {
       children?: LayoutDescription[];
     }
 
-    type AnnotationDrawingTool = 'Rectangle' | 'Ellipse' | 'Freehand' | 'Polygon' | 'Pin' | 'Sam';
+    type AnnotationDrawingTool = 'Rectangle' | 'Ellipse' | 'Freehand' | 'Polygon' | 'Pin' | 'Sam' | 'SamLocal';
     type AnnotationStylePicker = 'StrokeColor' | 'FillColor' | 'StrokeType';
 
     /* implementation details */

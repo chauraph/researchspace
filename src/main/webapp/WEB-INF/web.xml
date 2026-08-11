@@ -36,4 +36,16 @@
       <filter-name>guiceFilter</filter-name>
       <url-pattern>/*</url-pattern>
     </filter-mapping>
+
+    <!-- onnxruntime-web (SAM2 client-side segmentation) loads its runtime via
+         dynamic import() of .mjs and fetch of .wasm; without a JS MIME type
+         the browser refuses the module import. Jetty 9.4 maps neither. -->
+    <mime-mapping>
+      <extension>mjs</extension>
+      <mime-type>application/javascript</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+      <extension>wasm</extension>
+      <mime-type>application/wasm</mime-type>
+    </mime-mapping>
 </web-app>

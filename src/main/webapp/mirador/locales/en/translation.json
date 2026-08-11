@@ -82,6 +82,7 @@
   "rotateRightTooltip": "Rotate 90&deg; right",
   "saturationTooltip": "Adjust saturation",
   "samTooltip": "Segment Anything (experimental)",
+  "samLocalTooltip": "Segment Anything (in-browser)",
   "save": "Save",
   "scrollView": "Scroll View",
   "searchLabelSelect": "Select Search Service",
