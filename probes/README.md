@@ -49,6 +49,13 @@ Login is handled once by `tests/auth.setup.ts`, which saves the session to
 | `tests/portal.ancestors.spec.ts` | Walks `html → .mp-portal` printing width, display, overflow and `min-width` for every ancestor. Written to find which container blows the page past the viewport. |
 | `tests/adjudication.probe.spec.ts` | Alignment adjudication. Four probes: an end-to-end Adopt + Refuse against a scratch member, then three read-only checks against real records. See below. |
 | `tests/external-authority-search.probe.spec.ts` | External Authority search panel. Drives each source tab (All / Wikidata / GND / VIAF) with a search term and prints row count, per-source breakdown, and how many rows carried a description. "All sources" is a UNION, so one dead service zeroes that tab while the single-source tabs still work. |
+| `tests/sam2-webgpu.standalone.spec.ts` | SAM2 client-side feasibility (plan-doc phase 1). Runs ONNX Runtime Web with the SAM2.1 hiera-tiny models in Chromium, printing encoder/decoder timings and mask-vs-known-shape IoU per execution-provider combination. Needs no RS stack (`--project=standalone`); established that the decoder must run on the WASM EP. |
+| `tests/sam2-worker.standalone.spec.ts` | Drives the **built** SAM worker asset (`npm run prod` first) over its postMessage protocol at production URLs: model download + OPFS warm start, encode/decode timings, polygon geometry vs a known ellipse in a non-square viewport, negative points, error paths. Needs no RS stack. |
+
+Standalone probes (`--project=standalone`, matching `*.standalone.spec.ts`) serve
+everything themselves from disk and skip the auth setup — the RS stack does not
+need to be running. They launch Chromium with Metal-GPU flags because headless
+WebGPU otherwise falls back to SwiftShader (minutes-slow, numerically wrong).
 
 ### `adjudication.probe.spec.ts`
 

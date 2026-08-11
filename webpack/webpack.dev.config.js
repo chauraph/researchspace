@@ -57,6 +57,12 @@ module.exports = function() {
         static: {
             directory: './src/main/webapp',
         },
+        devMiddleware: {
+            // The SAM worker and the onnxruntime runtime are fetched from the
+            // Jetty origin (:10214) as static files, so the copied assets must
+            // exist on disk in dev, not only in the dev-server's memory fs.
+            writeToDisk: (filePath) => /sam-worker\.js$|[\\/]ort[\\/]/.test(filePath),
+        },
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',

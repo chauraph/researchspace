@@ -20,6 +20,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const AssetsPlugin = require('assets-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
@@ -286,6 +287,31 @@ module.exports = function(isProd) {
             'react/lib/ReactContext': true
         },
         plugins: [
+            // SAM2 client-side segmentation (docs/features/sam2-client-side-plan.md):
+            // the worker is a plain-JS classic worker served as a static asset
+            // (module:commonjs forbids import.meta, and the dev publicPath is
+            // cross-origin, which blocks bundled worker URLs), and onnxruntime-web
+            // loads its runtime .wasm/.mjs by URL at runtime rather than via imports.
+            new CopyWebpackPlugin({
+                patterns: [
+                    {
+                        from: path.join(SRC, 'components/iiif/sam/sam.worker.js'),
+                        to: 'sam-worker.js',
+                    },
+                    {
+                        from: 'node_modules/onnxruntime-web/dist/ort.all.min.js',
+                        to: 'ort/ort.all.min.js',
+                        context: ROOT_DIR,
+                    },
+                    {
+                        // plain build = wasm EP (decoder), .jsep build = webgpu EP
+                        // (encoder); the asyncify/jspi variants are not used.
+                        from: 'node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded{,.jsep}.{wasm,mjs}',
+                        to: 'ort/[name][ext]',
+                        context: ROOT_DIR,
+                    },
+                ],
+            }),
             new ForkTsCheckerWebpackPlugin({
                 typescript: {
                   config: path.resolve(__dirname, '../tsconfig.json'),
