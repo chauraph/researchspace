@@ -46,8 +46,12 @@
             this.keyOrder = [];        // LRU order for encodedKeys
             this.embeddingPromise = null;
             this.decodeInFlight = null;
-            this.pendingHover = null;  // latest cursor while a decode is in flight
-            this.lastMaskBitmap = null;
+            this.pendingHover = null;   // latest cursor while a decode is in flight
+            this.lastCandidates = null; // 3 mask candidates of the latest decode
+            this.maskIndex = 0;         // which candidate is shown/committed
+            this.downCss = null;        // mousedown position, for click-vs-drag
+            this.dragging = false;
+            this.box = null;            // engine-space [x1,y1,x2,y2] box prompt
             this.viewerHooked = false;
             this.resetOverlayState();
         },
@@ -111,6 +115,17 @@
             }
         },
 
+        closeCandidates: function() {
+            if (this.lastCandidates) {
+                this.lastCandidates.forEach(function(candidate) {
+                    if (candidate.maskBitmap) {
+                        candidate.maskBitmap.close();
+                    }
+                });
+                this.lastCandidates = null;
+            }
+        },
+
         resetOverlayState: function() {
             this.hideStatus();
             this.point_coords = [];   // engine space (fetched-bitmap px)
@@ -118,10 +133,11 @@
             this.currentKey = null;
             this.lastPolygons = null; // engine space
             this.pendingHover = null;
-            if (this.lastMaskBitmap) {
-                this.lastMaskBitmap.close();
-                this.lastMaskBitmap = null;
-            }
+            this.box = null;
+            this.downCss = null;
+            this.dragging = false;
+            this.maskIndex = 0;
+            this.closeCandidates();
             this.clearPreview();
         },
 
@@ -178,18 +194,25 @@
             ];
         },
 
-        /** css px (offsetX/Y) -> engine px; null when outside the image. */
-        cssToEngine: function(overlay, cssX, cssY, entry) {
+        /** css px (offsetX/Y) -> engine px, unclamped. */
+        cssToEngineRaw: function(overlay, cssX, cssY, entry) {
             var viewport = overlay.viewer.viewport;
             var imagePoint = viewport.viewportToImageCoordinates(
                 viewport.pointFromPixel(new OpenSeadragon.Point(cssX, cssY), true)
             );
-            var ex = (imagePoint.x - entry.region.x) * (entry.bitmapWidth / entry.region.w);
-            var ey = (imagePoint.y - entry.region.y) * (entry.bitmapHeight / entry.region.h);
-            if (ex < 0 || ey < 0 || ex > entry.bitmapWidth || ey > entry.bitmapHeight) {
+            return [
+                (imagePoint.x - entry.region.x) * (entry.bitmapWidth / entry.region.w),
+                (imagePoint.y - entry.region.y) * (entry.bitmapHeight / entry.region.h),
+            ];
+        },
+
+        /** css px -> engine px; null when outside the image. */
+        cssToEngine: function(overlay, cssX, cssY, entry) {
+            var point = this.cssToEngineRaw(overlay, cssX, cssY, entry);
+            if (point[0] < 0 || point[1] < 0 || point[0] > entry.bitmapWidth || point[1] > entry.bitmapHeight) {
                 return null;
             }
-            return [ex, ey];
+            return point;
         },
 
         /** Engine-space polygons -> closed paper.js paths in project space. */
@@ -246,14 +269,13 @@
             this.previewCanvas = null;
         },
 
-        /** Draw (or redraw, after pan/zoom) the retained mask over the region. */
-        paintMaskPreview: function(overlay, maskBitmap, entry) {
-            if (maskBitmap !== this.lastMaskBitmap) {
-                if (this.lastMaskBitmap) {
-                    this.lastMaskBitmap.close();
-                }
-                this.lastMaskBitmap = maskBitmap; // retained for repaint on pan/zoom
+        /** Draw (or redraw, after pan/zoom/cycle) the selected candidate mask. */
+        paintCurrentMask: function(overlay) {
+            var entry = this.currentKey && this.encodedKeys[this.currentKey];
+            if (!entry || !this.lastCandidates) {
+                return;
             }
+            var maskBitmap = this.lastCandidates[this.maskIndex].maskBitmap;
             var viewport = overlay.viewer.viewport;
             var canvas = this.getPreviewCanvas(overlay);
             var ctx = canvas.getContext('2d');
@@ -266,7 +288,22 @@
                 bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
         },
 
-        /** Keep the preview glued to the image while the user pans/zooms. */
+        /** Cycle to the next of the 3 candidate masks (bound to the M key). */
+        cycleMask: function(overlay) {
+            if (!this.lastCandidates || this.lastCandidates.length < 2) {
+                return;
+            }
+            this.maskIndex = (this.maskIndex + 1) % this.lastCandidates.length;
+            this.lastPolygons = this.lastCandidates[this.maskIndex].polygons;
+            this.paintCurrentMask(overlay);
+            var score = this.lastCandidates[this.maskIndex].score;
+            this.showStatus(
+                'Mask ' + (this.maskIndex + 1) + '/' + this.lastCandidates.length
+                    + ' (confidence ' + score.toFixed(2) + ') — press M to cycle.',
+                'info', overlay);
+        },
+
+        /** Preview repaint on pan/zoom + the M-to-cycle key binding. */
         hookViewerEvents: function(overlay) {
             if (this.viewerHooked) {
                 return;
@@ -274,13 +311,20 @@
             this.viewerHooked = true;
             var _this = this;
             var repaint = function() {
-                var entry = _this.currentKey && _this.encodedKeys[_this.currentKey];
-                if (entry && _this.lastMaskBitmap && _this.previewCanvas) {
-                    _this.paintMaskPreview(overlay, _this.lastMaskBitmap, entry);
+                if (_this.previewCanvas) {
+                    _this.paintCurrentMask(overlay);
                 }
             };
             overlay.viewer.addHandler('animation', repaint);
             overlay.viewer.addHandler('animation-finish', repaint);
+            document.addEventListener('keydown', function(keyEvent) {
+                if (overlay.currentTool !== _this || !_this.lastCandidates) {
+                    return;
+                }
+                if (keyEvent.key === 'm' || keyEvent.key === 'M') {
+                    _this.cycleMask(overlay);
+                }
+            });
         },
 
         /** Encode the current viewport region unless its embedding is cached. */
@@ -375,13 +419,16 @@
                 points.push(hoverPoint);
                 labels.push(1);
             }
-            if (!points.length) {
+            if (!points.length && !this.box) {
                 return Promise.resolve();
             }
-            this.decodeInFlight = engine.decode(this.currentKey, points, labels)
+            this.decodeInFlight = engine.decode(this.currentKey, points, labels, this.box || undefined)
                 .then(function(result) {
-                    _this.lastPolygons = result.polygons;
-                    _this.paintMaskPreview(overlay, result.maskBitmap, entry);
+                    _this.closeCandidates();
+                    _this.lastCandidates = result.candidates;
+                    _this.maskIndex = result.bestIndex;
+                    _this.lastPolygons = result.candidates[result.bestIndex].polygons;
+                    _this.paintCurrentMask(overlay);
                 })
                 .finally(function() {
                     _this.decodeInFlight = null;
@@ -394,9 +441,9 @@
             return this.decodeInFlight;
         },
 
-        // --- interaction (same grammar as $.Sam) -----------------------------
+        // --- interaction ($.Sam's grammar + drag-box + M-to-cycle) -----------
 
-        onMouseDown: async function(event, overlay) {
+        onMouseDown: function(event, overlay) {
             if (event.event.metaKey || event.event.altKey) {
                 this.commit(overlay);
                 return;
@@ -406,6 +453,40 @@
                 hitResult.item.fillColor = 'blue';
                 return;
             }
+            // Click vs drag is only known at mouseup; just remember the start.
+            this.downCss = { x: event.event.offsetX, y: event.event.offsetY };
+            this.dragging = false;
+        },
+
+        onMouseDrag: function(event, overlay) {
+            if (!this.downCss) {
+                return;
+            }
+            this.dragging = true;
+            // Rubber-band box in project space while dragging.
+            var previous = overlay.paperScope.project.activeLayer.children.filter(function(item) {
+                return item.name === 'temp_samlocal_box';
+            });
+            previous.forEach(function(item) { item.remove(); });
+            var shape = new overlay.paperScope.Path.Rectangle({
+                from: event.downPoint,
+                to: event.point,
+                strokeColor: overlay.strokeColor,
+                dashArray: [4 / overlay.paperScope.view.zoom, 4 / overlay.paperScope.view.zoom],
+                name: 'temp_samlocal_box',
+            });
+            shape.data.strokeWidth = overlay.strokeWidth;
+            shape.strokeWidth = shape.data.strokeWidth / overlay.paperScope.view.zoom;
+        },
+
+        onMouseUp: async function(event, overlay) {
+            if (!this.downCss) {
+                return;
+            }
+            var downCss = this.downCss;
+            var wasDrag = this.dragging;
+            this.downCss = null;
+            this.dragging = false;
 
             var engine = window.RsSamEngine;
             if (!engine) {
@@ -416,8 +497,8 @@
                 overlay.mode = 'create';
             }
 
-            var isFirstPoint = this.countShapebyName(overlay, "temp_samlocal_input_point") === 0;
-            if (isFirstPoint) {
+            var isFirstPrompt = !this.box && this.point_coords.length === 0;
+            if (isFirstPrompt) {
                 this.resetOverlayState();
                 try {
                     await this.ensureEmbedding(overlay, engine);
@@ -428,20 +509,49 @@
             }
 
             var entry = this.encodedKeys[this.currentKey];
-            var enginePoint = this.cssToEngine(overlay, event.event.offsetX, event.event.offsetY, entry);
-            if (!enginePoint) {
-                this.showStatus("Click inside the image.", "warning", overlay);
-                return;
+            if (!entry) {
+                try {
+                    await this.ensureEmbedding(overlay, engine);
+                    entry = this.encodedKeys[this.currentKey];
+                } catch (error) {
+                    this.showStatus("Failed to prepare image: " + error.message, "error", overlay);
+                    return;
+                }
             }
-            this.point_coords.push(enginePoint);
-            this.point_labels.push(event.event.shiftKey ? 0 : 1);
-            this.pendingHover = null; // the click supersedes any queued hover
-            overlay.path = this.createRefPoint(event, overlay);
+
+            if (wasDrag) {
+                // Box prompt: clamp both corners into the encoded bitmap.
+                var a = this.cssToEngineRaw(overlay, downCss.x, downCss.y, entry);
+                var b = this.cssToEngineRaw(overlay, event.event.offsetX, event.event.offsetY, entry);
+                var clamp = function(value, max) { return Math.max(0, Math.min(max, value)); };
+                var x1 = clamp(Math.min(a[0], b[0]), entry.bitmapWidth);
+                var x2 = clamp(Math.max(a[0], b[0]), entry.bitmapWidth);
+                var y1 = clamp(Math.min(a[1], b[1]), entry.bitmapHeight);
+                var y2 = clamp(Math.max(a[1], b[1]), entry.bitmapHeight);
+                if (x2 - x1 < 2 || y2 - y1 < 2) {
+                    this.showStatus("Draw the box over the image.", "warning", overlay);
+                    return;
+                }
+                this.box = [x1, y1, x2, y2];
+            } else {
+                var enginePoint = this.cssToEngine(overlay, downCss.x, downCss.y, entry);
+                if (!enginePoint) {
+                    this.showStatus("Click inside the image.", "warning", overlay);
+                    return;
+                }
+                this.point_coords.push(enginePoint);
+                this.point_labels.push(event.event.shiftKey ? 0 : 1);
+                overlay.path = this.createRefPoint(event, overlay);
+            }
+            this.pendingHover = null; // the explicit prompt supersedes any queued hover
 
             try {
                 await this.requestDecode(overlay, engine, null);
+                var score = this.lastCandidates ? this.lastCandidates[this.maskIndex].score : 0;
                 this.showStatus(
-                    "Segmentation updated.<br>Click to add more positive points or negative points (hold left shift).<br>To save current mask, double-click or hold left alt-key (PC) / command-key (Mac) + click.",
+                    "Segmentation updated (mask " + (this.maskIndex + 1) + "/3, confidence " + score.toFixed(2) + ").<br>"
+                        + "Click to add points (shift = exclude), drag a box, press M to cycle masks.<br>"
+                        + "Save: double-click, or alt (PC) / cmd (Mac) + click.",
                     "info", overlay);
             } catch (error) {
                 this.showStatus("Segmentation failed: " + error.message, "error", overlay);
@@ -456,7 +566,7 @@
          */
         onMouseMove: function(event, overlay) {
             var engine = window.RsSamEngine;
-            if (!engine) {
+            if (!engine || this.dragging) {
                 return;
             }
             var _this = this;
@@ -513,11 +623,9 @@
             }
         },
 
-        // --- required no-op tool hooks (onMouseMove is implemented above) ----
+        // --- required no-op tool hooks (mouse hooks are implemented above) ---
         updateSelection: function(selected, item, overlay) {},
         onResize: function(item, overlay) {},
-        onHover: function(activate, shape, hoverWidth, hoverColor) {},
-        onMouseUp: function(event, overlay) {},
-        onMouseDrag: function(event, overlay) {}
+        onHover: function(activate, shape, hoverWidth, hoverColor) {}
     };
 }(Mirador));

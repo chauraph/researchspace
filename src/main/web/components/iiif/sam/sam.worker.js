@@ -21,10 +21,13 @@
  * Protocol (postMessage, request/response by id):
  *   {id, op:'init'}                 -> {id, ok, webgpu}
  *   {id, op:'encode', key, bitmap}  -> {id, ok, encodeMs}    (bitmap transferred)
- *   {id, op:'decode', key, points, labels}
- *     -> {id, ok, decodeMs, score, polygons, maskBitmap, maskWidth, maskHeight}
- *        polygons: Array<Array<[x,y]>> in the encoded bitmap's pixel space;
- *        maskBitmap: ImageBitmap (transferred) sized maskWidth x maskHeight.
+ *   {id, op:'decode', key, points, labels, box?}
+ *     -> {id, ok, decodeMs, bestIndex, candidates, maskWidth, maskHeight}
+ *        box: optional [x1,y1,x2,y2] in the encoded bitmap's pixel space;
+ *        candidates: the model's 3 masks, each {score, polygons, maskBitmap}
+ *        with polygons Array<Array<[x,y]>> in the encoded bitmap's pixel
+ *        space and maskBitmap an ImageBitmap (transferred) sized
+ *        maskWidth x maskHeight; bestIndex = argmax score.
  *   {id, op:'release', key} / {id, op:'releaseAll'} -> {id, ok}
  * Unsolicited: {event:'progress', file, loaded, total} during model download.
  */
@@ -260,7 +263,7 @@ function release(key) {
 // Decode: points (source px) -> best mask -> polygons (source px) + preview
 // ---------------------------------------------------------------------------
 
-async function decode(key, points, labels) {
+async function decode(key, points, labels, box) {
   var entry = state.embeddings.get(key);
   if (!entry) {
     throw new Error('no embedding for key ' + key + ' — encode() first (or the viewport changed)');
@@ -277,47 +280,52 @@ async function decode(key, points, labels) {
     pointData[i * 2 + 1] = points[i][1] * sy;
     labelData[i] = BigInt(labels[i]);
   }
+  var boxData = box
+    ? new Float32Array([box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy])
+    : new Float32Array(0);
 
   var outputs = await state.decoderSession.run({
     input_points: new ort.Tensor('float32', pointData, [1, 1, points.length, 2]),
     input_labels: new ort.Tensor('int64', labelData, [1, 1, points.length]),
-    input_boxes: new ort.Tensor('float32', new Float32Array(0), [1, 0, 4]),
+    input_boxes: new ort.Tensor('float32', boxData, [1, box ? 1 : 0, 4]),
     'image_embeddings.0': entry.embeddings['image_embeddings.0'],
     'image_embeddings.1': entry.embeddings['image_embeddings.1'],
     'image_embeddings.2': entry.embeddings['image_embeddings.2'],
   });
 
-  var iou = outputs.iou_scores.data; // [1, 1, 3]
-  var best = 0;
-  for (var m = 1; m < 3; m++) {
-    if (iou[m] > iou[best]) best = m;
-  }
+  var iou = outputs.iou_scores.data;      // [1, 1, 3]
   var maskData = outputs.pred_masks.data; // [1, 1, 3, 256, 256] logits
-  var offset = best * MASK_SIZE * MASK_SIZE;
-  var binary = new Uint8Array(MASK_SIZE * MASK_SIZE);
-  for (var p = 0; p < binary.length; p++) {
-    binary[p] = maskData[offset + p] > 0 ? 1 : 0;
-  }
-
-  // mask px -> source px
   var mx = entry.width / MASK_SIZE;
   var my = entry.height / MASK_SIZE;
-  var polygons = traceContours(binary, MASK_SIZE, MASK_SIZE).map(function (loop) {
-    return simplify(loop, 0.7).map(function (pt) {
-      return [pt[0] * mx, pt[1] * my];
-    });
-  });
 
-  var maskBitmap = renderMaskPreview(binary);
+  var candidates = [];
+  var maskBitmaps = [];
+  var best = 0;
+  for (var m = 0; m < 3; m++) {
+    if (iou[m] > iou[best]) best = m;
+    var offset = m * MASK_SIZE * MASK_SIZE;
+    var binary = new Uint8Array(MASK_SIZE * MASK_SIZE);
+    for (var p = 0; p < binary.length; p++) {
+      binary[p] = maskData[offset + p] > 0 ? 1 : 0;
+    }
+    var polygons = traceContours(binary, MASK_SIZE, MASK_SIZE).map(function (loop) {
+      return simplify(loop, 0.7).map(function (pt) {
+        return [pt[0] * mx, pt[1] * my];
+      });
+    });
+    candidates.push({ score: iou[m], polygons: polygons });
+    maskBitmaps.push(renderMaskPreview(binary));
+  }
+
   return {
     result: {
       decodeMs: performance.now() - t0,
-      score: iou[best],
-      polygons: polygons,
+      bestIndex: best,
+      candidates: candidates,
       maskWidth: MASK_SIZE,
       maskHeight: MASK_SIZE,
     },
-    maskBitmap: maskBitmap,
+    maskBitmaps: maskBitmaps,
   };
 }
 
@@ -465,7 +473,7 @@ self.onmessage = function (event) {
         case 'encode':
           return encode(msg.key, msg.bitmap);
         case 'decode':
-          return decode(msg.key, msg.points, msg.labels);
+          return decode(msg.key, msg.points, msg.labels, msg.box);
         case 'release':
           release(msg.key);
           return {};
@@ -477,10 +485,14 @@ self.onmessage = function (event) {
       }
     })
     .then(function (value) {
-      if (value && value.maskBitmap) {
+      if (value && value.maskBitmaps) {
+        // Attach one bitmap per candidate and transfer them all.
+        value.result.candidates.forEach(function (candidate, index) {
+          candidate.maskBitmap = value.maskBitmaps[index];
+        });
         var reply = { id: msg.id, ok: true };
-        Object.assign(reply, value.result, { maskBitmap: value.maskBitmap });
-        self.postMessage(reply, [value.maskBitmap]);
+        Object.assign(reply, value.result);
+        self.postMessage(reply, value.maskBitmaps);
       } else {
         var plain = { id: msg.id, ok: true };
         Object.assign(plain, value);

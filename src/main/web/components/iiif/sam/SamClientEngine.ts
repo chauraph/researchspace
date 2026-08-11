@@ -16,13 +16,19 @@
 
 const WORKER_URL = '/assets/no_auth/sam-worker.js';
 
-export interface SamDecodeResult {
-  /** Model confidence (predicted IoU) of the selected mask. */
+export interface SamMaskCandidate {
+  /** Model confidence (predicted IoU) of this mask. */
   score: number;
   /** Closed polygons in the encoded bitmap's pixel space, largest first. */
   polygons: Array<Array<[number, number]>>;
   /** Low-res translucent preview of the mask; scale to the full bitmap when painting. */
   maskBitmap: ImageBitmap;
+}
+
+export interface SamDecodeResult {
+  /** SAM2 always proposes 3 masks; bestIndex is the argmax-score one. */
+  candidates: SamMaskCandidate[];
+  bestIndex: number;
   maskWidth: number;
   maskHeight: number;
   decodeMs: number;
@@ -76,11 +82,17 @@ export class SamClientEngine {
   }
 
   /**
-   * Run the prompt decoder against a cached embedding. Points are in the
-   * encoded bitmap's pixel space; labels: 1 = include, 0 = exclude.
+   * Run the prompt decoder against a cached embedding. Points (and the
+   * optional box [x1,y1,x2,y2]) are in the encoded bitmap's pixel space;
+   * labels: 1 = include, 0 = exclude.
    */
-  decode(key: string, points: Array<[number, number]>, labels: number[]): Promise<SamDecodeResult> {
-    return this.request({ op: 'decode', key, points, labels });
+  decode(
+    key: string,
+    points: Array<[number, number]>,
+    labels: number[],
+    box?: [number, number, number, number]
+  ): Promise<SamDecodeResult> {
+    return this.request({ op: 'decode', key, points, labels, box });
   }
 
   /** Drop one cached embedding (call when the viewport pans/zooms). */

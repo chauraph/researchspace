@@ -266,6 +266,29 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   await page.mouse.wheel(0, 240);
   await page.waitForTimeout(2_000);
 
+  // --------------------------------------------------------------- phase 5a:
+  // mask cycling. Every decode keeps 3 candidates; the hover decode above left
+  // them in the tool, so pressing M must repaint the preview with the next one
+  // and say so in the pill. Three presses wrap back to where we started.
+  // (Candidates can coincide, so "same stats" on one press is not a failure —
+  // every press is printed.)
+  const cycleStart = await previewStats();
+  console.log(`  [cycle] before any press: ${JSON.stringify(cycleStart)} pill: ${(await pillText()).slice(0, 120)}`);
+  const cycleStats: Array<{ nonzero: number; alphaSum: number }> = [];
+  for (let press = 1; press <= 3; press++) {
+    await page.keyboard.press('m');
+    await page.waitForTimeout(1_000);
+    const s = await previewStats();
+    cycleStats.push(s);
+    const previous = press === 1 ? cycleStart : cycleStats[press - 2];
+    console.log(
+      `  [cycle] press ${press}: pill: ${(await pillText()).slice(0, 120)} preview: ${JSON.stringify(s)}` +
+        ` differs from previous: ${s.nonzero !== previous.nonzero || s.alphaSum !== previous.alphaSum}`
+    );
+  }
+  const wrapped = cycleStats[2].nonzero === cycleStart.nonzero && cycleStats[2].alphaSum === cycleStart.alphaSum;
+  console.log(`  [cycle] 3 presses returned to the starting mask: ${wrapped}`);
+
   // First click: commits a positive point (the model is warm by now).
   // Click at A, not the viewer centre: the centre of this image is covered by
   // previously saved regions, so a click there is swallowed by paper's hit test.
@@ -291,7 +314,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   // Count samlocal paths through paper's own scope registry: the Mirador
   // instance lives in the React component, so there is no window.Mirador.viewer
   // to walk, but each annotation overlay owns a scope on a 'draw_canvas_*'.
-  const outcome = await page.evaluate(() => {
+  const paperPaths = () => page.evaluate(() => {
     const paper = (window as any).paper;
     const scopes: any[] = Object.keys(paper?.PaperScope?._scopes ?? {}).map(
       (k) => paper.PaperScope._scopes[k]);
@@ -306,7 +329,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     }
     return { scopes: scopes.length, samlocalPaths, names: names.slice(0, 12) };
   });
-  console.log(`  [probe] paper paths after commit: ${JSON.stringify(outcome)}`);
+  console.log(`  [probe] paper paths after commit: ${JSON.stringify(await paperPaths())}`);
 
   const dialogVisible = await page.locator('.mirador-annotation-editor, .annotation-editor, [class*=annotation-tooltip]').count();
   console.log(`  [probe] annotation editor/tooltip elements: ${dialogVisible}`);
@@ -330,29 +353,130 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     return (await check.json()).results.bindings as any[];
   };
 
-  const titleInput = page.locator('input[placeholder="Title"]');
-  if (await titleInput.count()) {
-    // Runs accumulate regions under this label, so compare before/after.
-    const before = (await persistedRegions()).map((b) => b.region.value);
+  // Runs accumulate regions under this label, so compare against the set that
+  // existed before this run; both commits below save under the same title, so
+  // the count of "added by this run" is cumulative.
+  const beforeRun = (await persistedRegions()).map((b) => b.region.value);
+  const addedThisRun = async () =>
+    (await persistedRegions()).filter((b) => beforeRun.indexOf(b.region.value) < 0);
+
+  /** Fill the Title dialog if it appeared, save, and poll for the new region. */
+  const saveIfDialog = async (label: string, expected: number) => {
+    const titleInput = page.locator('input[placeholder="Title"]');
+    if (!(await titleInput.count())) {
+      console.log(`  [${label}] no Title input — save dialog not present, nothing persisted`);
+      return;
+    }
     await titleInput.fill('SamLocal probe region');
     await page.getByRole('button', { name: 'Save' }).click();
     // The write is asynchronous (LDP + triplestore); poll rather than sleep once.
     let added: any[] = [];
     for (let i = 0; i < 8; i++) {
       await page.waitForTimeout(2_000);
-      added = (await persistedRegions()).filter((b) => before.indexOf(b.region.value) < 0);
-      if (added.length) break;
+      added = await addedThisRun();
+      if (added.length >= expected) break;
     }
     console.log(
-      `  [probe] regions labelled 'SamLocal probe region': ${before.length} before, ${added.length} added by this run`
+      `  [${label}] regions labelled 'SamLocal probe region': ${beforeRun.length} before this run,` +
+        ` ${added.length} added so far (expected ${expected})`
     );
     for (const b of added) {
-      console.log(`  [probe]   ${b.region.value} svg=${b.svg ? b.svg.value.slice(0, 120) : '(none)'}`);
+      console.log(`  [${label}]   ${b.region.value} svg=${b.svg ? b.svg.value.slice(0, 120) : '(none)'}`);
     }
-  } else {
-    console.log('  [probe] no Title input — save dialog not present, nothing persisted');
-  }
+  };
+
+  await saveIfDialog('probe', 1);
 
   await page.screenshot({ path: 'output/samlocal-after-commit.png' });
   console.log('  [probe] screenshot: output/samlocal-after-commit.png');
+
+  // --------------------------------------------------------------- phase 5b:
+  // box prompt. Deliberately AFTER the click/commit/save flow above: the commit
+  // resets the tool's prompt state, so this is a fresh session and the
+  // persistence diff above is uncontaminated. Re-arm the tool first — selecting
+  // it again is what the user does after a save.
+  const controlsBox2 = await controls.boundingBox();
+  if (controlsBox2) {
+    await page.mouse.move(controlsBox2.x + 10, controlsBox2.y + 10);
+    await page.waitForTimeout(500);
+  }
+  const toolBox2 = await samLocal.boundingBox();
+  if (toolBox2 && toolBox2.width > 0) {
+    await page.mouse.click(toolBox2.x + toolBox2.width / 2, toolBox2.y + toolBox2.height / 2);
+    await page.waitForTimeout(500);
+    console.log('  [box] SamLocal re-armed');
+  } else {
+    console.log('  [box] SamLocal button has no box — cannot re-arm, skipping box test');
+    return;
+  }
+
+  const boxFrom = at(0.25, 0.25);
+  const boxTo = at(0.75, 0.6);
+  const boxShapes = () =>
+    page.evaluate(() => {
+      const paper = (window as any).paper;
+      const scopes: any[] = Object.keys(paper?.PaperScope?._scopes ?? {}).map(
+        (k) => paper.PaperScope._scopes[k]);
+      const names: string[] = [];
+      for (const s of scopes) {
+        if (String(s?.view?.element?.id ?? '').indexOf('draw_canvas_') !== 0) continue;
+        for (const c of s.project?.activeLayer?.children ?? []) if (c.name) names.push(c.name);
+      }
+      return names;
+    });
+
+  await page.mouse.move(boxFrom.x, boxFrom.y);
+  await page.waitForTimeout(300);
+  await page.mouse.down();
+  const midNames: string[][] = [];
+  for (const t of [0.34, 0.67, 1]) {
+    await page.mouse.move(boxFrom.x + (boxTo.x - boxFrom.x) * t, boxFrom.y + (boxTo.y - boxFrom.y) * t);
+    await page.waitForTimeout(300);
+    midNames.push(await boxShapes());
+  }
+  console.log(
+    `  [box] drag ${Math.round(boxFrom.x)},${Math.round(boxFrom.y)} -> ${Math.round(boxTo.x)},${Math.round(boxTo.y)}`
+  );
+  midNames.forEach((names, i) =>
+    console.log(
+      `  [box] mid-drag step ${i + 1}: temp_samlocal_box present: ${names.indexOf('temp_samlocal_box') >= 0}` +
+        ` (${names.length} shapes in layer)`
+    )
+  );
+  await page.mouse.up();
+
+  let boxPill = '(no pill)';
+  for (let i = 0; i < 60; i++) {
+    await page.waitForTimeout(1_000);
+    boxPill = await pillText();
+    if (i % 5 === 0 || /updated|failed|error|warning|box over/i.test(boxPill)) {
+      console.log(`  [box] t+${i}s status: ${boxPill.slice(0, 140)}`);
+    }
+    if (/updated|failed|error|box over/i.test(boxPill)) break;
+  }
+  const boxStats = await previewStats();
+  console.log(`  [box] preview after box decode: ${JSON.stringify(boxStats)}`);
+  const afterUp = await boxShapes();
+  console.log(
+    `  [box] after mouseup: temp_samlocal_box still present: ${afterUp.indexOf('temp_samlocal_box') >= 0}` +
+      ` (${afterUp.length} shapes in layer)`
+  );
+
+  // Cycling must work after a box prompt too.
+  await page.keyboard.press('m');
+  await page.waitForTimeout(1_500);
+  const boxCycleStats = await previewStats();
+  console.log(
+    `  [box] after one M press: pill: ${(await pillText()).slice(0, 120)} preview: ${JSON.stringify(boxCycleStats)}` +
+      ` differs from box decode: ${boxCycleStats.nonzero !== boxStats.nonzero || boxCycleStats.alphaSum !== boxStats.alphaSum}`
+  );
+
+  // Commit the box-prompted mask and see whether a second region persists.
+  const boxCentre = { x: (boxFrom.x + boxTo.x) / 2, y: (boxFrom.y + boxTo.y) / 2 };
+  await page.mouse.dblclick(boxCentre.x, boxCentre.y);
+  await page.waitForTimeout(3_000);
+  console.log(`  [box] paper paths after box commit: ${JSON.stringify(await paperPaths())}`);
+  await saveIfDialog('box', 2);
+  await page.screenshot({ path: 'output/samlocal-box-commit.png' });
+  console.log('  [box] screenshot: output/samlocal-box-commit.png');
 });

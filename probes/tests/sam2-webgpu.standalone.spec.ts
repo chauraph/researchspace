@@ -263,11 +263,12 @@ test('sam2 webgpu feasibility', async ({ page }) => {
     await page.goto(`http://127.0.0.1:${port}/index.html`);
 
     const runs: Array<[string, string, string]> = [
-      // fp16 encoder halves the download (67MB vs 134MB) — is it still correct?
-      // (decoder stays fp32-on-wasm; the fp16 *decoder* is unusable since the
-      // WebGPU EP mis-executes it and wasm wants fp32.)
-      ['fp16', 'webgpu', 'wasm'],
+      // Baseline: decoder on wasm is numerically correct (ellipseIoU ~0.978).
       ['fp32', 'webgpu', 'wasm'],
+      // The bug: same decoder on the WebGPU EP returns garbage (iou_scores ~0,
+      // mask ~= whole image, ellipseIoU ~0). Keep both rows side by side so a
+      // future onnxruntime-web bump can be checked by rerunning this probe.
+      ['fp32', 'webgpu', 'webgpu'],
     ];
     for (const [variant, encEp, decEp] of runs) {
       console.log(`\n===== SAM2.1 hiera-tiny ${variant} enc=${encEp} dec=${decEp} =====`);
