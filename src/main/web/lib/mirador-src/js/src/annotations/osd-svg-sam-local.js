@@ -30,7 +30,12 @@
     $.SamLocal = function(options) {
         jQuery.extend(this, {
             name: 'SamLocal',
-            logoClass: 'auto_awesome',
+            // Ligature must exist in Mirador's own vendored Material Icons font
+            // (lib/mirador/fonts/MaterialIcons-Regular.*, a 2016-era cut) — the
+            // toolbar renders <i class="material-icons">{{logoClass}}</i> against
+            // that @font-face, not the newer npm material-icons package, so
+            // post-2016 names like auto_awesome render as raw text.
+            logoClass: 'flash_on',
             idPrefix: 'samlocal_',
             tooltip: 'samLocalTooltip',
         }, options);
