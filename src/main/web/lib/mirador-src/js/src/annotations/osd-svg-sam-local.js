@@ -43,6 +43,12 @@
             this.statusOverlay = null;
             this.statusTimeout = null;
             this.encodedKeys = {};
+            this.keyOrder = [];        // LRU order for encodedKeys
+            this.embeddingPromise = null;
+            this.decodeInFlight = null;
+            this.pendingHover = null;  // latest cursor while a decode is in flight
+            this.lastMaskBitmap = null;
+            this.viewerHooked = false;
             this.resetOverlayState();
         },
 
@@ -111,6 +117,11 @@
             this.point_labels = [];
             this.currentKey = null;
             this.lastPolygons = null; // engine space
+            this.pendingHover = null;
+            if (this.lastMaskBitmap) {
+                this.lastMaskBitmap.close();
+                this.lastMaskBitmap = null;
+            }
             this.clearPreview();
         },
 
@@ -235,7 +246,14 @@
             this.previewCanvas = null;
         },
 
+        /** Draw (or redraw, after pan/zoom) the retained mask over the region. */
         paintMaskPreview: function(overlay, maskBitmap, entry) {
+            if (maskBitmap !== this.lastMaskBitmap) {
+                if (this.lastMaskBitmap) {
+                    this.lastMaskBitmap.close();
+                }
+                this.lastMaskBitmap = maskBitmap; // retained for repaint on pan/zoom
+            }
             var viewport = overlay.viewer.viewport;
             var canvas = this.getPreviewCanvas(overlay);
             var ctx = canvas.getContext('2d');
@@ -246,17 +264,50 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(maskBitmap, topLeft.x, topLeft.y,
                 bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
-            maskBitmap.close();
+        },
+
+        /** Keep the preview glued to the image while the user pans/zooms. */
+        hookViewerEvents: function(overlay) {
+            if (this.viewerHooked) {
+                return;
+            }
+            this.viewerHooked = true;
+            var _this = this;
+            var repaint = function() {
+                var entry = _this.currentKey && _this.encodedKeys[_this.currentKey];
+                if (entry && _this.lastMaskBitmap && _this.previewCanvas) {
+                    _this.paintMaskPreview(overlay, _this.lastMaskBitmap, entry);
+                }
+            };
+            overlay.viewer.addHandler('animation', repaint);
+            overlay.viewer.addHandler('animation-finish', repaint);
         },
 
         /** Encode the current viewport region unless its embedding is cached. */
         ensureEmbedding: async function(overlay, engine) {
+            this.hookViewerEvents(overlay);
             var region = this.currentRegion(overlay);
             var key = this.regionKey(region);
             this.currentKey = key;
             if (this.encodedKeys[key]) {
                 return;
             }
+            if (this.embeddingPromise) {
+                // Another encode is in flight (hover fires often); share it.
+                await this.embeddingPromise;
+                if (this.encodedKeys[this.currentKey]) {
+                    return;
+                }
+            }
+            this.embeddingPromise = this.encodeRegion(overlay, engine, region, key);
+            try {
+                await this.embeddingPromise;
+            } finally {
+                this.embeddingPromise = null;
+            }
+        },
+
+        encodeRegion: async function(overlay, engine, region, key) {
             var _this = this;
             engine.onDownloadProgress = function(progress) {
                 var mb = function(n) { return (n / 1048576).toFixed(0); };
@@ -276,17 +327,71 @@
                 throw new Error('IIIF region request failed (HTTP ' + response.status + ')');
             }
             var bitmap = await createImageBitmap(await response.blob());
-            this.encodedKeys[key] = {
+            // Capture dimensions before encode() — the bitmap is transferred to
+            // the worker and unusable afterwards. Register the cache entry only
+            // AFTER the encode succeeds: a concurrent hover that sees a truthy
+            // entry will decode against it immediately.
+            var entryData = {
                 region: region,
                 bitmapWidth: bitmap.width,
                 bitmapHeight: bitmap.height,
             };
-            try {
-                await engine.encode(key, bitmap);
-            } catch (error) {
-                delete this.encodedKeys[key];
-                throw error;
+            await engine.encode(key, bitmap);
+            this.encodedKeys[key] = entryData;
+            // LRU: embeddings are tens of MB of worker-side tensors each.
+            this.keyOrder = this.keyOrder.filter(function(k) { return k !== key; });
+            this.keyOrder.push(key);
+            while (this.keyOrder.length > 3) {
+                var evicted = this.keyOrder.shift();
+                delete this.encodedKeys[evicted];
+                engine.release(evicted);
             }
+        },
+
+        /**
+         * Coalesced decode+paint: at most one decode in flight. A hover decode
+         * arriving while busy replaces pendingHover (only the newest cursor
+         * matters); a click decode (hoverPoint == null) queues behind the
+         * in-flight one so it is never dropped.
+         */
+        requestDecode: function(overlay, engine, hoverPoint) {
+            var _this = this;
+            if (this.decodeInFlight) {
+                if (hoverPoint) {
+                    this.pendingHover = hoverPoint;
+                    return this.decodeInFlight;
+                }
+                return this.decodeInFlight.then(function() {
+                    return _this.requestDecode(overlay, engine, null);
+                });
+            }
+            var entry = this.encodedKeys[this.currentKey];
+            if (!entry) {
+                return Promise.resolve();
+            }
+            var points = this.point_coords.slice();
+            var labels = this.point_labels.slice();
+            if (hoverPoint) {
+                points.push(hoverPoint);
+                labels.push(1);
+            }
+            if (!points.length) {
+                return Promise.resolve();
+            }
+            this.decodeInFlight = engine.decode(this.currentKey, points, labels)
+                .then(function(result) {
+                    _this.lastPolygons = result.polygons;
+                    _this.paintMaskPreview(overlay, result.maskBitmap, entry);
+                })
+                .finally(function() {
+                    _this.decodeInFlight = null;
+                    if (_this.pendingHover) {
+                        var next = _this.pendingHover;
+                        _this.pendingHover = null;
+                        _this.requestDecode(overlay, engine, next);
+                    }
+                });
+            return this.decodeInFlight;
         },
 
         // --- interaction (same grammar as $.Sam) -----------------------------
@@ -330,18 +435,53 @@
             }
             this.point_coords.push(enginePoint);
             this.point_labels.push(event.event.shiftKey ? 0 : 1);
+            this.pendingHover = null; // the click supersedes any queued hover
             overlay.path = this.createRefPoint(event, overlay);
 
             try {
-                var result = await engine.decode(this.currentKey, this.point_coords, this.point_labels);
-                this.lastPolygons = result.polygons;
-                this.paintMaskPreview(overlay, result.maskBitmap, entry);
+                await this.requestDecode(overlay, engine, null);
                 this.showStatus(
                     "Segmentation updated.<br>Click to add more positive points or negative points (hold left shift).<br>To save current mask, double-click or hold left alt-key (PC) / command-key (Mac) + click.",
                     "info", overlay);
             } catch (error) {
                 this.showStatus("Segmentation failed: " + error.message, "error", overlay);
             }
+        },
+
+        /**
+         * Hover preview: with the tool armed, moving the mouse shows the mask
+         * SAM would produce for a click at the cursor (plus any committed
+         * points). The first hover lazily prepares the embedding — including
+         * the one-time model download — with progress in the status pill.
+         */
+        onMouseMove: function(event, overlay) {
+            var engine = window.RsSamEngine;
+            if (!engine) {
+                return;
+            }
+            var _this = this;
+            if (!this.currentKey || !this.encodedKeys[this.currentKey]) {
+                if (!this.embeddingPromise) {
+                    this.ensureEmbedding(overlay, engine).then(function() {
+                        _this.showStatus(
+                            "Hover to preview a mask; click to start refining it.",
+                            "info", overlay);
+                    }).catch(function(error) {
+                        _this.showStatus("Failed to prepare image: " + error.message, "error", overlay);
+                    });
+                }
+                return;
+            }
+            var enginePoint = this.cssToEngine(overlay, event.event.offsetX, event.event.offsetY,
+                this.encodedKeys[this.currentKey]);
+            if (!enginePoint) {
+                return;
+            }
+            this.requestDecode(overlay, engine, enginePoint).catch(function(error) {
+                // Hover decodes fail transiently (e.g. viewport changed mid-flight);
+                // click decodes surface their own errors in the status pill.
+                console.warn('SamLocal hover decode: ' + error.message);
+            });
         },
 
         onDoubleClick: function(event, overlay) {
@@ -373,12 +513,11 @@
             }
         },
 
-        // --- required no-op tool hooks --------------------------------------
+        // --- required no-op tool hooks (onMouseMove is implemented above) ----
         updateSelection: function(selected, item, overlay) {},
         onResize: function(item, overlay) {},
         onHover: function(activate, shape, hoverWidth, hoverColor) {},
         onMouseUp: function(event, overlay) {},
-        onMouseDrag: function(event, overlay) {},
-        onMouseMove: function(event, overlay) {}
+        onMouseDrag: function(event, overlay) {}
     };
 }(Mirador));

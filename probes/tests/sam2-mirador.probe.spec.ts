@@ -1,9 +1,11 @@
 /**
- * Live probe for the $.SamLocal Mirador tool (plan-doc phase 3) against a
+ * Live probe for the $.SamLocal Mirador tool (plan-doc phases 3-4) against a
  * running stack. Opens rsp:IIIFSingleImageView on an image found via SPARQL,
  * then reports: toolbar gate (SamLocal button present iff WebGPU), engine
- * global, and a driven segmentation — enter annotation mode, click the image,
- * wait for the mask decode, double-click to commit, count samlocal_ paths.
+ * global, the phase-4 hover preview (mask painted on the dedicated overlay
+ * canvas, changing with the cursor, surviving a viewport change, one encode for
+ * the whole hover session), and a driven segmentation — click the image, wait
+ * for the mask decode, double-click to commit, count samlocal_ paths, save.
  *
  * Chromium needs real-GPU flags: headless WebGPU otherwise lands on
  * SwiftShader and the availability gate hides the button.
@@ -38,6 +40,17 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   page.on('response', (resp) => {
     if (resp.status() >= 400) {
       console.log(`  [http ${resp.status()}] ${resp.url().slice(0, 180)}`);
+    }
+  });
+  // The IIIF info.json gives the full-image pixel size, needed to aim the mouse
+  // at the image rather than at the viewer's letterbox (see below).
+  let imageSize: { width: number; height: number } | null = null;
+  page.on('response', async (resp) => {
+    if (!imageSize && /info\.json$/.test(resp.url())) {
+      try {
+        const json = await resp.json();
+        if (json.width && json.height) imageSize = { width: json.width, height: json.height };
+      } catch (e) { /* not the image info document */ }
     }
   });
 
@@ -149,14 +162,117 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   }
   await page.waitForTimeout(500);
 
-  // First click: triggers model init/download (possibly ~88MB on first run) +
-  // encode + decode. Watch the status pill for progress.
-  const canvas = page.locator('.mirador-osd').first();
-  const box = (await canvas.boundingBox())!;
-  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  const pill = page.locator('.mirador-sam-status-overlay');
+  const pillText = async () =>
+    (await pill.count()) ? (await pill.first().innerText()).replace(/\s+/g, ' ') : '(no pill)';
+
+  // Hover/click points must land ON the image: this manifest is portrait
+  // (2148x3275) inside a landscape viewer, so most of the container is
+  // letterbox and a naive container-relative point misses the image entirely
+  // (cssToEngine returns null and nothing happens). Recreate OSD's home fit
+  // from the container rect + info.json size to convert image fractions into
+  // page coordinates. Valid while the viewer is at home, which it is at load.
+  const geom = await page.evaluate(([iw, ih]) => {
+    const el = document.querySelector('.mirador-osd') as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const scale = Math.min(r.width / iw, r.height / ih);
+    const w = iw * scale, h = ih * scale;
+    return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - h) / 2, w, h,
+      container: { w: r.width, h: r.height } };
+  }, [imageSize?.width ?? 1, imageSize?.height ?? 1]);
+  const at = (fx: number, fy: number) => ({ x: geom.left + geom.w * fx, y: geom.top + geom.h * fy });
+  console.log(`  [probe] image size ${imageSize?.width}x${imageSize?.height}, on-screen rect ${JSON.stringify(geom)}`);
+
+  const A = at(0.4, 0.35);
+  const B = at(0.62, 0.7);
+  const C = { x: A.x + 3, y: A.y + 3 };
+  const centre = at(0.5, 0.5);
+
+  // Alpha stats of the preview canvas: existence, nonzero-alpha pixel count and
+  // a cheap fingerprint (alpha sum) so two masks can be told apart.
+  const previewStats = () =>
+    page.evaluate(() => {
+      const c = document.querySelector('canvas.mirador-samlocal-preview') as HTMLCanvasElement | null;
+      if (!c) return { exists: false, w: 0, h: 0, nonzero: 0, alphaSum: 0 };
+      const data = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+      let nonzero = 0, alphaSum = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 0) { nonzero++; alphaSum += data[i]; }
+      }
+      return { exists: true, w: c.width, h: c.height, nonzero, alphaSum };
+    });
+
+  // --------------------------------------------------------------- phase 4:
+  // hover preview, before any click. The first mousemove lazily prepares the
+  // embedding (the Playwright profile is fresh every run, so the ~88MB model is
+  // always re-downloaded into OPFS), then every move decodes a mask for the
+  // cursor and paints it on canvas.mirador-samlocal-preview.
+  let regionFetches = 0; // one IIIF region fetch == one encode
+  page.on('response', (resp) => {
+    if (/\/\d+,\d+,\d+,\d+\/\d+,\/0\/default\.jpg$/.test(resp.url())) regionFetches++;
+  });
+
+  await page.mouse.move(A.x, A.y);
+  let hoverReady = false, painted = false;
+  for (let i = 0; i < 120; i++) {
+    await page.waitForTimeout(1_000);
+    // Jiggle: paper only emits mousemove on real movement, and each hover
+    // decode is driven by one of those events.
+    await page.mouse.move(A.x + (i % 2), A.y);
+    const text = await pillText();
+    if (i % 5 === 0 || /hover to preview|failed|error/i.test(text)) {
+      console.log(`  [hover] t+${i}s status: ${text.slice(0, 140)}`);
+    }
+    if (/hover to preview/i.test(text)) hoverReady = true;
+    if (/failed|error/i.test(text)) break;
+    if (hoverReady && (await previewStats()).nonzero > 0) { painted = true; break; }
+  }
+  console.log(`  [hover] pill reached "Hover to preview": ${hoverReady}; preview painted: ${painted}`);
+
+  await page.mouse.move(A.x, A.y);
+  await page.waitForTimeout(2_000);
+  const statsA = await previewStats();
+  console.log(`  [hover] A ${Math.round(A.x)},${Math.round(A.y)} preview: ${JSON.stringify(statsA)}`);
+
+  await page.mouse.move(B.x, B.y);
+  await page.waitForTimeout(2_000);
+  const statsB = await previewStats();
+  console.log(`  [hover] B ${Math.round(B.x)},${Math.round(B.y)} preview: ${JSON.stringify(statsB)}`);
+  console.log(
+    `  [hover] A vs B mask changed: ${statsA.nonzero !== statsB.nonzero || statsA.alphaSum !== statsB.alphaSum}` +
+      ` (nonzero ${statsA.nonzero} -> ${statsB.nonzero}, alphaSum ${statsA.alphaSum} -> ${statsB.alphaSum})`
+  );
+
+  // C: back near A — the coalescing queue must still deliver fresh decodes.
+  await page.mouse.move(C.x, C.y);
+  await page.waitForTimeout(2_000);
+  const statsC = await previewStats();
+  console.log(`  [hover] C (near A) preview: ${JSON.stringify(statsC)}`);
+  console.log(`  [hover] C differs from B (preview still updating): ${statsC.alphaSum !== statsB.alphaSum}`);
+  console.log(`  [hover] IIIF region fetches so far: ${regionFetches} (1 = embedding cache held across A/B/C)`);
+
+  // Move the viewport with the wheel (scroll-to-zoom). A drag would be read as
+  // drawing input, and the OSD viewer object is not reachable from window here
+  // — Mirador keeps the instance inside the React component, not on a global.
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(2_000);
+  const statsZoom = await previewStats();
+  console.log(`  [hover] after wheel-zoom preview: ${JSON.stringify(statsZoom)}`);
+  console.log(`  [hover] preview survived viewport change (nonzero>0): ${statsZoom.nonzero > 0}`);
+  await page.screenshot({ path: 'output/samlocal-hover-preview.png' });
+
+  // Back home so the click flow below works off the geometry computed above.
+  await page.mouse.wheel(0, 240);
+  await page.waitForTimeout(2_000);
+
+  // First click: commits a positive point (the model is warm by now).
+  // Click at A, not the viewer centre: the centre of this image is covered by
+  // previously saved regions, so a click there is swallowed by paper's hit test.
+  // Watch the status pill for progress.
+  const cx = A.x, cy = A.y;
   await page.mouse.click(cx, cy);
 
-  const pill = page.locator('.mirador-sam-status-overlay');
   for (let i = 0; i < 120; i++) {
     await page.waitForTimeout(1_000);
     const text = (await pill.count()) ? (await pill.first().innerText()).replace(/\n/g, ' ') : '(no pill)';
@@ -172,27 +288,23 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   await page.mouse.dblclick(cx, cy);
   await page.waitForTimeout(2_000);
 
+  // Count samlocal paths through paper's own scope registry: the Mirador
+  // instance lives in the React component, so there is no window.Mirador.viewer
+  // to walk, but each annotation overlay owns a scope on a 'draw_canvas_*'.
   const outcome = await page.evaluate(() => {
-    const overlay = (window as any).overlayInstance; // set by the server tool only
-    const scopes = (window as any).paper?.PaperScope?._scopes;
-    // Count samlocal paths across all paper scopes reachable from Mirador.
+    const paper = (window as any).paper;
+    const scopes: any[] = Object.keys(paper?.PaperScope?._scopes ?? {}).map(
+      (k) => paper.PaperScope._scopes[k]);
     let samlocalPaths = 0;
-    let names: string[] = [];
-    document.querySelectorAll('canvas').forEach(() => {});
-    const mirador = (window as any).Mirador;
-    try {
-      const viewer = mirador?.viewer;
-      const windows = viewer?.workspace?.windows ?? [];
-      for (const w of windows) {
-        const children = w?.focusModules?.ImageView?.annotationsLayer?.drawTool?.svgOverlay?.paperScope
-          ?.project?.activeLayer?.children ?? [];
-        for (const c of children) {
-          if (c.name) names.push(c.name);
-          if (c.name && c.name.indexOf('samlocal_') === 0) samlocalPaths++;
-        }
+    const names: string[] = [];
+    for (const s of scopes) {
+      if (String(s?.view?.element?.id ?? '').indexOf('draw_canvas_') !== 0) continue;
+      for (const c of s.project?.activeLayer?.children ?? []) {
+        if (c.name) names.push(c.name);
+        if (c.name && c.name.indexOf('samlocal_') === 0) samlocalPaths++;
       }
-    } catch (e) { /* structure differs; names stays empty */ }
-    return { samlocalPaths, names: names.slice(0, 12) };
+    }
+    return { scopes: scopes.length, samlocalPaths, names: names.slice(0, 12) };
   });
   console.log(`  [probe] paper paths after commit: ${JSON.stringify(outcome)}`);
 
@@ -200,25 +312,41 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   console.log(`  [probe] annotation editor/tooltip elements: ${dialogVisible}`);
 
   // Save the annotation and verify it landed in the store as an image region.
-  const titleInput = page.locator('input[placeholder="Title"]');
-  if (await titleInput.count()) {
-    await titleInput.fill('SamLocal probe region');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await page.waitForTimeout(4_000);
+  // The title is stored as crm:P190_has_symbolic_content and the SVG hangs off
+  // the region as rdf:value (no oa:hasSelector node) — verified against the
+  // triples of a region saved by this probe.
+  const persistedRegions = async () => {
     const check = await page.request.get(`${baseURL}/sparql`, {
       params: {
         query: `PREFIX rso: <http://www.researchspace.org/ontology/>
           SELECT ?region ?svg WHERE {
-            ?region a rso:EX_Digital_Image_Region .
-            ?region <http://www.w3.org/2000/01/rdf-schema#label> "SamLocal probe region" .
-            OPTIONAL { ?region <http://www.w3.org/ns/oa#hasSelector>/<http://www.w3.org/1999/02/22-rdf-syntax-ns#value> ?svg }
-          } LIMIT 3`,
+            ?region a rso:EX_Digital_Image_Region ;
+              <http://www.cidoc-crm.org/cidoc-crm/P190_has_symbolic_content> "SamLocal probe region" .
+            OPTIONAL { ?region <http://www.w3.org/1999/02/22-rdf-syntax-ns#value> ?svg }
+          }`,
       },
       headers: { Accept: 'application/sparql-results+json' },
     });
-    const bindings = (await check.json()).results.bindings;
-    console.log(`  [probe] persisted regions labelled 'SamLocal probe region': ${bindings.length}`);
-    for (const b of bindings) {
+    return (await check.json()).results.bindings as any[];
+  };
+
+  const titleInput = page.locator('input[placeholder="Title"]');
+  if (await titleInput.count()) {
+    // Runs accumulate regions under this label, so compare before/after.
+    const before = (await persistedRegions()).map((b) => b.region.value);
+    await titleInput.fill('SamLocal probe region');
+    await page.getByRole('button', { name: 'Save' }).click();
+    // The write is asynchronous (LDP + triplestore); poll rather than sleep once.
+    let added: any[] = [];
+    for (let i = 0; i < 8; i++) {
+      await page.waitForTimeout(2_000);
+      added = (await persistedRegions()).filter((b) => before.indexOf(b.region.value) < 0);
+      if (added.length) break;
+    }
+    console.log(
+      `  [probe] regions labelled 'SamLocal probe region': ${before.length} before, ${added.length} added by this run`
+    );
+    for (const b of added) {
       console.log(`  [probe]   ${b.region.value} svg=${b.svg ? b.svg.value.slice(0, 120) : '(none)'}`);
     }
   } else {
