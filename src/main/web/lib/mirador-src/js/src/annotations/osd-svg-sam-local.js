@@ -54,6 +54,7 @@
             this.pendingHover = null;   // latest cursor while a decode is in flight
             this.lastCandidates = null; // 3 mask candidates of the latest decode
             this.maskIndex = 0;         // which candidate is shown/committed
+            this.previewMode = 'polygon'; // 'polygon' (P4) | 'bitmap' (pre-P4); P toggles
             this.downCss = null;        // mousedown position, for click-vs-drag
             this.dragging = false;
             this.box = null;            // engine-space [x1,y1,x2,y2] box prompt
@@ -260,9 +261,17 @@
                     'position:absolute;left:0;top:0;pointer-events:none;z-index:50;';
                 container.appendChild(this.previewCanvas);
             }
-            if (this.previewCanvas.width !== size.x || this.previewCanvas.height !== size.y) {
-                this.previewCanvas.width = size.x;
-                this.previewCanvas.height = size.y;
+            // Back the canvas at device resolution: at dpr 2 a css-sized canvas
+            // halves the effective precision, which is exactly the scale the
+            // outline tests are trying to judge.
+            var dpr = window.devicePixelRatio || 1;
+            var width = Math.round(size.x * dpr);
+            var height = Math.round(size.y * dpr);
+            if (this.previewCanvas.width !== width || this.previewCanvas.height !== height) {
+                this.previewCanvas.width = width;
+                this.previewCanvas.height = height;
+                this.previewCanvas.style.width = size.x + 'px';
+                this.previewCanvas.style.height = size.y + 'px';
             }
             return this.previewCanvas;
         },
@@ -280,17 +289,84 @@
             if (!entry || !this.lastCandidates) {
                 return;
             }
-            var maskBitmap = this.lastCandidates[this.maskIndex].maskBitmap;
-            var viewport = overlay.viewer.viewport;
             var canvas = this.getPreviewCanvas(overlay);
             var ctx = canvas.getContext('2d');
+            var dpr = window.devicePixelRatio || 1;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in css px from here on
+            if (this.previewMode === 'bitmap') {
+                this.paintMaskBitmap(overlay, entry, ctx);
+            } else {
+                this.paintMaskPolygons(overlay, entry, ctx);
+            }
+        },
+
+        /** Pre-P4 preview: the worker's raw 256² binary, stretched to the region. */
+        paintMaskBitmap: function(overlay, entry, ctx) {
+            var maskBitmap = this.lastCandidates[this.maskIndex].maskBitmap;
+            if (!maskBitmap) {
+                return;
+            }
+            var viewport = overlay.viewer.viewport;
             var topLeft = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
                 new OpenSeadragon.Point(entry.region.x, entry.region.y)), true);
             var bottomRight = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
                 new OpenSeadragon.Point(entry.region.x + entry.region.w, entry.region.y + entry.region.h)), true);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(maskBitmap, topLeft.x, topLeft.y,
                 bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+        },
+
+        /**
+         * P4: preview drawn from the very polygons commit stores, so hovering
+         * shows the artefact rather than a different rendering of the same
+         * decode. Even-odd fill, so inner rings read as holes as soon as the
+         * tracer starts emitting them (P7) with no further change here.
+         */
+        paintMaskPolygons: function(overlay, entry, ctx) {
+            var polygons = this.lastCandidates[this.maskIndex].polygons;
+            if (!polygons || !polygons.length) {
+                return;
+            }
+            var _this = this;
+            var viewport = overlay.viewer.viewport;
+            var path = new Path2D();
+            polygons.forEach(function(polygon) {
+                polygon.forEach(function(point, index) {
+                    var imagePoint = _this.engineToImage(point, entry);
+                    var pixel = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
+                        new OpenSeadragon.Point(imagePoint[0], imagePoint[1])), true);
+                    if (index === 0) {
+                        path.moveTo(pixel.x, pixel.y);
+                    } else {
+                        path.lineTo(pixel.x, pixel.y);
+                    }
+                });
+                path.closePath();
+            });
+            ctx.fillStyle = 'rgba(30, 136, 229, 0.47)';
+            ctx.fill(path, 'evenodd');
+            // The stroke is the stored outline itself — it is what makes
+            // vertex pitch and staircasing legible when zoomed in.
+            ctx.strokeStyle = 'rgba(30, 136, 229, 0.95)';
+            ctx.lineWidth = 1;
+            ctx.stroke(path);
+        },
+
+        /**
+         * A/B toggle for the preview renderer (P). 'bitmap' is the pre-P4
+         * behaviour — the raw 256² binary, showing speckle and holes the stored
+         * SVG never contained; 'polygon' draws the committed geometry itself.
+         */
+        togglePreviewMode: function(overlay) {
+            this.previewMode = this.previewMode === 'polygon' ? 'bitmap' : 'polygon';
+            this.paintCurrentMask(overlay);
+            this.showStatus(
+                'Preview: ' + (this.previewMode === 'polygon'
+                    ? 'committed polygons (P4, new)'
+                    : 'raw mask bitmap (old)')
+                    + ' — press P to compare.',
+                'info', overlay);
         },
 
         /** Cycle to the next of the 3 candidate masks (bound to the M key). */
@@ -308,7 +384,7 @@
                 'info', overlay);
         },
 
-        /** Preview repaint on pan/zoom + the M-to-cycle key binding. */
+        /** Preview repaint on pan/zoom + the M (cycle) and P (preview A/B) keys. */
         hookViewerEvents: function(overlay) {
             if (this.viewerHooked) {
                 return;
@@ -328,6 +404,9 @@
                 }
                 if (keyEvent.key === 'm' || keyEvent.key === 'M') {
                     _this.cycleMask(overlay);
+                }
+                if (keyEvent.key === 'p' || keyEvent.key === 'P') {
+                    _this.togglePreviewMode(overlay);
                 }
             });
         },
