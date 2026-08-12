@@ -140669,6 +140669,11 @@ S2.define('jquery.select2',[
             this.lastCandidates = null; // 3 mask candidates of the latest decode
             this.maskIndex = 0;         // which candidate is shown/committed
             this.previewMode = 'polygon'; // 'polygon' (P4) | 'bitmap' (pre-P4); P toggles
+            // Share of the enclosing ring below which a hole is treated as
+            // decoder noise. A user preference, so it deliberately survives
+            // resetOverlayState and carries across annotations.
+            this.holeAreaRatio = 0.01;
+            this.holeMode = 'on'; // 'on' | 'off' (pre-P7 behaviour); H toggles
             this.downCss = null;        // mousedown position, for click-vs-drag
             this.dragging = false;
             this.box = null;            // engine-space [x1,y1,x2,y2] box prompt
@@ -140752,6 +140757,7 @@ S2.define('jquery.select2',[
             this.point_labels = [];
             this.currentKey = null;
             this.lastPolygons = null; // engine space
+            this.lastMaskWidth = null; // decoder mask grid width, for the resolution hint
             this.pendingHover = null;
             this.box = null;
             this.downCss = null;
@@ -140835,26 +140841,52 @@ S2.define('jquery.select2',[
             return point;
         },
 
-        /** Engine-space polygons -> closed paper.js paths in project space. */
+        /**
+         * Engine-space polygons -> closed paper.js paths in project space.
+         * A polygon is [outerRing, ...holeRings]; a polygon that has holes
+         * becomes one even-odd CompoundPath so the holes punch through rather
+         * than being stored as separate filled shapes (P7). Hole-free masks
+         * still produce a plain Path, so the common case serializes exactly
+         * as it did before.
+         */
         createPathsFromPolygons: function(polygons, overlay, entry) {
             var _this = this;
             var viewport = overlay.viewer.viewport;
             overlay.paperScope.project.activeLayer.removeChildren();
-            return polygons.map(function(polygon, index) {
-                var segments = polygon.map(function(point) {
+            var toSegments = function(ring) {
+                return ring.map(function(point) {
                     var imagePoint = _this.engineToImage(point, entry);
                     var viewportPoint = viewport.imageToViewportCoordinates(
                         new OpenSeadragon.Point(imagePoint[0], imagePoint[1])
                     );
                     return new overlay.paperScope.Point(viewportPoint.x, viewportPoint.y);
                 });
-                var shape = new overlay.paperScope.Path({
-                    segments: segments,
-                    closed: true,
-                    dashArray: overlay.dashArray,
-                    strokeColor: overlay.strokeColor,
-                    name: overlay.getName(_this) + '_' + index,
-                });
+            };
+            return polygons.map(function(rings, index) {
+                var name = overlay.getName(_this) + '_' + index;
+                var shape;
+                if (rings.length > 1) {
+                    shape = new overlay.paperScope.CompoundPath({
+                        children: rings.map(function(ring) {
+                            return new overlay.paperScope.Path({
+                                segments: toSegments(ring),
+                                closed: true,
+                            });
+                        }),
+                        fillRule: 'evenodd',
+                        dashArray: overlay.dashArray,
+                        strokeColor: overlay.strokeColor,
+                        name: name,
+                    });
+                } else {
+                    shape = new overlay.paperScope.Path({
+                        segments: toSegments(rings[0]),
+                        closed: true,
+                        dashArray: overlay.dashArray,
+                        strokeColor: overlay.strokeColor,
+                        name: name,
+                    });
+                }
                 shape.data.strokeWidth = overlay.strokeWidth;
                 shape.strokeWidth = shape.data.strokeWidth / overlay.paperScope.view.zoom;
                 return shape;
@@ -140938,25 +140970,27 @@ S2.define('jquery.select2',[
          * tracer starts emitting them (P7) with no further change here.
          */
         paintMaskPolygons: function(overlay, entry, ctx) {
-            var polygons = this.lastCandidates[this.maskIndex].polygons;
+            var polygons = this.visiblePolygons();
             if (!polygons || !polygons.length) {
                 return;
             }
             var _this = this;
             var viewport = overlay.viewer.viewport;
             var path = new Path2D();
-            polygons.forEach(function(polygon) {
-                polygon.forEach(function(point, index) {
-                    var imagePoint = _this.engineToImage(point, entry);
-                    var pixel = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
-                        new OpenSeadragon.Point(imagePoint[0], imagePoint[1])), true);
-                    if (index === 0) {
-                        path.moveTo(pixel.x, pixel.y);
-                    } else {
-                        path.lineTo(pixel.x, pixel.y);
-                    }
+            polygons.forEach(function(rings) {
+                rings.forEach(function(ring) {
+                    ring.forEach(function(point, index) {
+                        var imagePoint = _this.engineToImage(point, entry);
+                        var pixel = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
+                            new OpenSeadragon.Point(imagePoint[0], imagePoint[1])), true);
+                        if (index === 0) {
+                            path.moveTo(pixel.x, pixel.y);
+                        } else {
+                            path.lineTo(pixel.x, pixel.y);
+                        }
+                    });
+                    path.closePath();
                 });
-                path.closePath();
             });
             ctx.fillStyle = 'rgba(30, 136, 229, 0.47)';
             ctx.fill(path, 'evenodd');
@@ -140965,6 +140999,98 @@ S2.define('jquery.select2',[
             ctx.strokeStyle = 'rgba(30, 136, 229, 0.95)';
             ctx.lineWidth = 1;
             ctx.stroke(path);
+        },
+
+        /** |shoelace| of a ring, in whatever space its points are given. */
+        ringArea: function(ring) {
+            var area = 0;
+            for (var i = 0; i < ring.length; i++) {
+                var j = (i + 1) % ring.length;
+                area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
+            }
+            return Math.abs(area) / 2;
+        },
+
+        /**
+         * The current mask's polygons with insignificant holes dropped.
+         *
+         * The tracer hands over every hole above a bare noise floor; the
+         * decision is made here, as a share of the ring that encloses it. An
+         * absolute area cannot work: the mask grid is a fixed 256² over
+         * whatever region was encoded, so a fixed threshold silently means
+         * "hole must be this big *relative to the current zoom*" — the same
+         * letter counter fails zoomed out and passes zoomed in. A ratio is
+         * scale-free, and because filtering happens here rather than in the
+         * worker, the , and . keys move it with no re-decode.
+         *
+         * Preview and commit both go through this, so what is shown stays
+         * what is stored.
+         */
+        visiblePolygons: function() {
+            if (!this.lastCandidates) {
+                return [];
+            }
+            var _this = this;
+            var polygons = this.lastCandidates[this.maskIndex].polygons || [];
+            return polygons.map(function(rings) {
+                if (rings.length < 2 || _this.holeMode === 'off') {
+                    return [rings[0]];
+                }
+                var floor = _this.ringArea(rings[0]) * _this.holeAreaRatio;
+                return rings.filter(function(ring, index) {
+                    return index === 0 || _this.ringArea(ring) >= floor;
+                });
+            });
+        },
+
+        /** How many holes the tracer actually found, before any filtering. */
+        countHoles: function(polygons) {
+            return (polygons || []).reduce(function(sum, rings) {
+                return sum + Math.max(0, rings.length - 1);
+            }, 0);
+        },
+
+        /**
+         * One status message for every hole control, because the useful thing
+         * to see is kept-vs-found. Zero found is a different problem from zero
+         * kept: the mask is a fixed 256² grid over whatever region was
+         * encoded, so a hole smaller than one mask pixel does not exist in the
+         * decoder output and no threshold can bring it back — only encoding a
+         * tighter region (zooming in before prompting) can.
+         */
+        showHoleStatus: function(overlay) {
+            var entry = this.currentKey && this.encodedKeys[this.currentKey];
+            var found = this.lastCandidates
+                ? this.countHoles(this.lastCandidates[this.maskIndex].polygons)
+                : 0;
+            var kept = this.countHoles(this.visiblePolygons());
+            var message = 'Holes: ' + (this.holeMode === 'off' ? 'OFF (H)' : kept + ' of ' + found + ' kept')
+                + ' · threshold ' + (this.holeAreaRatio * 100).toFixed(2) + '% of the enclosing shape';
+            if (found === 0 && this.holeMode === 'on' && entry && this.lastMaskWidth) {
+                var pxPerMaskPx = (entry.region.w / this.lastMaskWidth).toFixed(1);
+                message += '<br>The decoder found none: its mask is '
+                    + this.lastMaskWidth + '² over a ' + Math.round(entry.region.w)
+                    + 'px region (~' + pxPerMaskPx + ' image px per mask px), so anything'
+                    + ' smaller than that is not in the output. Zoom in and prompt again.';
+            } else {
+                message += '<br>, keeps more · . keeps fewer · H toggles holes off';
+            }
+            this.showStatus(message, 'info', overlay);
+        },
+
+        /** Nudge the hole-significance ratio (, and .) and repaint. */
+        adjustHoleRatio: function(factor, overlay) {
+            var next = this.holeAreaRatio * factor;
+            this.holeAreaRatio = Math.min(0.25, Math.max(0.0002, next));
+            this.paintCurrentMask(overlay);
+            this.showHoleStatus(overlay);
+        },
+
+        /** A/B toggle for hole reclamation as a whole (H). */
+        toggleHoleMode: function(overlay) {
+            this.holeMode = this.holeMode === 'on' ? 'off' : 'on';
+            this.paintCurrentMask(overlay);
+            this.showHoleStatus(overlay);
         },
 
         /**
@@ -141021,6 +141147,15 @@ S2.define('jquery.select2',[
                 }
                 if (keyEvent.key === 'p' || keyEvent.key === 'P') {
                     _this.togglePreviewMode(overlay);
+                }
+                if (keyEvent.key === ',' || keyEvent.key === '<') {
+                    _this.adjustHoleRatio(1 / 1.6, overlay); // keep smaller holes
+                }
+                if (keyEvent.key === '.' || keyEvent.key === '>') {
+                    _this.adjustHoleRatio(1.6, overlay);     // keep only bigger ones
+                }
+                if (keyEvent.key === 'h' || keyEvent.key === 'H') {
+                    _this.toggleHoleMode(overlay);
                 }
             });
         },
@@ -141120,12 +141255,17 @@ S2.define('jquery.select2',[
             if (!points.length && !this.box) {
                 return Promise.resolve();
             }
-            this.decodeInFlight = engine.decode(this.currentKey, points, labels, this.box || undefined)
+            // P1: tell the worker which candidate is on screen so a refining
+            // prompt can stay on that object instead of re-ranking all three.
+            var selectedIndex = this.lastCandidates ? this.maskIndex : null;
+            this.decodeInFlight = engine
+                .decode(this.currentKey, points, labels, this.box || undefined, selectedIndex)
                 .then(function(result) {
                     _this.closeCandidates();
                     _this.lastCandidates = result.candidates;
                     _this.maskIndex = result.bestIndex;
                     _this.lastPolygons = result.candidates[result.bestIndex].polygons;
+                    _this.lastMaskWidth = result.maskWidth;
                     _this.paintCurrentMask(overlay);
                 })
                 .finally(function() {
@@ -141246,9 +141386,16 @@ S2.define('jquery.select2',[
             try {
                 await this.requestDecode(overlay, engine, null);
                 var score = this.lastCandidates ? this.lastCandidates[this.maskIndex].score : 0;
+                var count = this.lastCandidates ? this.lastCandidates.length : 0;
+                var found = this.lastCandidates
+                    ? this.countHoles(this.lastCandidates[this.maskIndex].polygons)
+                    : 0;
                 this.showStatus(
-                    "Segmentation updated (mask " + (this.maskIndex + 1) + "/3, confidence " + score.toFixed(2) + ").<br>"
+                    "Segmentation updated (mask " + (this.maskIndex + 1) + "/" + count
+                        + ", confidence " + score.toFixed(2) + ", "
+                        + this.countHoles(this.visiblePolygons()) + "/" + found + " holes).<br>"
                         + "Click to add points (shift = exclude), drag a box, press M to cycle masks.<br>"
+                        + ", / . hole threshold · H holes on/off · P preview mode.<br>"
                         + "Save: double-click, or alt (PC) / cmd (Mac) + click.",
                     "info", overlay);
             } catch (error) {
@@ -141306,7 +141453,9 @@ S2.define('jquery.select2',[
             }
             try {
                 var entry = this.encodedKeys[this.currentKey];
-                overlay.path = this.createPathsFromPolygons(this.lastPolygons, overlay, entry);
+                // visiblePolygons(), not lastPolygons — commit must store the
+                // hole set the preview is showing at the current threshold.
+                overlay.path = this.createPathsFromPolygons(this.visiblePolygons(), overlay, entry);
                 overlay.onDrawFinish();
                 this.clearPreview();
                 overlay.mode = '';
