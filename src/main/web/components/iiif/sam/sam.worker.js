@@ -40,7 +40,6 @@ var ORT_BASE = '/assets/no_auth/ort/';
 var MODEL_BASE = '/assets/models/sam2/'; // AssetFilter -> runtime storage, auth-gated
 var OPFS_DIR = 'sam2-models';
 var INPUT_SIZE = 1024;
-var MASK_SIZE = 256;
 var MEAN = [0.485, 0.456, 0.406];
 var STD = [0.229, 0.224, 0.225];
 
@@ -73,6 +72,10 @@ var state = {
   webgpu: false,
   // key -> {embeddings: {name: ort.Tensor}, width, height} in source-bitmap px
   embeddings: new Map(),
+  // Binary masks of the previous decode, so a refining click can stay on the
+  // object it was refining rather than re-running argmax (chooseCandidate).
+  lastBinaries: null,
+  lastBinariesKey: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -263,7 +266,7 @@ function release(key) {
 // Decode: points (source px) -> best mask -> polygons (source px) + preview
 // ---------------------------------------------------------------------------
 
-async function decode(key, points, labels, box) {
+async function decode(key, points, labels, box, selectedIndex) {
   var entry = state.embeddings.get(key);
   if (!entry) {
     throw new Error('no embedding for key ' + key + ' — encode() first (or the viewport changed)');
@@ -294,46 +297,114 @@ async function decode(key, points, labels, box) {
   });
 
   var iou = outputs.iou_scores.data;      // [1, 1, 3]
-  var maskData = outputs.pred_masks.data; // [1, 1, 3, 256, 256] logits
-  var mx = entry.width / MASK_SIZE;
-  var my = entry.height / MASK_SIZE;
+  var maskData = outputs.pred_masks.data; // [1, 1, n, h, w] logits
+  // P20: the graph declares pred_masks' trailing dims dynamic
+  // (Slicepred_masks_dim_3/4), so read them rather than trusting MASK_SIZE —
+  // a re-export that changes them would otherwise silently read garbage.
+  var dims = outputs.pred_masks.dims;
+  var maskW = dims[dims.length - 1];
+  var maskH = dims[dims.length - 2];
+  var maskCount = Math.min(iou.length, dims[dims.length - 3]);
+  var mx = entry.width / maskW;
+  var my = entry.height / maskH;
 
   var candidates = [];
   var maskBitmaps = [];
-  var best = 0;
-  for (var m = 0; m < 3; m++) {
-    if (iou[m] > iou[best]) best = m;
-    var offset = m * MASK_SIZE * MASK_SIZE;
-    var binary = new Uint8Array(MASK_SIZE * MASK_SIZE);
+  var binaries = [];
+  for (var m = 0; m < maskCount; m++) {
+    var offset = m * maskW * maskH;
+    var binary = new Uint8Array(maskW * maskH);
     for (var p = 0; p < binary.length; p++) {
       binary[p] = maskData[offset + p] > 0 ? 1 : 0;
     }
-    var polygons = traceContours(binary, MASK_SIZE, MASK_SIZE).map(function (loop) {
-      return simplify(loop, 0.7).map(function (pt) {
-        return [pt[0] * mx, pt[1] * my];
+    binaries.push(binary);
+    var polygons = traceContours(binary, maskW, maskH).map(function (rings) {
+      return rings.map(function (ring) {
+        return simplify(ring, 0.7).map(function (pt) {
+          return [pt[0] * mx, pt[1] * my];
+        });
       });
     });
     candidates.push({ score: iou[m], polygons: polygons });
-    maskBitmaps.push(renderMaskPreview(binary));
+    maskBitmaps.push(renderMaskPreview(binary, maskW, maskH));
   }
+
+  var best = chooseCandidate(iou, binaries, key, points.length, !!box, selectedIndex);
+  state.lastBinaries = binaries;
+  state.lastBinariesKey = key;
 
   return {
     result: {
       decodeMs: performance.now() - t0,
       bestIndex: best,
       candidates: candidates,
-      maskWidth: MASK_SIZE,
-      maskHeight: MASK_SIZE,
+      maskWidth: maskW,
+      maskHeight: maskH,
     },
     maskBitmaps: maskBitmaps,
   };
 }
 
+/**
+ * Which of the ambiguity masks to surface (P1).
+ *
+ * Upstream resolves this in SamOnnxModel.select_masks by reweighting the IoU
+ * scores so a single click keeps the ambiguity masks while two or more points
+ * collapse onto the decoder's dedicated single-mask token. That token is not
+ * reachable here: this export emits only the three multimask outputs — the
+ * slice SAM2 takes when multimask_output=True — so the mechanism has to
+ * differ even though the intent carries over. Once the prompt stops being
+ * ambiguous we stop re-ranking and stay on whatever the user was already
+ * refining, identified by overlap with the mask they last had selected.
+ * Re-running argmax on every added point is what makes a correcting click
+ * jump to a different object.
+ */
+function chooseCandidate(iou, binaries, key, pointCount, hasBox, selectedIndex) {
+  var argmax = 0;
+  for (var i = 1; i < iou.length; i++) {
+    if (iou[i] > iou[argmax]) argmax = i;
+  }
+  // A fresh prompt (hover, first click, a new drag-box) is genuinely
+  // ambiguous — rank it, and let M cycle. Only a *continued* prompt sticks.
+  var refining = pointCount >= 2 || (hasBox && pointCount >= 1);
+  if (!refining || selectedIndex === null || selectedIndex === undefined) {
+    return argmax;
+  }
+  if (state.lastBinariesKey !== key || !state.lastBinaries) {
+    return argmax;
+  }
+  var reference = state.lastBinaries[selectedIndex];
+  if (!reference) {
+    return argmax;
+  }
+  var best = argmax;
+  var bestScore = 0;
+  for (var m = 0; m < binaries.length; m++) {
+    var score = maskIou(binaries[m], reference);
+    if (score > bestScore) {
+      bestScore = score;
+      best = m;
+    }
+  }
+  return best;
+}
+
+/** IoU of two equally-sized binary masks; 0 when they cannot be compared. */
+function maskIou(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  var intersection = 0, union = 0;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] & b[i]) intersection++;
+    if (a[i] | b[i]) union++;
+  }
+  return union ? intersection / union : 0;
+}
+
 /** Semi-transparent preview bitmap of the binary mask (scaled up by the caller). */
-function renderMaskPreview(binary) {
-  var canvas = new OffscreenCanvas(MASK_SIZE, MASK_SIZE);
+function renderMaskPreview(binary, width, height) {
+  var canvas = new OffscreenCanvas(width, height);
   var ctx = canvas.getContext('2d');
-  var image = ctx.createImageData(MASK_SIZE, MASK_SIZE);
+  var image = ctx.createImageData(width, height);
   for (var i = 0; i < binary.length; i++) {
     if (binary[i]) {
       image.data[i * 4] = 30;      // r
@@ -347,38 +418,90 @@ function renderMaskPreview(binary) {
 }
 
 // ---------------------------------------------------------------------------
-// Contours: marching squares over the binary mask, outer loops only.
-// Replaces the server tool's OpenCV findContours+approxPolyDP (`approx_points`).
+// Contours: marching squares over the binary mask, outer rings plus the holes
+// they enclose (P7). Replaces the server tool's OpenCV findContours +
+// approxPolyDP (`approx_points`); the nesting mirrors cv2.RETR_CCOMP.
 // ---------------------------------------------------------------------------
 
 var MIN_LOOP_AREA = 12; // mask px^2; drops speckle the decoder sometimes emits
+// Holes get only a noise floor here, not a decision. Any absolute area in mask
+// px is a threshold on the encoded region's scale — the same letter counter
+// falls below it zoomed out and passes zoomed in — so the real filter is a
+// share of the enclosing ring, applied on the main thread where the user can
+// move it without a re-decode. This just keeps the payload finite.
+var MIN_HOLE_AREA = 4;
+var MAX_HOLES_PER_POLYGON = 64;
 
+/** @returns polygons, each an array of rings: [outer, ...holes]. */
 function traceContours(grid, width, height) {
   // Walk pixel-edge boundaries keeping the filled region on the LEFT of the
   // walking direction. On screen (y-down) that traces outer boundaries
-  // counter-clockwise — NEGATIVE shoelace area — and holes with positive
-  // area; holes are discarded by the sign filter.
+  // counter-clockwise — NEGATIVE shoelace area — and holes with positive area.
   var at = function (x, y) {
     if (x < 0 || y < 0 || x >= width || y >= height) return 0;
     return grid[y * width + x];
   };
   var visited = new Uint8Array((width + 1) * (height + 1));
-  var loops = [];
+  var outers = [];
+  var holes = [];
 
   for (var y = 0; y < height; y++) {
     for (var x = 0; x < width; x++) {
       // Left-boundary pixel: its top-left corner has a downward boundary edge.
+      // The same test fires on the filled run to the right of a hole, so this
+      // single sweep finds hole boundaries too — they arrive sign-flipped.
       if (at(x, y) === 1 && at(x - 1, y) === 0 && !visited[y * (width + 1) + x]) {
         var loop = walkBoundary(x, y, at, visited, width);
-        if (loop && -signedArea(loop) >= MIN_LOOP_AREA) {
-          loops.push(loop);
+        if (!loop) {
+          continue;
+        }
+        var area = signedArea(loop);
+        if (-area >= MIN_LOOP_AREA) {
+          outers.push({ ring: loop, area: -area });
+        } else if (area >= MIN_HOLE_AREA) {
+          holes.push({ ring: loop, area: area });
         }
       }
     }
   }
   // Largest first; cap to a sane number of parts for one annotation.
-  loops.sort(function (a, b) { return signedArea(a) - signedArea(b); });
-  return loops.slice(0, 8);
+  outers.sort(function (a, b) { return b.area - a.area; });
+  var polygons = outers.slice(0, 8).map(function (outer) {
+    return { rings: [outer.ring], area: outer.area };
+  });
+  // Each hole belongs to the smallest outer ring that contains it. Holes whose
+  // parent lost the slice(0, 8) cap are dropped with it. Largest first, so the
+  // per-polygon cap keeps the holes most likely to be real.
+  holes.sort(function (a, b) { return b.area - a.area; });
+  holes.forEach(function (hole) {
+    var parent = null;
+    for (var i = 0; i < polygons.length; i++) {
+      if (polygons[i].area > hole.area &&
+          pointInRing(hole.ring[0], polygons[i].rings[0]) &&
+          (!parent || polygons[i].area < parent.area)) {
+        parent = polygons[i];
+      }
+    }
+    if (parent && parent.rings.length <= MAX_HOLES_PER_POLYGON) {
+      parent.rings.push(hole.ring);
+    }
+  });
+  return polygons.map(function (polygon) { return polygon.rings; });
+}
+
+/** Ray-casting point-in-polygon; ring is a closed loop of [x, y] corners. */
+function pointInRing(point, ring) {
+  var inside = false;
+  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    var yi = ring[i][1], yj = ring[j][1];
+    if ((yi > point[1]) !== (yj > point[1])) {
+      var xi = ring[i][0], xj = ring[j][0];
+      if (point[0] < (xj - xi) * (point[1] - yi) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+  }
+  return inside;
 }
 
 /**
@@ -473,7 +596,7 @@ self.onmessage = function (event) {
         case 'encode':
           return encode(msg.key, msg.bitmap);
         case 'decode':
-          return decode(msg.key, msg.points, msg.labels, msg.box);
+          return decode(msg.key, msg.points, msg.labels, msg.box, msg.selectedIndex);
         case 'release':
           release(msg.key);
           return {};

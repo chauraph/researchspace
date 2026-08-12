@@ -16,17 +16,22 @@
 
 const WORKER_URL = '/assets/no_auth/sam-worker.js';
 
+/** A closed ring of points in the encoded bitmap's pixel space. */
+export type SamRing = Array<[number, number]>;
+/** Outer ring first, then any holes it encloses (even-odd fill). */
+export type SamPolygon = SamRing[];
+
 export interface SamMaskCandidate {
   /** Model confidence (predicted IoU) of this mask. */
   score: number;
   /** Closed polygons in the encoded bitmap's pixel space, largest first. */
-  polygons: Array<Array<[number, number]>>;
+  polygons: SamPolygon[];
   /** Low-res translucent preview of the mask; scale to the full bitmap when painting. */
   maskBitmap: ImageBitmap;
 }
 
 export interface SamDecodeResult {
-  /** SAM2 always proposes 3 masks; bestIndex is the argmax-score one. */
+  /** SAM2 always proposes 3 masks; bestIndex is the one to show (chooseCandidate). */
   candidates: SamMaskCandidate[];
   bestIndex: number;
   maskWidth: number;
@@ -85,14 +90,19 @@ export class SamClientEngine {
    * Run the prompt decoder against a cached embedding. Points (and the
    * optional box [x1,y1,x2,y2]) are in the encoded bitmap's pixel space;
    * labels: 1 = include, 0 = exclude.
+   *
+   * `selectedIndex` is the candidate the user currently has on screen. On a
+   * refining prompt the worker uses it to stay on the same object instead of
+   * re-ranking; pass it whenever a mask is already displayed.
    */
   decode(
     key: string,
     points: Array<[number, number]>,
     labels: number[],
-    box?: [number, number, number, number]
+    box?: [number, number, number, number],
+    selectedIndex?: number | null
   ): Promise<SamDecodeResult> {
-    return this.request({ op: 'decode', key, points, labels, box });
+    return this.request({ op: 'decode', key, points, labels, box, selectedIndex });
   }
 
   /** Drop one cached embedding (call when the viewport pans/zooms). */
