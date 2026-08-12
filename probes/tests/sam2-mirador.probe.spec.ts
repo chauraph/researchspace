@@ -5,7 +5,13 @@
  * global, the phase-4 hover preview (mask painted on the dedicated overlay
  * canvas, changing with the cursor, surviving a viewport change, one encode for
  * the whole hover session), and a driven segmentation — click the image, wait
- * for the mask decode, double-click to commit, count samlocal_ paths, save.
+ * for the mask decode, Accept, count samlocal_ paths, save.
+ *
+ * Phase 7 (hover/lock/accept) moved every readout from the status pill into
+ * .rs-sam-panel, so that is what this reads now. It also drives the parts of
+ * that flow which can silently regress: the lock (hovering after the first
+ * click must NOT re-segment), the refusal of a lone exclude point, deleting a
+ * placed point by clicking it, and Accept as the only commit path.
  *
  * Chromium needs real-GPU flags: headless WebGPU otherwise lands on
  * SwiftShader and the availability gate hides the button.
@@ -139,13 +145,13 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
 
   for (const [name, selector] of [
     ['Sam (server)', '.mirador-osd-flare-mode'],
-    ['SamLocal', '.mirador-osd-auto_awesome-mode'],
+    ['SamLocal', '.mirador-osd-flash_on-mode'],
   ]) {
     const count = await page.locator(selector).count();
     console.log(`  [probe] toolbar ${name}: ${count ? 'present' : 'ABSENT'}`);
   }
 
-  const samLocal = page.locator('.mirador-osd-auto_awesome-mode').first();
+  const samLocal = page.locator('.mirador-osd-flash_on-mode').first();
   if (!(await samLocal.count())) {
     console.log('  [probe] SamLocal button missing — gate closed or registration broken');
     return;
@@ -202,6 +208,43 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
       return { exists: true, w: c.width, h: c.height, nonzero, alphaSum };
     });
 
+  // Everything the panel reports, in one read. This replaced the status pill
+  // as the tool's readout surface, so it is also the readiness signal.
+  // There can be more than one panel in the DOM (one per annotation overlay,
+  // and a commit leaves the previous overlay's behind), so always read the
+  // live one — the last that is not hidden — and report how many there are.
+  const panelRead = () =>
+    page.evaluate(() => {
+      const all = Array.from(document.querySelectorAll('.rs-sam-panel')) as HTMLElement[];
+      const visible = all.filter((el) => !el.hidden);
+      const p = visible[visible.length - 1] ?? all[all.length - 1] ?? null;
+      if (!p) return null;
+      const text = (key: string) =>
+        (p.querySelector(`[data-el="${key}"]`) as HTMLElement | null)?.innerText.trim() ?? '';
+      const disabled = (key: string) =>
+        (p.querySelector(`[data-el="${key}"]`) as HTMLButtonElement | null)?.disabled ?? null;
+      return {
+        panels: all.length,
+        visiblePanels: visible.length,
+        state: text('stateText'),
+        mask: text('maskVal'),
+        vert: text('vert'),
+        holes: text('holeVal'),
+        pos: text('pos'),
+        neg: text('neg'),
+        polHint: text('polHint'),
+        acceptDisabled: disabled('accept'),
+        undoDisabled: disabled('undo'),
+      };
+    });
+  const panelLine = async (tag: string) => {
+    const p = await panelRead();
+    console.log(`  [${tag}] panel: ${p ? JSON.stringify(p) : '(no panel)'}`);
+    return p;
+  };
+  const clickPanel = (key: string) =>
+    page.locator(`.rs-sam-panel:not([hidden]) [data-el="${key}"]`).last().click();
+
   // --------------------------------------------------------------- phase 4:
   // hover preview, before any click. The first mousemove lazily prepares the
   // embedding (the Playwright profile is fresh every run, so the ~88MB model is
@@ -213,21 +256,25 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   });
 
   await page.mouse.move(A.x, A.y);
-  let hoverReady = false, painted = false;
+  let painted = false;
   for (let i = 0; i < 120; i++) {
     await page.waitForTimeout(1_000);
     // Jiggle: paper only emits mousemove on real movement, and each hover
     // decode is driven by one of those events.
     await page.mouse.move(A.x + (i % 2), A.y);
     const text = await pillText();
-    if (i % 5 === 0 || /hover to preview|failed|error/i.test(text)) {
-      console.log(`  [hover] t+${i}s status: ${text.slice(0, 140)}`);
+    if (/failed|error/i.test(text)) {
+      console.log(`  [hover] t+${i}s pill: ${text.slice(0, 160)}`);
+      break;
     }
-    if (/hover to preview/i.test(text)) hoverReady = true;
-    if (/failed|error/i.test(text)) break;
-    if (hoverReady && (await previewStats()).nonzero > 0) { painted = true; break; }
+    if (i % 5 === 0) {
+      const p = await panelRead();
+      console.log(`  [hover] t+${i}s state="${p?.state ?? '(no panel)'}" pill: ${text.slice(0, 90)}`);
+    }
+    if ((await previewStats()).nonzero > 0) { painted = true; break; }
   }
-  console.log(`  [hover] pill reached "Hover to preview": ${hoverReady}; preview painted: ${painted}`);
+  await panelLine('hover');
+  console.log(`  [hover] preview painted: ${painted}`);
 
   await page.mouse.move(A.x, A.y);
   await page.waitForTimeout(2_000);
@@ -273,7 +320,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   // (Candidates can coincide, so "same stats" on one press is not a failure —
   // every press is printed.)
   const cycleStart = await previewStats();
-  console.log(`  [cycle] before any press: ${JSON.stringify(cycleStart)} pill: ${(await pillText()).slice(0, 120)}`);
+  console.log(`  [cycle] before any press: ${JSON.stringify(cycleStart)} mask: ${(await panelRead())?.mask}`);
   const cycleStats: Array<{ nonzero: number; alphaSum: number }> = [];
   for (let press = 1; press <= 3; press++) {
     await page.keyboard.press('m');
@@ -281,35 +328,88 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     const s = await previewStats();
     cycleStats.push(s);
     const previous = press === 1 ? cycleStart : cycleStats[press - 2];
+    const p = await panelRead();
     console.log(
-      `  [cycle] press ${press}: pill: ${(await pillText()).slice(0, 120)} preview: ${JSON.stringify(s)}` +
+      `  [cycle] press ${press}: mask=${p?.mask} vert=${p?.vert} preview: ${JSON.stringify(s)}` +
         ` differs from previous: ${s.nonzero !== previous.nonzero || s.alphaSum !== previous.alphaSum}`
     );
   }
   const wrapped = cycleStats[2].nonzero === cycleStart.nonzero && cycleStats[2].alphaSum === cycleStart.alphaSum;
   console.log(`  [cycle] 3 presses returned to the starting mask: ${wrapped}`);
 
-  // First click: commits a positive point (the model is warm by now).
+  // --------------------------------------------------------------- phase 7a:
+  // a lone exclude must be refused. Shift+click with nothing locked asks the
+  // decoder to subtract from nothing; the tool should say so and place no
+  // point rather than decode noise.
+  await page.keyboard.down('Shift');
+  await page.mouse.click(A.x + 8, A.y + 8);
+  await page.keyboard.up('Shift');
+  await page.waitForTimeout(1_500);
+  const refused = await panelLine('exclude-first');
+  console.log(
+    `  [exclude-first] pill: ${(await pillText()).slice(0, 120)}` +
+      ` | points placed: ${refused?.pos}+${refused?.neg} (expect 0+0), still unlocked: ${!/Locked/i.test(refused?.state ?? '')}`
+  );
+
+  // First click: locks a positive point (the model is warm by now).
   // Click at A, not the viewer centre: the centre of this image is covered by
   // previously saved regions, so a click there is swallowed by paper's hit test.
-  // Watch the status pill for progress.
   const cx = A.x, cy = A.y;
   await page.mouse.click(cx, cy);
 
   for (let i = 0; i < 120; i++) {
     await page.waitForTimeout(1_000);
-    const text = (await pill.count()) ? (await pill.first().innerText()).replace(/\n/g, ' ') : '(no pill)';
-    if (i % 5 === 0 || /updated|failed|error/i.test(text)) {
-      console.log(`  [probe] t+${i}s status: ${text.slice(0, 140)}`);
+    const p = await panelRead();
+    if (i % 5 === 0) {
+      console.log(`  [probe] t+${i}s state="${p?.state}" mask=${p?.mask} accept=${p?.acceptDisabled}`);
     }
-    if (/updated|failed|error/i.test(text)) break;
+    if (p && /Locked/i.test(p.state) && p.acceptDisabled === false) break;
+    if (/failed|error/i.test(await pillText())) break;
   }
+  const afterClick = await panelLine('lock');
 
-  // Add a second positive point slightly right, then commit via double-click.
+  // --------------------------------------------------------------- phase 7b:
+  // THE LOCK. Hovering away from the click must not re-segment: this is the
+  // whole reason the flow changed, and it fails silently if requestDecode is
+  // ever reached from onMouseMove again.
+  const lockedBefore = await previewStats();
+  await page.mouse.move(B.x, B.y);
+  await page.waitForTimeout(2_500);
+  await page.mouse.move(B.x + 2, B.y + 2);
+  await page.waitForTimeout(2_500);
+  const lockedAfter = await previewStats();
+  console.log(
+    `  [lock] mask held while hovering elsewhere: ` +
+      `${lockedBefore.nonzero === lockedAfter.nonzero && lockedBefore.alphaSum === lockedAfter.alphaSum}` +
+      ` (nonzero ${lockedBefore.nonzero} -> ${lockedAfter.nonzero}, alphaSum ${lockedBefore.alphaSum} -> ${lockedAfter.alphaSum})`
+  );
+  await page.mouse.move(cx, cy);
+  await page.waitForTimeout(500);
+
+  // --------------------------------------------------------------- phase 7c:
+  // a second include point, then delete it by clicking it again, then Undo.
   await page.mouse.click(cx + 40, cy);
   await page.waitForTimeout(3_000);
-  await page.mouse.dblclick(cx, cy);
+  const twoPoints = await panelLine('points');
+  await page.mouse.click(cx + 40, cy); // click the marker itself = remove it
+  await page.waitForTimeout(3_000);
+  const afterDelete = await panelLine('point-delete');
+  console.log(
+    `  [point-delete] include points ${twoPoints?.pos} -> ${afterDelete?.pos}` +
+      ` (expect 2 -> 1), still locked: ${/Locked/i.test(afterDelete?.state ?? '')}`
+  );
+
+  // --------------------------------------------------------------- phase 7d:
+  // commit. Double-click no longer commits (its first half would have added a
+  // point and re-decoded); the panel's Accept button is the path.
+  await page.mouse.dblclick(cx + 80, cy + 80);
   await page.waitForTimeout(2_000);
+  const afterDbl = await panelLine('dblclick');
+  console.log(`  [dblclick] did NOT commit (panel still open, accept enabled): ${afterDbl?.acceptDisabled === false}`);
+
+  await clickPanel('accept');
+  await page.waitForTimeout(2_000);
+  console.log(`  [accept] pill: ${(await pillText()).slice(0, 120)}`);
 
   // Count samlocal paths through paper's own scope registry: the Mirador
   // instance lives in the React component, so there is no window.Mirador.viewer
@@ -393,8 +493,18 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   // --------------------------------------------------------------- phase 5b:
   // box prompt. Deliberately AFTER the click/commit/save flow above: the commit
   // resets the tool's prompt state, so this is a fresh session and the
-  // persistence diff above is uncontaminated. Re-arm the tool first — selecting
-  // it again is what the user does after a save.
+  // persistence diff above is uncontaminated.
+  //
+  // Reload first. After a save the overlay is left owning the annotation
+  // tooltip, and a mousedown on the image then never reaches the tool at all —
+  // no temp_samlocal_box is drawn, which puts it upstream of $.SamLocal (the
+  // overlay's own hit test and disabled flag). Driving the box prompt through
+  // that state measures the wrong thing.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.mirador-osd canvas', { timeout: 60_000 });
+  await page.waitForTimeout(3_000);
+  // Geometry is unchanged: same viewport, same home fit, same image.
+
   const controlsBox2 = await controls.boundingBox();
   if (controlsBox2) {
     await page.mouse.move(controlsBox2.x + 10, controlsBox2.y + 10);
@@ -410,8 +520,11 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     return;
   }
 
-  const boxFrom = at(0.25, 0.25);
-  const boxTo = at(0.75, 0.6);
+  // Well away from the region just committed at A and from the regions already
+  // saved over the centre: paper's hit test swallows a mousedown that lands on
+  // an existing shape, so a box started there never reaches the tool.
+  const boxFrom = at(0.12, 0.72);
+  const boxTo = at(0.34, 0.93);
   const boxShapes = () =>
     page.evaluate(() => {
       const paper = (window as any).paper;
@@ -444,15 +557,19 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     )
   );
   await page.mouse.up();
+  await page.waitForTimeout(1_000);
+  console.log(`  [box] 1s after mouseup: pill=${(await pillText()).slice(0, 160)}`);
+  await panelLine('box-mouseup');
 
-  let boxPill = '(no pill)';
+  // A box prompt locks just like a click does, so wait on the panel.
   for (let i = 0; i < 60; i++) {
     await page.waitForTimeout(1_000);
-    boxPill = await pillText();
-    if (i % 5 === 0 || /updated|failed|error|warning|box over/i.test(boxPill)) {
-      console.log(`  [box] t+${i}s status: ${boxPill.slice(0, 140)}`);
+    const p = await panelRead();
+    if (i % 5 === 0) {
+      console.log(`  [box] t+${i}s state="${p?.state}" mask=${p?.mask} accept=${p?.acceptDisabled}`);
     }
-    if (/updated|failed|error|box over/i.test(boxPill)) break;
+    if (p && /Locked/i.test(p.state) && p.acceptDisabled === false) break;
+    if (/failed|error|box over/i.test(await pillText())) break;
   }
   const boxStats = await previewStats();
   console.log(`  [box] preview after box decode: ${JSON.stringify(boxStats)}`);
@@ -472,8 +589,20 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   );
 
   // Commit the box-prompted mask and see whether a second region persists.
-  const boxCentre = { x: (boxFrom.x + boxTo.x) / 2, y: (boxFrom.y + boxTo.y) / 2 };
-  await page.mouse.dblclick(boxCentre.x, boxCentre.y);
+  const boxPanel = await panelLine('box');
+  if (!boxPanel || boxPanel.acceptDisabled !== false) {
+    // The drag never became a prompt. Every run of this probe leaves another
+    // region on the image, and a mousedown that lands on an existing shape is
+    // swallowed before $.SamLocal sees it (no temp_samlocal_box is drawn),
+    // so an accumulated image eventually leaves nowhere to start a box.
+    console.log(
+      `  [box] no locked mask to accept — the drag never reached the tool` +
+        ` (temp box drawn: ${midNames.some((n) => n.indexOf('temp_samlocal_box') >= 0)},` +
+        ` shapes on the layer: ${afterUp.length}). Skipping the box commit.`
+    );
+    return;
+  }
+  await clickPanel('accept');
   await page.waitForTimeout(3_000);
   console.log(`  [box] paper paths after box commit: ${JSON.stringify(await paperPaths())}`);
   await saveIfDialog('box', 2);

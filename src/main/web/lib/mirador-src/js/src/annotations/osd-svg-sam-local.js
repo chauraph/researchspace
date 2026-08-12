@@ -1,11 +1,20 @@
 /**
  * $.SamLocal — in-browser Segment Anything drawing tool.
  *
- * Same interaction grammar as the server-proxied $.Sam (osd-svg-sam.js):
- * click = positive point, shift+click = negative point, double-click or
- * alt/cmd+click = commit. All inference happens client-side through
- * window.RsSamEngine (a SamClientEngine set up by ImageRegionEditor before
- * Mirador boots; see src/main/web/components/iiif/sam/SamClientEngine.ts and
+ * Interaction: hover previews a mask, the first click LOCKS it (hover stops
+ * re-segmenting), further clicks refine it, and an explicit Accept stores it.
+ * Include/exclude is a control on the panel with shift as a momentary flip.
+ *
+ * Deliberately no longer $.Sam's grammar. Double-click-to-commit is gone:
+ * the overlay recognises a double-click on the second mousedown (see
+ * osd-svg-overlay.js), by which point the first click's mouseup has already
+ * added a positive point and re-decoded — so the mask that got saved was
+ * never the mask the user was looking at when they decided to save it.
+ * alt/cmd+click survives as an accelerator, alongside Enter.
+ *
+ * All inference happens client-side through window.RsSamEngine (a
+ * SamClientEngine set up by ImageRegionEditor before Mirador boots; see
+ * src/main/web/components/iiif/sam/SamClientEngine.ts and
  * docs/features/sam2-client-side-plan.md).
  *
  * Image capture goes through a same-origin IIIF region request, NOT the OSD
@@ -85,7 +94,282 @@
             this.dragging = false;
             this.box = null;            // engine-space [x1,y1,x2,y2] box prompt
             this.viewerHooked = false;
+            // Sticky include/exclude, so carving several voids out of one
+            // figure does not mean holding a modifier for a dozen clicks.
+            this.polarity = 'pos';      // 'pos' | 'neg'
+            this.shiftHeld = false;     // momentary flip; XORs with polarity
+            this.panel = null;
+            this.ui = {};
             this.resetOverlayState();
+        },
+
+        /** The polarity of the click about to be made. */
+        negativeNow: function(shiftKey) {
+            var shift = shiftKey === undefined ? this.shiftHeld : !!shiftKey;
+            return (this.polarity === 'neg') !== shift;
+        },
+
+        // --- control panel ----------------------------------------------------
+        //
+        // Every knob used to be a bare keystroke announced once in a status
+        // pill that then faded, which meant the only way to know the tool had
+        // a threshold was to have been told. The keys all survive as
+        // accelerators; this is the surface that makes them discoverable, and
+        // the readouts (candidate, confidence, point count, holes kept of
+        // found) are the ones needed to judge a mask before storing it.
+
+        ensureStyles: function() {
+            if (document.getElementById('rs-samlocal-styles')) {
+                return;
+            }
+            var css = [
+                '.rs-sam-panel{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);',
+                'width:min(640px,calc(100% - 28px));background:#161e27;border:1px solid #2b3746;',
+                'border-radius:5px;box-shadow:0 14px 40px rgba(0,0,0,.5);color:#eaeff4;',
+                'padding:11px 13px 12px;display:flex;flex-direction:column;gap:9px;z-index:1001;',
+                'font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.4;}',
+                '.rs-sam-panel[hidden]{display:none;}',
+                '.rs-sam-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+                '.rs-sam-state{display:inline-flex;align-items:center;gap:7px;font-weight:600;}',
+                '.rs-sam-state i{width:7px;height:7px;border-radius:50%;background:#97a6b5;display:inline-block;}',
+                '.rs-sam-panel.is-locked .rs-sam-state i{background:#4d9dee;}',
+                '.rs-sam-tally{margin-left:auto;display:flex;gap:10px;font-size:12px;color:#97a6b5;',
+                'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;}',
+                '.rs-sam-tally span{display:inline-flex;align-items:center;gap:5px;}',
+                '.rs-sam-tally i{width:8px;height:8px;border-radius:50%;display:inline-block;}',
+                '.rs-sam-tally .rs-p i{background:#3fc07d;}.rs-sam-tally .rs-n i{background:#ef5f63;}',
+                '.rs-sam-rows{display:flex;flex-direction:column;gap:7px;}',
+                '.rs-sam-row{display:flex;align-items:center;gap:9px;min-height:26px;}',
+                '.rs-sam-lbl{flex:0 0 66px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;',
+                'font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#97a6b5;}',
+                '.rs-sam-val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;',
+                'font-variant-numeric:tabular-nums;min-width:52px;}',
+                '.rs-sam-val.rs-dim{color:#97a6b5;}',
+                '.rs-sam-panel kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;',
+                'line-height:1;padding:3px 5px;border:1px solid #2b3746;border-bottom-width:2px;',
+                'border-radius:3px;color:#97a6b5;background:rgba(255,255,255,.035);white-space:nowrap;}',
+                '.rs-sam-panel kbd.is-held{border-color:#ef5f63;color:#eaeff4;background:rgba(239,95,99,.22);}',
+                '.rs-sam-panel input[type=range]{flex:1 1 auto;min-width:80px;accent-color:#4d9dee;height:18px;}',
+                '.rs-sam-seg{display:inline-flex;border:1px solid #2b3746;border-radius:3px;overflow:hidden;}',
+                '.rs-sam-seg button{background:none;border:0;color:#97a6b5;font:500 11.5px/1 inherit;',
+                'padding:6px 9px;cursor:pointer;}',
+                '.rs-sam-seg button + button{border-left:1px solid #2b3746;}',
+                '.rs-sam-seg button[aria-pressed=true]{background:#1e88e5;color:#fff;}',
+                '.rs-sam-seg i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px;}',
+                '.rs-sam-seg .rs-pos{background:#3fc07d;}.rs-sam-seg .rs-neg{background:#ef5f63;}',
+                '.rs-sam-seg button[aria-pressed=true] i{background:#fff;}',
+                '.rs-sam-polarity.is-flipped{box-shadow:0 0 0 2px #ef5f63;}',
+                '.rs-sam-polarity.is-flipped button[data-pol=neg]{background:#ef5f63;color:#fff;}',
+                '.rs-sam-polarity.is-flipped button[data-pol=neg] i{background:#fff;}',
+                '.rs-sam-polarity.is-flipped button[data-pol=pos]{background:none;color:#97a6b5;}',
+                '.rs-sam-polarity.is-flipped button[data-pol=pos] i{background:#3fc07d;}',
+                '.rs-sam-cyc{display:inline-flex;align-items:center;gap:6px;}',
+                '.rs-sam-cyc button{width:24px;height:24px;background:none;border:1px solid #2b3746;',
+                'color:#eaeff4;font-size:13px;line-height:1;cursor:pointer;border-radius:3px;}',
+                '.rs-sam-actions{display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid #2b3746;}',
+                '.rs-sam-actions .rs-spacer{flex:1;}',
+                '.rs-sam-mini{background:none;border:1px solid #2b3746;color:#97a6b5;font:inherit;',
+                'font-size:12px;padding:6px 9px;cursor:pointer;border-radius:3px;}',
+                '.rs-sam-ghost{background:none;border:1px solid #2b3746;color:#eaeff4;font:inherit;',
+                'font-size:13px;padding:7px 13px;cursor:pointer;border-radius:3px;}',
+                '.rs-sam-primary{background:#1e88e5;border:1px solid #1e88e5;color:#fff;font:inherit;',
+                'font-size:13px;font-weight:600;padding:7px 15px;cursor:pointer;border-radius:3px;',
+                'display:inline-flex;align-items:center;gap:8px;}',
+                '.rs-sam-primary kbd{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.85);',
+                'background:rgba(255,255,255,.12);}',
+                '.rs-sam-panel button:disabled{opacity:.38;cursor:default;}',
+                '.rs-sam-panel button:focus-visible,.rs-sam-panel input:focus-visible{outline:2px solid #4d9dee;outline-offset:2px;}'
+            ].join('');
+            var style = document.createElement('style');
+            style.id = 'rs-samlocal-styles';
+            style.appendChild(document.createTextNode(css));
+            document.head.appendChild(style);
+        },
+
+        ensurePanel: function(overlay) {
+            if (this.panel && this.panel.parentNode) {
+                return this.panel;
+            }
+            this.ensureStyles();
+            var _this = this;
+            var panel = document.createElement('div');
+            panel.className = 'rs-sam-panel';
+            panel.setAttribute('role', 'group');
+            panel.setAttribute('aria-label', 'Segmentation controls');
+            panel.innerHTML = [
+                '<div class="rs-sam-head">',
+                  '<span class="rs-sam-state"><i></i><span data-el="stateText">Hover to preview</span></span>',
+                  '<span class="rs-sam-tally">',
+                    '<span class="rs-p"><i></i><span data-el="pos">0</span> include</span>',
+                    '<span class="rs-n"><i></i><span data-el="neg">0</span> exclude</span>',
+                  '</span>',
+                '</div>',
+                '<div class="rs-sam-rows">',
+                  '<div class="rs-sam-row"><span class="rs-sam-lbl">Point</span>',
+                    '<span class="rs-sam-seg rs-sam-polarity" data-el="polarity">',
+                      '<button type="button" data-pol="pos" aria-pressed="true"><i class="rs-pos"></i>Include</button>',
+                      '<button type="button" data-pol="neg" aria-pressed="false"><i class="rs-neg"></i>Exclude</button>',
+                    '</span><kbd data-el="shiftKbd">hold ⇧ to flip</kbd>',
+                    '<span class="rs-sam-val rs-dim" data-el="polHint"></span></div>',
+                  '<div class="rs-sam-row"><span class="rs-sam-lbl">Mask</span>',
+                    '<span class="rs-sam-cyc">',
+                      '<button type="button" data-el="prevMask" aria-label="Previous mask">‹</button>',
+                      '<span class="rs-sam-val" data-el="maskVal">1 / 3 · 0.00</span>',
+                      '<button type="button" data-el="nextMask" aria-label="Next mask">›</button>',
+                    '</span><kbd>M</kbd>',
+                    '<span class="rs-sam-val rs-dim" data-el="vert">— pts</span></div>',
+                  '<div class="rs-sam-row"><span class="rs-sam-lbl">Edge</span>',
+                    '<input type="range" data-el="thr" min="-6" max="6" step="0.25" value="0" aria-label="Mask threshold">',
+                    '<span class="rs-sam-val" data-el="thrVal">0.00</span><kbd>[ ]</kbd></div>',
+                  '<div class="rs-sam-row"><span class="rs-sam-lbl">Holes</span>',
+                    '<button type="button" class="rs-sam-mini" data-el="holeToggle" aria-pressed="true">On</button>',
+                    '<input type="range" data-el="holes" min="0" max="100" step="1" value="55" aria-label="Smallest hole to keep">',
+                    '<span class="rs-sam-val" data-el="holeVal">0 / 0</span><kbd>H , .</kbd></div>',
+                  '<div class="rs-sam-row"><span class="rs-sam-lbl">Outline</span>',
+                    '<span class="rs-sam-seg" data-el="smooth">',
+                      '<button type="button" data-lvl="0" aria-pressed="true">Raw</button>',
+                      '<button type="button" data-lvl="1" aria-pressed="false">Light</button>',
+                      '<button type="button" data-lvl="2" aria-pressed="false">Medium</button>',
+                      '<button type="button" data-lvl="3" aria-pressed="false">Strong</button>',
+                    '</span><kbd>S</kbd></div>',
+                '</div>',
+                '<div class="rs-sam-actions">',
+                  '<button type="button" class="rs-sam-mini" data-el="undo" disabled>Undo point</button>',
+                  '<span class="rs-spacer"></span>',
+                  '<button type="button" class="rs-sam-ghost" data-el="cancel">Cancel</button>',
+                  '<button type="button" class="rs-sam-primary" data-el="accept" disabled>Accept mask <kbd>↵</kbd></button>',
+                '</div>'
+            ].join('');
+
+            var ui = {};
+            Array.prototype.forEach.call(panel.querySelectorAll('[data-el]'), function(node) {
+                ui[node.getAttribute('data-el')] = node;
+            });
+            this.ui = ui;
+
+            // OSD's mouse tracker sits on the container; without this the panel
+            // would pan the image underneath it.
+            ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup',
+             'click', 'dblclick', 'mousemove', 'wheel', 'touchstart'].forEach(function(type) {
+                panel.addEventListener(type, function(ev) { ev.stopPropagation(); });
+            });
+
+            ui.polarity.addEventListener('click', function(ev) {
+                var button = ev.target.closest ? ev.target.closest('button') : null;
+                if (button) {
+                    _this.polarity = button.getAttribute('data-pol');
+                    _this.updatePanel();
+                    _this.paintCurrentMask(overlay);
+                }
+            });
+            ui.prevMask.addEventListener('click', function() { _this.cycleMask(overlay, -1); });
+            ui.nextMask.addEventListener('click', function() { _this.cycleMask(overlay, 1); });
+            ui.thr.addEventListener('input', function() {
+                _this.maskThreshold = parseFloat(ui.thr.value);
+                _this.paintCurrentMask(overlay);
+                _this.updatePanel();
+            });
+            ui.holes.addEventListener('input', function() {
+                _this.holeAreaRatio = _this.ratioFromSlider(parseInt(ui.holes.value, 10));
+                _this.paintCurrentMask(overlay);
+                _this.updatePanel();
+            });
+            ui.holeToggle.addEventListener('click', function() { _this.toggleHoleMode(overlay); });
+            ui.smooth.addEventListener('click', function(ev) {
+                var button = ev.target.closest ? ev.target.closest('button') : null;
+                if (button) {
+                    _this.smoothLevel = parseInt(button.getAttribute('data-lvl'), 10);
+                    _this.paintCurrentMask(overlay);
+                    _this.updatePanel();
+                }
+            });
+            ui.undo.addEventListener('click', function() { _this.undoPoint(overlay); });
+            ui.cancel.addEventListener('click', function() { _this.cancelMask(overlay); });
+            ui.accept.addEventListener('click', function() { _this.commit(overlay); });
+
+            overlay.viewer.container.appendChild(panel);
+            this.panel = panel;
+            this.syncSliders();
+            this.updatePanel();
+            return panel;
+        },
+
+        /** Hole ratio spans 0.02%..25% logarithmically; the slider is 0..100. */
+        ratioFromSlider: function(value) {
+            var lo = Math.log(0.0002), hi = Math.log(0.25);
+            return Math.exp(lo + (value / 100) * (hi - lo));
+        },
+        sliderFromRatio: function(ratio) {
+            var lo = Math.log(0.0002), hi = Math.log(0.25);
+            return Math.round(((Math.log(ratio) - lo) / (hi - lo)) * 100);
+        },
+
+        /** Push state into the two sliders (after a key press moved it). */
+        syncSliders: function() {
+            if (!this.ui.thr) {
+                return;
+            }
+            this.ui.thr.value = String(this.maskThreshold);
+            this.ui.holes.value = String(this.sliderFromRatio(this.holeAreaRatio));
+        },
+
+        showPanel: function(overlay) {
+            this.ensurePanel(overlay).hidden = false;
+        },
+
+        hidePanel: function() {
+            if (this.panel) {
+                this.panel.hidden = true;
+            }
+        },
+
+        updatePanel: function() {
+            var ui = this.ui;
+            if (!ui.stateText || !this.panel) {
+                return;
+            }
+            var polygons = this.lastResult ? this.visiblePolygons() : [];
+            var vertices = polygons.reduce(function(sum, rings) {
+                return sum + rings.reduce(function(n, ring) { return n + ring.length; }, 0);
+            }, 0);
+            var positives = 0, negatives = 0;
+            this.point_labels.forEach(function(label) { label ? positives++ : negatives++; });
+
+            this.panel.classList.toggle('is-locked', !!this.locked);
+            ui.stateText.textContent = this.locked
+                ? 'Locked — refine, then accept'
+                : (this.lastResult ? 'Preview — click to lock' : 'Hover the image to preview');
+            ui.pos.textContent = positives;
+            ui.neg.textContent = negatives;
+            ui.maskVal.textContent = this.lastResult
+                ? (this.maskIndex + 1) + ' / ' + this.lastResult.maskCount + ' · '
+                    + this.lastResult.scores[this.maskIndex].toFixed(2)
+                : '—';
+            ui.vert.textContent = vertices ? vertices + ' pts' : '— pts';
+            ui.thrVal.textContent = (this.maskThreshold > 0 ? '+' : '') + this.maskThreshold.toFixed(2);
+            ui.holeToggle.textContent = this.holeMode === 'on' ? 'On' : 'Off';
+            ui.holeToggle.setAttribute('aria-pressed', String(this.holeMode === 'on'));
+            ui.holes.disabled = this.holeMode !== 'on';
+            ui.holeVal.textContent = this.holeMode === 'on'
+                ? this.countHoles(polygons) + ' / ' + this.countHoles(this.rawPolygons())
+                : 'off';
+            ui.undo.disabled = !this.point_coords.length;
+            ui.accept.disabled = !this.locked || !polygons.length;
+            ui.prevMask.disabled = ui.nextMask.disabled =
+                !this.lastResult || this.lastResult.maskCount < 2;
+            ui.shiftKbd.classList.toggle('is-held', this.shiftHeld);
+            ui.polarity.classList.toggle('is-flipped', this.shiftHeld && this.polarity === 'pos');
+            ui.polHint.textContent = this.negativeNow()
+                ? (this.locked ? 'click carves it back' : 'needs a mask first')
+                : (this.locked ? 'click grows the mask' : 'click locks a mask');
+            Array.prototype.forEach.call(ui.polarity.children, function(button) {
+                button.setAttribute('aria-pressed',
+                    String(button.getAttribute('data-pol') === this.polarity));
+            }, this);
+            Array.prototype.forEach.call(ui.smooth.children, function(button) {
+                button.setAttribute('aria-pressed',
+                    String(parseInt(button.getAttribute('data-lvl'), 10) === this.smoothLevel));
+            }, this);
         },
 
         // --- status pill: same look & lifecycle as $.Sam ---------------------
@@ -110,7 +394,10 @@
                     'font-size': '14px',
                     'max-width': '80%',
                     'text-align': 'center',
-                    'pointer-events': 'auto'
+                    // The pill floats over the image, so it must not swallow
+                    // clicks meant for the picture underneath; only its own
+                    // dismiss button takes pointer events.
+                    'pointer-events': 'none'
                 })
                 .appendTo(jQuery(overlay.viewer.container));
             return this.statusOverlay;
@@ -131,7 +418,7 @@
             };
             this.statusOverlay.css('background-color', colors[type] || colors.info);
             this.statusOverlay.html(message
-                + '<button style="margin-left: 10px; background: none; border: none; color: white; cursor: pointer; font-size: 20px; line-height: 1; vertical-align: middle;">×</button>'
+                + '<button style="margin-left: 10px; background: none; border: none; color: white; cursor: pointer; font-size: 20px; line-height: 1; vertical-align: middle; pointer-events: auto;">×</button>'
             );
             this.statusOverlay.find('button').off('click').on('click', () => this.hideStatus());
             this.statusOverlay.fadeIn();
@@ -161,7 +448,11 @@
             this.downCss = null;
             this.dragging = false;
             this.maskIndex = 0;
+            // Unlocked: hover owns the mask again until the next click.
+            this.locked = false;
+            this.cursorCss = null;
             this.clearPreview();
+            this.updatePanel();
         },
 
         // --- geometry helpers ------------------------------------------------
@@ -194,19 +485,6 @@
                 }
             });
             return count;
-        },
-
-        createRefPoint: function(event, overlay) {
-            overlay.mode = 'create';
-            var shape = new overlay.paperScope.Path.Circle({
-                center: event.point,
-                radius: 5 / overlay.paperScope.view.zoom,
-                fillColor: event.event.shiftKey ? 'blue' : 'red',
-                name: "temp_samlocal_input_point"
-            });
-            shape.data.strokeWidth = overlay.strokeWidth;
-            shape.strokeWidth = shape.data.strokeWidth / overlay.paperScope.view.zoom;
-            return shape;
         },
 
         /** engine px -> image px for the region the embedding was made from. */
@@ -326,10 +604,14 @@
             this.previewCanvas = null;
         },
 
-        /** Draw (or redraw, after pan/zoom/cycle) the selected candidate mask. */
+        /**
+         * Draw (or redraw, after pan/zoom/cycle) the selected candidate mask,
+         * the prompt points and the cursor ghost. Runs with no mask too — the
+         * points and ghost still have to show while a decode is in flight.
+         */
         paintCurrentMask: function(overlay) {
             var entry = this.currentKey && this.encodedKeys[this.currentKey];
-            if (!entry || !this.lastResult) {
+            if (!entry) {
                 return;
             }
             var canvas = this.getPreviewCanvas(overlay);
@@ -338,7 +620,86 @@
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in css px from here on
-            this.paintMaskPolygons(overlay, entry, ctx);
+            if (this.lastResult) {
+                this.paintMaskPolygons(overlay, entry, ctx);
+            }
+            this.paintGhost(ctx);
+            this.paintPoints(overlay, entry, ctx);
+        },
+
+        /** engine px -> css px, for drawing prompt markers over the image. */
+        engineToCss: function(point, entry, overlay) {
+            var imagePoint = this.engineToImage(point, entry);
+            return overlay.viewer.viewport.pixelFromPoint(
+                overlay.viewer.viewport.imageToViewportCoordinates(
+                    new OpenSeadragon.Point(imagePoint[0], imagePoint[1])), true);
+        },
+
+        /** A prompt marker: green ⊕ for include, red ⊖ for exclude. */
+        drawMarker: function(ctx, x, y, positive, ghost) {
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = positive
+                ? (ghost ? 'rgba(31,157,85,0.32)' : '#1f9d55')
+                : (ghost ? 'rgba(207,59,64,0.32)' : '#cf3b40');
+            ctx.fill();
+            ctx.lineWidth = 2.25;
+            ctx.setLineDash(ghost ? [3, 3] : []);
+            ctx.strokeStyle = ghost
+                ? (positive ? 'rgba(63,192,125,0.95)' : 'rgba(239,95,99,0.95)')
+                : 'rgba(255,255,255,0.92)';
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+            ctx.lineWidth = 2;
+            ctx.moveTo(x - 3.5, y);
+            ctx.lineTo(x + 3.5, y);
+            if (positive) {
+                ctx.moveTo(x, y - 3.5);
+                ctx.lineTo(x, y + 3.5);
+            }
+            ctx.stroke();
+        },
+
+        paintPoints: function(overlay, entry, ctx) {
+            var _this = this;
+            this.point_coords.forEach(function(point, index) {
+                var pixel = _this.engineToCss(point, entry, overlay);
+                _this.drawMarker(ctx, pixel.x, pixel.y, _this.point_labels[index] === 1, false);
+            });
+        },
+
+        /**
+         * The polarity of the click about to be made, under the cursor. Shift
+         * used to change what a click meant with nothing on screen saying so.
+         */
+        paintGhost: function(ctx) {
+            if (!this.cursorCss || this.dragging) {
+                return;
+            }
+            if (this.hitPointIndex(this.cursorCss) !== -1) {
+                return; // that click deletes a point; don't promise a new one
+            }
+            this.drawMarker(ctx, this.cursorCss.x, this.cursorCss.y, !this.negativeNow(), true);
+        },
+
+        /** Index of the placed point under a css-space position, or -1. */
+        hitPointIndex: function(cssPoint) {
+            if (!this.overlayRef || !cssPoint) {
+                return -1;
+            }
+            var entry = this.currentKey && this.encodedKeys[this.currentKey];
+            if (!entry) {
+                return -1;
+            }
+            for (var i = 0; i < this.point_coords.length; i++) {
+                var pixel = this.engineToCss(this.point_coords[i], entry, this.overlayRef);
+                if (Math.hypot(pixel.x - cssPoint.x, pixel.y - cssPoint.y) < 11) {
+                    return i;
+                }
+            }
+            return -1;
         },
 
         /**
@@ -522,11 +883,8 @@
         adjustThreshold: function(delta, overlay) {
             this.maskThreshold = Math.min(6, Math.max(-6, this.maskThreshold + delta));
             this.paintCurrentMask(overlay);
-            this.showStatus(
-                'Mask threshold: ' + this.maskThreshold.toFixed(2)
-                    + (this.maskThreshold === 0 ? ' (trained default)' : '')
-                    + '<br>[ grows the mask · ] tightens it — no re-decode.',
-                'info', overlay);
+            this.syncSliders();
+            this.updatePanel();
         },
 
         visiblePolygons: function() {
@@ -569,15 +927,7 @@
         cycleSmoothing: function(overlay) {
             this.smoothLevel = (this.smoothLevel + 1) % 4;
             this.paintCurrentMask(overlay);
-            var vertices = this.visiblePolygons().reduce(function(sum, rings) {
-                return sum + rings.reduce(function(n, ring) { return n + ring.length; }, 0);
-            }, 0);
-            var names = ['off (raw staircase)', 'light', 'medium', 'strong'];
-            this.showStatus(
-                'Outline smoothing: ' + names[this.smoothLevel]
-                    + ' — ' + vertices + ' points in the shape.'
-                    + '<br>S cycles.',
-                'info', overlay);
+            this.updatePanel();
         },
 
         /** How many holes the tracer actually found, before any filtering. */
@@ -598,19 +948,20 @@
         showHoleStatus: function(overlay) {
             var entry = this.currentKey && this.encodedKeys[this.currentKey];
             var found = this.countHoles(this.rawPolygons());
-            var kept = this.countHoles(this.visiblePolygons());
-            var message = 'Holes: ' + (this.holeMode === 'off' ? 'OFF (H)' : kept + ' of ' + found + ' kept')
-                + ' · threshold ' + (this.holeAreaRatio * 100).toFixed(2) + '% of the enclosing shape';
+            // Kept-of-found lives in the panel now. The pill is reserved for
+            // the one thing the panel cannot express: that no threshold will
+            // help because the hole is below the decoder's own resolution.
             if (found === 0 && this.holeMode === 'on' && entry && this.lastMaskWidth) {
                 var pxPerMaskPx = (entry.region.w / this.lastMaskWidth).toFixed(1);
-                message += '<br>The decoder found none: its mask is '
-                    + this.lastMaskWidth + '² over a ' + Math.round(entry.region.w)
-                    + 'px region (~' + pxPerMaskPx + ' image px per mask px), so anything'
-                    + ' smaller than that is not in the output. Zoom in and prompt again.';
+                this.showStatus(
+                    'No holes in this mask. The decoder works at '
+                        + this.lastMaskWidth + '² over a ' + Math.round(entry.region.w)
+                        + 'px region (~' + pxPerMaskPx + ' image px per mask px), so anything'
+                        + ' finer than that is not in its output. Zoom in and prompt again.',
+                    'info', overlay);
             } else {
-                message += '<br>, keeps more · . keeps fewer · H toggles holes off';
+                this.hideStatus();
             }
-            this.showStatus(message, 'info', overlay);
         },
 
         /** Nudge the hole-significance ratio (, and .) and repaint. */
@@ -618,6 +969,8 @@
             var next = this.holeAreaRatio * factor;
             this.holeAreaRatio = Math.min(0.25, Math.max(0.0002, next));
             this.paintCurrentMask(overlay);
+            this.syncSliders();
+            this.updatePanel();
             this.showHoleStatus(overlay);
         },
 
@@ -625,24 +978,71 @@
         toggleHoleMode: function(overlay) {
             this.holeMode = this.holeMode === 'on' ? 'off' : 'on';
             this.paintCurrentMask(overlay);
+            this.updatePanel();
             this.showHoleStatus(overlay);
         },
 
-        /** Cycle to the next of the 3 candidate masks (bound to the M key). */
-        cycleMask: function(overlay) {
+        /** Step through the candidate masks (M, or the panel's ‹ ›). */
+        cycleMask: function(overlay, direction) {
             if (!this.lastResult || this.lastResult.maskCount < 2) {
                 return;
             }
-            this.maskIndex = (this.maskIndex + 1) % this.lastResult.maskCount;
+            var count = this.lastResult.maskCount;
+            this.maskIndex = (this.maskIndex + (direction || 1) + count) % count;
             this.paintCurrentMask(overlay);
-            var score = this.lastResult.scores[this.maskIndex];
-            this.showStatus(
-                'Mask ' + (this.maskIndex + 1) + '/' + this.lastResult.maskCount
-                    + ' (confidence ' + score.toFixed(2) + ') — press M to cycle.',
-                'info', overlay);
+            this.updatePanel();
         },
 
-        /** Preview repaint on pan/zoom + the M (cycle) and P (preview A/B) keys. */
+        /**
+         * Drop the last prompt point. With none left the mask has nothing
+         * asserting it, so we fall back to hovering rather than keeping a
+         * shape on screen that no point explains.
+         */
+        undoPoint: function(overlay) {
+            if (!this.point_coords.length) {
+                return;
+            }
+            this.removePoint(overlay, this.point_coords.length - 1);
+        },
+
+        removePoint: function(overlay, index) {
+            this.point_coords.splice(index, 1);
+            this.point_labels.splice(index, 1);
+            if (!this.point_coords.length && !this.box) {
+                this.locked = false;
+                this.lastResult = null;
+                this.rawCache = null;
+                this.polygonCache = null;
+                this.paintCurrentMask(overlay);
+                this.updatePanel();
+                return;
+            }
+            var engine = window.RsSamEngine;
+            var _this = this;
+            this.requestDecode(overlay, engine, null).then(function() {
+                _this.updatePanel();
+            });
+        },
+
+        /** Throw the mask away and go back to hovering (Cancel, Esc). */
+        cancelMask: function(overlay) {
+            var key = this.currentKey;
+            this.resetOverlayState();
+            this.currentKey = key; // the embedding is still good; keep it
+            this.updatePanel();
+        },
+
+        /** True while the keystroke belongs to something the user is typing in. */
+        isTypingTarget: function(node) {
+            if (!node) {
+                return false;
+            }
+            var tag = node.tagName;
+            return node.isContentEditable || tag === 'TEXTAREA' || tag === 'SELECT'
+                || (tag === 'INPUT' && node.type !== 'range' && node.type !== 'checkbox');
+        },
+
+        /** Preview repaint on pan/zoom, the keyboard accelerators, tool changes. */
         hookViewerEvents: function(overlay) {
             if (this.viewerHooked) {
                 return;
@@ -656,12 +1056,51 @@
             };
             overlay.viewer.addHandler('animation', repaint);
             overlay.viewer.addHandler('animation-finish', repaint);
+
+            // Selecting another drawing tool has to put this one away —
+            // otherwise its panel keeps floating over someone else's rectangle.
+            overlay.eventEmitter.subscribe('toggleDrawingTool.' + overlay.windowId,
+                function(event, tool) {
+                    if (tool === _this.logoClass) {
+                        _this.showPanel(overlay);
+                    } else {
+                        _this.resetOverlayState();
+                        _this.hidePanel();
+                    }
+                });
+
             document.addEventListener('keydown', function(keyEvent) {
-                if (overlay.currentTool !== _this || !_this.lastResult) {
+                if (overlay.currentTool !== _this || _this.isTypingTarget(keyEvent.target)) {
+                    return;
+                }
+                if (keyEvent.key === 'Shift' && !_this.shiftHeld) {
+                    _this.shiftHeld = true;
+                    _this.paintCurrentMask(overlay);
+                    _this.updatePanel();
+                    return;
+                }
+                if (keyEvent.key === 'Escape') {
+                    _this.cancelMask(overlay);
+                    return;
+                }
+                if (keyEvent.key === 'Enter') {
+                    if (_this.locked) {
+                        _this.commit(overlay);
+                    }
+                    return;
+                }
+                if (keyEvent.key === 'Backspace' || keyEvent.key === 'Delete') {
+                    if (_this.point_coords.length) {
+                        keyEvent.preventDefault();
+                        _this.undoPoint(overlay);
+                    }
+                    return;
+                }
+                if (!_this.lastResult) {
                     return;
                 }
                 if (keyEvent.key === 'm' || keyEvent.key === 'M') {
-                    _this.cycleMask(overlay);
+                    _this.cycleMask(overlay, 1);
                 }
                 if (keyEvent.key === '[') {
                     _this.adjustThreshold(-0.25, overlay);
@@ -682,6 +1121,22 @@
                     _this.cycleSmoothing(overlay);
                 }
             });
+
+            // Shift is momentary, so the ghost has to follow the key itself
+            // and not wait for the next mouse move.
+            var releaseShift = function() {
+                if (_this.shiftHeld) {
+                    _this.shiftHeld = false;
+                    _this.paintCurrentMask(overlay);
+                    _this.updatePanel();
+                }
+            };
+            document.addEventListener('keyup', function(keyEvent) {
+                if (keyEvent.key === 'Shift') {
+                    releaseShift();
+                }
+            });
+            window.addEventListener('blur', releaseShift);
         },
 
         /** Encode the current viewport region unless its embedding is cached. */
@@ -792,6 +1247,7 @@
                     _this.rawCache = null;
                     _this.polygonCache = null;
                     _this.paintCurrentMask(overlay);
+                    _this.updatePanel();
                 })
                 .finally(function() {
                     _this.decodeInFlight = null;
@@ -807,6 +1263,7 @@
         // --- interaction ($.Sam's grammar + drag-box + M-to-cycle) -----------
 
         onMouseDown: function(event, overlay) {
+            this.overlayRef = overlay;
             if (event.event.metaKey || event.event.altKey) {
                 this.commit(overlay);
                 return;
@@ -882,6 +1339,26 @@
                 }
             }
 
+            // A click on a placed marker removes it — the only way to correct a
+            // misplaced point used to be abandoning the whole mask.
+            if (!wasDrag) {
+                var hitIndex = this.hitPointIndex(downCss);
+                if (hitIndex !== -1) {
+                    this.removePoint(overlay, hitIndex);
+                    return;
+                }
+            }
+
+            var negative = this.negativeNow(event.event.shiftKey);
+            // A negative point on its own says "not this" about nothing. SAM
+            // needs something to subtract from; refuse rather than decode it.
+            if (!wasDrag && negative && !this.locked) {
+                this.showStatus(
+                    "Nothing to exclude yet — click the object first, then exclude parts of it.",
+                    "warning", overlay);
+                return;
+            }
+
             if (wasDrag) {
                 // Box prompt: clamp both corners into the encoded bitmap.
                 var a = this.cssToEngineRaw(overlay, downCss.x, downCss.y, entry);
@@ -903,24 +1380,18 @@
                     return;
                 }
                 this.point_coords.push(enginePoint);
-                this.point_labels.push(event.event.shiftKey ? 0 : 1);
-                overlay.path = this.createRefPoint(event, overlay);
+                this.point_labels.push(negative ? 0 : 1);
             }
+            // The first prompt locks: from here the mask is the user's, and
+            // hovering no longer re-segments it out from under them.
+            this.locked = true;
             this.pendingHover = null; // the explicit prompt supersedes any queued hover
+            this.hideStatus();
+            this.updatePanel();
 
             try {
                 await this.requestDecode(overlay, engine, null);
-                var score = this.lastResult ? this.lastResult.scores[this.maskIndex] : 0;
-                var count = this.lastResult ? this.lastResult.maskCount : 0;
-                var found = this.countHoles(this.rawPolygons());
-                this.showStatus(
-                    "Segmentation updated (mask " + (this.maskIndex + 1) + "/" + count
-                        + ", confidence " + score.toFixed(2) + ", "
-                        + this.countHoles(this.visiblePolygons()) + "/" + found + " holes).<br>"
-                        + "Click to add points (shift = exclude), drag a box, press M to cycle masks.<br>"
-                        + "[ / ] mask threshold · S smoothing · , / . holes · H holes off.<br>"
-                        + "Save: double-click, or alt (PC) / cmd (Mac) + click.",
-                    "info", overlay);
+                this.updatePanel();
             } catch (error) {
                 this.showStatus("Segmentation failed: " + error.message, "error", overlay);
             }
@@ -934,20 +1405,32 @@
          */
         onMouseMove: function(event, overlay) {
             var engine = window.RsSamEngine;
-            if (!engine || this.dragging) {
+            if (!engine) {
+                return;
+            }
+            this.overlayRef = overlay;
+            this.showPanel(overlay);
+            this.shiftHeld = !!event.event.shiftKey;
+            this.cursorCss = { x: event.event.offsetX, y: event.event.offsetY };
+            if (this.dragging) {
                 return;
             }
             var _this = this;
             if (!this.currentKey || !this.encodedKeys[this.currentKey]) {
                 if (!this.embeddingPromise) {
                     this.ensureEmbedding(overlay, engine).then(function() {
-                        _this.showStatus(
-                            "Hover to preview a mask; click to start refining it.",
-                            "info", overlay);
+                        _this.updatePanel();
                     }).catch(function(error) {
                         _this.showStatus("Failed to prepare image: " + error.message, "error", overlay);
                     });
                 }
+                return;
+            }
+            // Locked: the mask belongs to the placed points now. Repaint so the
+            // cursor ghost still tracks, but do not re-segment.
+            if (this.locked) {
+                this.paintCurrentMask(overlay);
+                this.updatePanel();
                 return;
             }
             var enginePoint = this.cssToEngine(overlay, event.event.offsetX, event.event.offsetY,
@@ -962,16 +1445,20 @@
             });
         },
 
-        onDoubleClick: function(event, overlay) {
-            this.commit(overlay);
-        },
+        /**
+         * Deliberately inert. The overlay only recognises a double-click on the
+         * second mousedown, by which time the first click has already placed a
+         * point and re-decoded — so committing here saved a mask the user never
+         * saw. Accept is a button, Enter, or alt/cmd+click.
+         */
+        onDoubleClick: function(event, overlay) {},
 
         commit: function(overlay) {
             if (overlay.mode !== 'create') {
                 return;
             }
-            if (!this.lastResult || !this.visiblePolygons().length) {
-                this.showStatus("Nothing to save yet — click on the image first.", "warning", overlay);
+            if (!this.locked || !this.lastResult || !this.visiblePolygons().length) {
+                this.showStatus("Nothing to save yet — click the object first.", "warning", overlay);
                 return;
             }
             try {
