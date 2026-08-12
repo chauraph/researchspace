@@ -187,9 +187,20 @@
         },
 
         ensurePanel: function(overlay) {
-            if (this.panel && this.panel.parentNode) {
+            var container = overlay.viewer.container;
+            // parentNode alone is not enough: Mirador can rebuild the viewer,
+            // leaving the old container detached with our panel still inside
+            // it. That panel has a parentNode and is invisible to the user, so
+            // the early return would keep handing it back forever.
+            if (this.panel && this.panel.parentNode === container
+                    && document.body.contains(this.panel)) {
                 return this.panel;
             }
+            if (this.panel && this.panel.parentNode) {
+                this.panel.parentNode.removeChild(this.panel);
+            }
+            this.panel = null;
+            this.ui = {};
             this.ensureStyles();
             var _this = this;
             var panel = document.createElement('div');
@@ -287,7 +298,7 @@
             ui.cancel.addEventListener('click', function() { _this.cancelMask(overlay); });
             ui.accept.addEventListener('click', function() { _this.commit(overlay); });
 
-            overlay.viewer.container.appendChild(panel);
+            container.appendChild(panel);
             this.panel = panel;
             this.syncSliders();
             this.updatePanel();
@@ -1057,19 +1068,42 @@
             overlay.viewer.addHandler('animation', repaint);
             overlay.viewer.addHandler('animation-finish', repaint);
 
+            // Ride the overlay's own cleanup list, so destroy() unsubscribes
+            // these along with its own (osd-svg-overlay.js destroy()).
+            var subscribe = function(name, handler) {
+                overlay.eventsSubscriptions.push(
+                    overlay.eventEmitter.subscribe(name + '.' + overlay.windowId, handler));
+            };
+
             // Selecting another drawing tool has to put this one away —
             // otherwise its panel keeps floating over someone else's rectangle.
-            overlay.eventEmitter.subscribe('toggleDrawingTool.' + overlay.windowId,
-                function(event, tool) {
-                    if (tool === _this.logoClass) {
-                        _this.showPanel(overlay);
-                    } else {
-                        _this.resetOverlayState();
-                        _this.hidePanel();
-                    }
-                });
+            subscribe('toggleDrawingTool', function(event, tool) {
+                if (tool === _this.logoClass) {
+                    _this.arm(overlay);
+                } else {
+                    _this.detach(overlay);
+                }
+            });
 
-            document.addEventListener('keydown', function(keyEvent) {
+            // The exits that never publish toggleDrawingTool. Saving an
+            // annotation, choosing the HUD pointer, and switching the
+            // annotation layer off all land in enterDisplayAnnotations ->
+            // disable()/checkToRemoveFocus, which clears overlay.currentTool
+            // without telling the tool anything — so without this the panel
+            // stayed on screen, fully dead.
+            //
+            // modeChange is the one signal every HUD transition publishes
+            // (hud.js onchoosePointer / ondisplayOff / onchooseShape).
+            // 'creatingAnnotation' is the only mode where a drawing tool is
+            // live, and which tool that is comes from toggleDrawingTool above.
+            subscribe('modeChange', function(event, mode) {
+                if (mode !== 'creatingAnnotation') {
+                    _this.detach(overlay);
+                }
+            });
+            subscribe('CANCEL_ACTIVE_ANNOTATIONS', function() { _this.detach(overlay); });
+
+            var onKeyDown = function(keyEvent) {
                 if (overlay.currentTool !== _this || _this.isTypingTarget(keyEvent.target)) {
                     return;
                 }
@@ -1120,7 +1154,8 @@
                 if (keyEvent.key === 's' || keyEvent.key === 'S') {
                     _this.cycleSmoothing(overlay);
                 }
-            });
+            };
+            document.addEventListener('keydown', onKeyDown);
 
             // Shift is momentary, so the ghost has to follow the key itself
             // and not wait for the next mouse move.
@@ -1131,12 +1166,111 @@
                     _this.updatePanel();
                 }
             };
-            document.addEventListener('keyup', function(keyEvent) {
+            var onKeyUp = function(keyEvent) {
                 if (keyEvent.key === 'Shift') {
                     releaseShift();
                 }
-            });
+            };
+            document.addEventListener('keyup', onKeyUp);
             window.addEventListener('blur', releaseShift);
+
+            // Tools are constructed per overlay, and overlays per window, so
+            // without this every window close left another keydown handler on
+            // document bound to a dead viewer — one whose `currentTool === this`
+            // guard still passes, so a stray keystroke drove a tool whose
+            // viewer was gone.
+            var torndown = false;
+            var teardown = function() {
+                if (torndown) {
+                    return;
+                }
+                torndown = true;
+                document.removeEventListener('keydown', onKeyDown);
+                document.removeEventListener('keyup', onKeyUp);
+                window.removeEventListener('blur', releaseShift);
+                overlay.viewer.removeHandler('animation', repaint);
+                overlay.viewer.removeHandler('animation-finish', repaint);
+                _this.detach(overlay);
+                _this.releaseEmbeddings();
+                if (_this.panel && _this.panel.parentNode) {
+                    _this.panel.parentNode.removeChild(_this.panel);
+                }
+                _this.panel = null;
+                _this.ui = {};
+                _this.viewerHooked = false;
+            };
+            // DESTROY_EVENTS only, and NOT through subscribe(): the overlay
+            // subscribed to it first and its handler unsubscribes that whole
+            // list, so a teardown parked there may never run. We unsubscribe
+            // ourselves instead. OSD's 'close' is deliberately not used — it
+            // fires whenever the viewer re-opens an image, which would tear
+            // the tool down mid-session.
+            var destroyEvent = 'DESTROY_EVENTS.' + overlay.windowId;
+            var onDestroy = function() {
+                overlay.eventEmitter.unsubscribe(destroyEvent, onDestroy);
+                teardown();
+            };
+            overlay.eventEmitter.subscribe(destroyEvent, onDestroy);
+        },
+
+        /**
+         * Put the tool away: no mask, no points, no panel. Called for every
+         * exit, including the ones Mirador does not announce as a tool change.
+         *
+         * Embeddings deliberately survive — they are LRU-capped at 3 and cost
+         * a second each to rebuild, so paying that on every pointer-mode
+         * detour would be worse than holding them. releaseEmbeddings() runs at
+         * teardown, when the viewer is actually going away.
+         */
+        detach: function(overlay) {
+            this.resetOverlayState();
+            this.hidePanel();
+        },
+
+        /** Hand the worker back its per-viewport tensors (tens of MB each). */
+        releaseEmbeddings: function() {
+            var engine = window.RsSamEngine;
+            if (engine) {
+                this.keyOrder.forEach(function(key) { engine.release(key); });
+            }
+            this.encodedKeys = {};
+            this.keyOrder = [];
+            this.currentKey = null;
+        },
+
+        /**
+         * Selecting the tool has to actually arm it, which is not a given.
+         * Coming from pointer mode the HUD publishes toggleDrawingTool AND a
+         * state-machine transition; the transition lands in enterCreateShape
+         * (osd-region-draw-tool.js), which only re-enables the overlay when
+         * inEditOrCreateMode is false, and otherwise calls checkToRemoveFocus()
+         * — clearing overlay.currentTool right back out. That flag is only
+         * reset inside the annotationCreated callback, so after a save the
+         * toolbar showed this tool selected while it received no mouse events
+         * at all, with no way back short of reloading the page.
+         *
+         * Repaired here rather than in osd-region-draw-tool.js because that
+         * file is shared by every drawing tool. Deferred a tick so it runs
+         * after the state machine has finished, whichever order the two events
+         * arrive in.
+         */
+        arm: function(overlay) {
+            var _this = this;
+            this.showPanel(overlay);
+            setTimeout(function() {
+                if (overlay.currentTool === _this && !overlay.disabled) {
+                    return; // armed normally, nothing to repair
+                }
+                if (!_this.panel || _this.panel.hidden) {
+                    return; // another tool won in the meantime
+                }
+                console.warn('SamLocal: overlay left inert after the previous annotation; re-arming.');
+                overlay.inEditOrCreateMode = false;
+                overlay.disabled = false;
+                overlay.currentTool = _this;
+                overlay.show();
+                overlay.viewer.setMouseNavEnabled(false);
+            }, 0);
         },
 
         /** Encode the current viewport region unless its embedding is cached. */
@@ -1202,6 +1336,12 @@
                 delete this.encodedKeys[evicted];
                 engine.release(evicted);
             }
+            // The pill announced this work; it has to retract it. Nothing else
+            // will: since the panel took over the readouts, the only remaining
+            // hideStatus calls are on a click, a reset and the post-commit
+            // timer — so a re-encode from pan/zoom left "Preparing image…" on
+            // screen for as long as the user kept hovering.
+            this.hideStatus();
         },
 
         /**
@@ -1467,14 +1607,14 @@
                 // the geometry that is on screen at the current settings.
                 overlay.path = this.createPathsFromPolygons(this.visiblePolygons(), overlay, entry);
                 overlay.onDrawFinish();
-                this.clearPreview();
                 overlay.mode = '';
+                // Reset now, not on a timer. The shape belongs to the overlay
+                // from here, and a deferred reset could fire in the middle of
+                // the next hover and wipe the mask under the cursor.
+                this.resetOverlayState();
                 this.showStatus("Segmentation complete!", "info", overlay);
                 var _this = this;
-                this.statusTimeout = setTimeout(function() {
-                    _this.hideStatus();
-                    _this.resetOverlayState();
-                }, 2000);
+                this.statusTimeout = setTimeout(function() { _this.hideStatus(); }, 2000);
             } catch (error) {
                 this.showStatus("Failed to finalize segmentation: " + error.message, "error", overlay);
             }

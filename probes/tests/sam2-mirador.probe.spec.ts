@@ -41,6 +41,11 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     if (msg.type() === 'error') {
       console.log(`  [browser error] ${msg.text().slice(0, 250)}`);
     }
+    // $.SamLocal warns when it has to repair an overlay the annotation state
+    // machine left inert; seeing it is how we know that path fired.
+    if (msg.type() === 'warning' && msg.text().indexOf('SamLocal') >= 0) {
+      console.log(`  [tool warn] ${msg.text().slice(0, 200)}`);
+    }
   });
   page.on('pageerror', (err) => console.log(`  [pageerror] ${String(err).slice(0, 250)}`));
   page.on('response', (resp) => {
@@ -169,8 +174,22 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   await page.waitForTimeout(500);
 
   const pill = page.locator('.mirador-sam-status-overlay');
-  const pillText = async () =>
-    (await pill.count()) ? (await pill.first().innerText()).replace(/\s+/g, ' ') : '(no pill)';
+  // hideStatus() fades the pill out, leaving the element in the DOM with its
+  // last message, so innerText alone reports messages that are not on screen.
+  // Visibility is what the user sees, so that is what gets reported.
+  const pillState = () =>
+    page.evaluate(() => {
+      const el = document.querySelector('.mirador-sam-status-overlay') as HTMLElement | null;
+      if (!el) return { present: false, visible: false, text: '(no pill)' };
+      const style = getComputedStyle(el);
+      const visible = style.display !== 'none' && style.visibility !== 'hidden'
+        && parseFloat(style.opacity || '1') > 0.01;
+      return { present: true, visible, text: (el.innerText || '').replace(/\s+/g, ' ') };
+    });
+  const pillText = async () => {
+    const state = await pillState();
+    return state.visible ? state.text : (state.present ? '(hidden)' : '(no pill)');
+  };
 
   // Hover/click points must land ON the image: this manifest is portrait
   // (2148x3275) inside a landscape viewer, so most of the container is
@@ -307,6 +326,14 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   const statsZoom = await previewStats();
   console.log(`  [hover] after wheel-zoom preview: ${JSON.stringify(statsZoom)}`);
   console.log(`  [hover] preview survived viewport change (nonzero>0): ${statsZoom.nonzero > 0}`);
+  // The zoom changes the region key, so this is a second encode of the same
+  // image. Its "Preparing image…" pill has to retract on its own — nothing
+  // else clears it while the user is only hovering.
+  const zoomPill = await pillState();
+  console.log(
+    `  [hover] pill hidden after the re-encode: ${!zoomPill.visible}` +
+      ` (last message: ${zoomPill.text.slice(0, 70)})`
+  );
   await page.screenshot({ path: 'output/samlocal-hover-preview.png' });
 
   // Back home so the click flow below works off the geometry computed above.
@@ -489,6 +516,72 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
 
   await page.screenshot({ path: 'output/samlocal-after-commit.png' });
   console.log('  [probe] screenshot: output/samlocal-after-commit.png');
+
+  // --------------------------------------------------------------- exit paths:
+  // Saving returns the annotation state machine to pointer mode (overlay
+  // publishes SET_STATE_MACHINE_POINTER, which lands in enterDisplayAnnotations
+  // -> disable()/checkToRemoveFocus and clears currentTool) WITHOUT publishing
+  // toggleDrawingTool — the only signal $.SamLocal listens for. Report whether
+  // the panel is still on screen, and whether it still does anything.
+  const afterSave = await panelLine('after-save');
+  console.log(
+    `  [after-save] panel hidden (SET_STATE_MACHINE_POINTER handled): ` +
+      `${!afterSave || afterSave.visiblePanels === 0}`
+  );
+
+  // The other silent exit: re-arm, lock a mask, then choose the HUD pointer.
+  // That goes through enterDisplayAnnotations -> disable()/checkToRemoveFocus,
+  // again with no toggleDrawingTool, so report what is left on screen.
+  const controlsBox3 = await controls.boundingBox();
+  if (controlsBox3) {
+    await page.mouse.move(controlsBox3.x + 10, controlsBox3.y + 10);
+    await page.waitForTimeout(500);
+  }
+  const hudState = () =>
+    page.evaluate(() => ({
+      pointerSelected: !!document.querySelector('.mirador-osd-pointer-mode.selected'),
+      samSelected: !!document.querySelector('.mirador-osd-flash_on-mode.selected'),
+      annotationsLayerClasses:
+        document.querySelector('.mirador-osd-annotations-layer')?.className ?? '(none)',
+      editorOpen: document.querySelectorAll('.mirador-annotation-editor, [class*=annotation-tooltip]').length,
+    }));
+  console.log(`  [re-arm] HUD before re-arm: ${JSON.stringify(await hudState())}`);
+  const toolBox3 = await samLocal.boundingBox();
+  if (toolBox3 && toolBox3.width > 0) {
+    await page.mouse.click(toolBox3.x + toolBox3.width / 2, toolBox3.y + toolBox3.height / 2);
+    await page.waitForTimeout(500);
+    console.log(`  [re-arm] HUD after clicking the tool: ${JSON.stringify(await hudState())}`);
+    // The real question: does the tool receive mouse events again? Hover does
+    // not go through paper's hit test, so a mask here means genuinely re-armed
+    // and not merely "marked selected in the toolbar".
+    await page.mouse.move(A.x, A.y);
+    await page.waitForTimeout(2_000);
+    await page.mouse.move(A.x + 2, A.y + 1);
+    await page.waitForTimeout(3_000);
+    const rearmHover = await previewStats();
+    const rearmPanel = await panelRead();
+    console.log(
+      `  [re-arm] tool alive after save — hover repaints: ${rearmHover.nonzero > 0}` +
+        ` | panel visible: ${rearmPanel?.visiblePanels} state="${rearmPanel?.state}"`
+    );
+    await page.mouse.click(A.x + 2, A.y + 1);
+    await page.waitForTimeout(4_000);
+    await panelLine('pointer-before');
+    const maskBefore = await previewStats();
+    const pointer = page.locator('.mirador-osd-pointer-mode').first();
+    console.log(`  [pointer] pointer button present: ${await pointer.count()}`);
+    if (await pointer.count()) {
+      await pointer.click({ force: true });
+      await page.waitForTimeout(2_000);
+      const maskAfter = await previewStats();
+      const panelAfter = await panelRead();
+      console.log(
+        `  [pointer] after choosing pointer mode — panel hidden: ` +
+          `${!panelAfter || panelAfter.visiblePanels === 0}` +
+          ` | mask cleared: ${maskAfter.nonzero === 0} (${maskBefore.nonzero} -> ${maskAfter.nonzero})`
+      );
+    }
+  }
 
   // --------------------------------------------------------------- phase 5b:
   // box prompt. Deliberately AFTER the click/commit/save flow above: the commit
