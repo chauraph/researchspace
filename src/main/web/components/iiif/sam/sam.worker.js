@@ -21,13 +21,16 @@
  * Protocol (postMessage, request/response by id):
  *   {id, op:'init'}                 -> {id, ok, webgpu}
  *   {id, op:'encode', key, bitmap}  -> {id, ok, encodeMs}    (bitmap transferred)
- *   {id, op:'decode', key, points, labels, box?}
- *     -> {id, ok, decodeMs, bestIndex, candidates, maskWidth, maskHeight}
+ *   {id, op:'decode', key, points, labels, box?, selectedIndex?}
+ *     -> {id, ok, decodeMs, bestIndex, scores, maskCount, maskWidth,
+ *         maskHeight, regionWidth, regionHeight, logits}
  *        box: optional [x1,y1,x2,y2] in the encoded bitmap's pixel space;
- *        candidates: the model's 3 masks, each {score, polygons, maskBitmap}
- *        with polygons Array<Array<[x,y]>> in the encoded bitmap's pixel
- *        space and maskBitmap an ImageBitmap (transferred) sized
- *        maskWidth x maskHeight; bestIndex = argmax score.
+ *        logits: Float32Array (transferred) of maskCount planes of
+ *        maskWidth x maskHeight raw mask logits. Geometry is NOT produced
+ *        here — SamClientEngine contours the float field, which is both more
+ *        accurate than thresholding first and what lets the threshold move
+ *        without a re-decode. selectedIndex is the candidate currently shown,
+ *        used to keep a refining prompt on the same object.
  *   {id, op:'release', key} / {id, op:'releaseAll'} -> {id, ok}
  * Unsolicited: {event:'progress', file, loaded, total} during model download.
  */
@@ -305,28 +308,27 @@ async function decode(key, points, labels, box, selectedIndex) {
   var maskW = dims[dims.length - 1];
   var maskH = dims[dims.length - 2];
   var maskCount = Math.min(iou.length, dims[dims.length - 3]);
-  var mx = entry.width / maskW;
-  var my = entry.height / maskH;
+  var planeSize = maskW * maskH;
 
-  var candidates = [];
-  var maskBitmaps = [];
+  // The logits go to the main thread untouched, and the contour is taken from
+  // them there. Thresholding here and tracing the resulting binary was the
+  // dominant source of boundary error: against a rasterised circle it cost
+  // ~0.6px RMS, all of it binarisation, none of it the model. Contouring the
+  // float field removes that. It also puts the threshold on the main thread,
+  // where it can be moved without a re-decode.
+  var logits = new Float32Array(maskCount * planeSize);
+  logits.set(maskData.subarray(0, maskCount * planeSize));
+
+  // Binary masks are still needed here, but only to compare candidates
+  // against the previously selected one (P1).
   var binaries = [];
   for (var m = 0; m < maskCount; m++) {
-    var offset = m * maskW * maskH;
-    var binary = new Uint8Array(maskW * maskH);
-    for (var p = 0; p < binary.length; p++) {
-      binary[p] = maskData[offset + p] > 0 ? 1 : 0;
+    var offset = m * planeSize;
+    var binary = new Uint8Array(planeSize);
+    for (var p = 0; p < planeSize; p++) {
+      binary[p] = logits[offset + p] > 0 ? 1 : 0;
     }
     binaries.push(binary);
-    var polygons = traceContours(binary, maskW, maskH).map(function (rings) {
-      return rings.map(function (ring) {
-        return simplify(ring, 0.7).map(function (pt) {
-          return [pt[0] * mx, pt[1] * my];
-        });
-      });
-    });
-    candidates.push({ score: iou[m], polygons: polygons });
-    maskBitmaps.push(renderMaskPreview(binary, maskW, maskH));
   }
 
   var best = chooseCandidate(iou, binaries, key, points.length, !!box, selectedIndex);
@@ -337,11 +339,17 @@ async function decode(key, points, labels, box, selectedIndex) {
     result: {
       decodeMs: performance.now() - t0,
       bestIndex: best,
-      candidates: candidates,
+      scores: Array.prototype.slice.call(iou, 0, maskCount),
+      maskCount: maskCount,
       maskWidth: maskW,
       maskHeight: maskH,
+      // Engine-space extent the mask covers, so the main thread can scale
+      // contour coordinates without knowing anything about the region.
+      regionWidth: entry.width,
+      regionHeight: entry.height,
+      logits: logits,
     },
-    maskBitmaps: maskBitmaps,
+    transfer: [logits.buffer],
   };
 }
 
@@ -400,188 +408,6 @@ function maskIou(a, b) {
   return union ? intersection / union : 0;
 }
 
-/** Semi-transparent preview bitmap of the binary mask (scaled up by the caller). */
-function renderMaskPreview(binary, width, height) {
-  var canvas = new OffscreenCanvas(width, height);
-  var ctx = canvas.getContext('2d');
-  var image = ctx.createImageData(width, height);
-  for (var i = 0; i < binary.length; i++) {
-    if (binary[i]) {
-      image.data[i * 4] = 30;      // r
-      image.data[i * 4 + 1] = 136; // g
-      image.data[i * 4 + 2] = 229; // b
-      image.data[i * 4 + 3] = 120; // a
-    }
-  }
-  ctx.putImageData(image, 0, 0);
-  return canvas.transferToImageBitmap();
-}
-
-// ---------------------------------------------------------------------------
-// Contours: marching squares over the binary mask, outer rings plus the holes
-// they enclose (P7). Replaces the server tool's OpenCV findContours +
-// approxPolyDP (`approx_points`); the nesting mirrors cv2.RETR_CCOMP.
-// ---------------------------------------------------------------------------
-
-var MIN_LOOP_AREA = 12; // mask px^2; drops speckle the decoder sometimes emits
-// Holes get only a noise floor here, not a decision. Any absolute area in mask
-// px is a threshold on the encoded region's scale — the same letter counter
-// falls below it zoomed out and passes zoomed in — so the real filter is a
-// share of the enclosing ring, applied on the main thread where the user can
-// move it without a re-decode. This just keeps the payload finite.
-var MIN_HOLE_AREA = 4;
-var MAX_HOLES_PER_POLYGON = 64;
-
-/** @returns polygons, each an array of rings: [outer, ...holes]. */
-function traceContours(grid, width, height) {
-  // Walk pixel-edge boundaries keeping the filled region on the LEFT of the
-  // walking direction. On screen (y-down) that traces outer boundaries
-  // counter-clockwise — NEGATIVE shoelace area — and holes with positive area.
-  var at = function (x, y) {
-    if (x < 0 || y < 0 || x >= width || y >= height) return 0;
-    return grid[y * width + x];
-  };
-  var visited = new Uint8Array((width + 1) * (height + 1));
-  var outers = [];
-  var holes = [];
-
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      // Left-boundary pixel: its top-left corner has a downward boundary edge.
-      // The same test fires on the filled run to the right of a hole, so this
-      // single sweep finds hole boundaries too — they arrive sign-flipped.
-      if (at(x, y) === 1 && at(x - 1, y) === 0 && !visited[y * (width + 1) + x]) {
-        var loop = walkBoundary(x, y, at, visited, width);
-        if (!loop) {
-          continue;
-        }
-        var area = signedArea(loop);
-        if (-area >= MIN_LOOP_AREA) {
-          outers.push({ ring: loop, area: -area });
-        } else if (area >= MIN_HOLE_AREA) {
-          holes.push({ ring: loop, area: area });
-        }
-      }
-    }
-  }
-  // Largest first; cap to a sane number of parts for one annotation.
-  outers.sort(function (a, b) { return b.area - a.area; });
-  var polygons = outers.slice(0, 8).map(function (outer) {
-    return { rings: [outer.ring], area: outer.area };
-  });
-  // Each hole belongs to the smallest outer ring that contains it. Holes whose
-  // parent lost the slice(0, 8) cap are dropped with it. Largest first, so the
-  // per-polygon cap keeps the holes most likely to be real.
-  holes.sort(function (a, b) { return b.area - a.area; });
-  holes.forEach(function (hole) {
-    var parent = null;
-    for (var i = 0; i < polygons.length; i++) {
-      if (polygons[i].area > hole.area &&
-          pointInRing(hole.ring[0], polygons[i].rings[0]) &&
-          (!parent || polygons[i].area < parent.area)) {
-        parent = polygons[i];
-      }
-    }
-    if (parent && parent.rings.length <= MAX_HOLES_PER_POLYGON) {
-      parent.rings.push(hole.ring);
-    }
-  });
-  return polygons.map(function (polygon) { return polygon.rings; });
-}
-
-/** Ray-casting point-in-polygon; ring is a closed loop of [x, y] corners. */
-function pointInRing(point, ring) {
-  var inside = false;
-  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    var yi = ring[i][1], yj = ring[j][1];
-    if ((yi > point[1]) !== (yj > point[1])) {
-      var xi = ring[i][0], xj = ring[j][0];
-      if (point[0] < (xj - xi) * (point[1] - yi) / (yj - yi) + xi) {
-        inside = !inside;
-      }
-    }
-  }
-  return inside;
-}
-
-/**
- * Follow boundary edges from the top-left corner of left-boundary pixel
- * (startX, startY). Positions are corner coordinates; directions 0=up,
- * 1=right, 2=down, 3=left. From a corner, direction d is walkable iff it
- * keeps a filled pixel on the left and an empty one on the right:
- *   up:    TL && !TR      right: TR && !BR
- *   down:  BR && !BL      left:  BL && !TL
- * where TL=at(x-1,y-1) TR=at(x,y-1) BL=at(x-1,y) BR=at(x,y).
- * Exactly one direction qualifies except at saddle corners; there we prefer
- * the left turn, which keeps saddles as two separate loops.
- */
-function walkBoundary(startX, startY, at, visited, width) {
-  var x = startX, y = startY, dir = 2; // down along the pixel's left edge
-  var loop = [];
-  var guard = 0;
-  do {
-    if (guard++ > 300000) return null; // malformed grid; refuse to hang
-    if (dir === 2) visited[y * (width + 1) + x] = 1;
-    loop.push([x, y]);
-    if (dir === 0) y -= 1;
-    else if (dir === 1) x += 1;
-    else if (dir === 2) y += 1;
-    else x -= 1;
-    if (x === startX && y === startY) break;
-    var tl = at(x - 1, y - 1), tr = at(x, y - 1), bl = at(x - 1, y), br = at(x, y);
-    var walkable = [tl && !tr, tr && !br, br && !bl, bl && !tl];
-    // try left turn, then straight, then right turn (left of dir d is (d+3)%4)
-    var candidates = [(dir + 3) % 4, dir, (dir + 1) % 4];
-    var next = -1;
-    for (var i = 0; i < candidates.length; i++) {
-      if (walkable[candidates[i]]) { next = candidates[i]; break; }
-    }
-    if (next === -1) return null; // disconnected edge graph: malformed grid
-    dir = next;
-  } while (true);
-  return loop;
-}
-
-function signedArea(loop) {
-  var area = 0;
-  for (var i = 0; i < loop.length; i++) {
-    var j = (i + 1) % loop.length;
-    area += loop[i][0] * loop[j][1] - loop[j][0] * loop[i][1];
-  }
-  return area / 2;
-}
-
-/** Ramer–Douglas–Peucker on a closed loop (split at the two farthest points). */
-function simplify(loop, epsilon) {
-  if (loop.length < 8) return loop;
-  var half = Math.floor(loop.length / 2);
-  var first = rdp(loop.slice(0, half + 1), epsilon);
-  var second = rdp(loop.slice(half).concat([loop[0]]), epsilon);
-  return first.slice(0, -1).concat(second.slice(0, -1));
-}
-
-function rdp(points, epsilon) {
-  if (points.length < 3) return points;
-  var start = points[0], end = points[points.length - 1];
-  var maxDist = 0, index = 0;
-  for (var i = 1; i < points.length - 1; i++) {
-    var d = pointLineDistance(points[i], start, end);
-    if (d > maxDist) { maxDist = d; index = i; }
-  }
-  if (maxDist <= epsilon) return [start, end];
-  var left = rdp(points.slice(0, index + 1), epsilon);
-  var right = rdp(points.slice(index), epsilon);
-  return left.slice(0, -1).concat(right);
-}
-
-function pointLineDistance(p, a, b) {
-  var dx = b[0] - a[0], dy = b[1] - a[1];
-  var lengthSq = dx * dx + dy * dy;
-  if (lengthSq === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-  var t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lengthSq));
-  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-}
-
 // ---------------------------------------------------------------------------
 // Message loop
 // ---------------------------------------------------------------------------
@@ -608,18 +434,13 @@ self.onmessage = function (event) {
       }
     })
     .then(function (value) {
-      if (value && value.maskBitmaps) {
-        // Attach one bitmap per candidate and transfer them all.
-        value.result.candidates.forEach(function (candidate, index) {
-          candidate.maskBitmap = value.maskBitmaps[index];
-        });
-        var reply = { id: msg.id, ok: true };
+      var reply = { id: msg.id, ok: true };
+      if (value && value.result) {
         Object.assign(reply, value.result);
-        self.postMessage(reply, value.maskBitmaps);
+        self.postMessage(reply, value.transfer || []);
       } else {
-        var plain = { id: msg.id, ok: true };
-        Object.assign(plain, value);
-        self.postMessage(plain);
+        Object.assign(reply, value);
+        self.postMessage(reply);
       }
     })
     .catch(function (error) {

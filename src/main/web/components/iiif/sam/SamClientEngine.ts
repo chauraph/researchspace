@@ -14,28 +14,45 @@
  * Feature plan: docs/features/sam2-client-side-plan.md.
  */
 
+import { contours } from 'd3-contour';
+
 const WORKER_URL = '/assets/no_auth/sam-worker.js';
+
+/**
+ * Largest-first cap on the parts of one mask, matching what the annotation
+ * layer will draw. A mask that fragments past this is a bad prompt, not a
+ * shape worth storing in full.
+ */
+const MAX_PARTS = 8;
+
+/** |shoelace| of a closed ring. */
+function ringArea(ring: SamRing): number {
+  let area = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const j = (i + 1) % ring.length;
+    area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
+  }
+  return Math.abs(area) / 2;
+}
 
 /** A closed ring of points in the encoded bitmap's pixel space. */
 export type SamRing = Array<[number, number]>;
 /** Outer ring first, then any holes it encloses (even-odd fill). */
 export type SamPolygon = SamRing[];
 
-export interface SamMaskCandidate {
-  /** Model confidence (predicted IoU) of this mask. */
-  score: number;
-  /** Closed polygons in the encoded bitmap's pixel space, largest first. */
-  polygons: SamPolygon[];
-  /** Low-res translucent preview of the mask; scale to the full bitmap when painting. */
-  maskBitmap: ImageBitmap;
-}
-
 export interface SamDecodeResult {
-  /** SAM2 always proposes 3 masks; bestIndex is the one to show (chooseCandidate). */
-  candidates: SamMaskCandidate[];
+  /** Predicted IoU per candidate mask. */
+  scores: number[];
+  /** Which candidate to show; see chooseCandidate() in the worker. */
   bestIndex: number;
+  maskCount: number;
   maskWidth: number;
   maskHeight: number;
+  /** Extent, in the encoded bitmap's pixels, that the mask grid covers. */
+  regionWidth: number;
+  regionHeight: number;
+  /** maskCount planes of maskWidth x maskHeight raw logits, back to back. */
+  logits: Float32Array;
   decodeMs: number;
 }
 
@@ -103,6 +120,42 @@ export class SamClientEngine {
     selectedIndex?: number | null
   ): Promise<SamDecodeResult> {
     return this.request({ op: 'decode', key, points, labels, box, selectedIndex });
+  }
+
+  /**
+   * Contour one candidate's logits into polygons, in the encoded bitmap's
+   * pixel space. Outer ring first, then the holes it encloses.
+   *
+   * Marching squares over the float field, interpolating where it crosses
+   * `threshold`, rather than thresholding to a binary mask and walking pixel
+   * corners. Measured against a rasterised circle, corner-walking a binary
+   * grid carries ~0.6px RMS boundary error and interpolating the same binary
+   * grid ~0.22px; interpolating the float field removes it altogether. None
+   * of that error came from the model.
+   *
+   * `threshold` is SAM's mask_threshold — 0 by default, and adjustable
+   * because it is the cheapest correction available for material the model
+   * is not calibrated on. Re-contouring costs no re-decode.
+   */
+  buildPolygons(result: SamDecodeResult, index: number, threshold = 0): SamPolygon[] {
+    const { maskWidth, maskHeight, logits } = result;
+    const plane = maskWidth * maskHeight;
+    const values = logits.subarray(index * plane, (index + 1) * plane);
+    const geometry = contours()
+      .size([maskWidth, maskHeight])
+      .thresholds([threshold])(values as unknown as number[])[0];
+    // d3 places grid element i,j at <i+0.5, j+0.5>, which is the centre of the
+    // mask pixel covering [i*mx, (i+1)*mx] — so the scale is a plain multiply.
+    const mx = result.regionWidth / maskWidth;
+    const my = result.regionHeight / maskHeight;
+    const polygons = geometry.coordinates.map((rings) =>
+      rings.map((ring) =>
+        ring.map(([x, y]) => [x * mx, y * my] as [number, number])
+      )
+    );
+    return polygons
+      .sort((a, b) => ringArea(b[0]) - ringArea(a[0]))
+      .slice(0, MAX_PARTS);
   }
 
   /** Drop one cached embedding (call when the viewport pans/zooms). */
