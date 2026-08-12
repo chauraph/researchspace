@@ -6,13 +6,36 @@
 # onnx-community ONNX export) and live in the runtime layer, outside git.
 #
 # Idempotent: files that already exist with the right sha256 are skipped.
-# Override the target directory with SAM2_MODEL_DIR (default: the dev
-# runtime layer next to this repo). On the deployment host, point it at the
-# instance's runtime-data/assets/models/sam2.
+#
+# Usage: fetch-sam2-models.sh [TARGET_DIR]
+#
+# The runtime layer is not in the same place on every host, so the target is
+# an argument. Precedence: the argument, then $SAM2_MODEL_DIR, then the dev
+# runtime layer next to this repo. On a deployment host pass that instance's
+# runtime assets directory, e.g.
+#
+#   scripts/fetch-sam2-models.sh /srv/researchspace/runtime-data/assets/models/sam2
 set -euo pipefail
 
+usage() {
+  # Everything between the shebang and the first line of code, unprefixed —
+  # so the help text cannot drift out of step with the header comment.
+  sed -e '1d' -e '/^[^#]/,$d' "$0" | sed 's/^#\{1,\} \{0,1\}//'
+  exit "${1:-0}"
+}
+
+case "${1:-}" in
+  -h|--help) usage 0 ;;
+  -*) echo "Unknown option: $1" >&2; usage 1 ;;
+esac
+
+if [ "$#" -gt 1 ]; then
+  echo "Expected at most one target directory, got $#." >&2
+  usage 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DEST="${SAM2_MODEL_DIR:-$REPO_ROOT/runtime-data/assets/models/sam2}"
+DEST="${1:-${SAM2_MODEL_DIR:-$REPO_ROOT/runtime-data/assets/models/sam2}}"
 BASE="https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/main/onnx"
 
 # file  sha256  size-in-bytes
@@ -29,7 +52,13 @@ sha256() {
   else shasum -a 256 "$1" | cut -d' ' -f1; fi
 }
 
-mkdir -p "$DEST"
+if ! mkdir -p "$DEST" 2>/dev/null; then
+  echo "Cannot create $DEST — check the path and write permissions." >&2
+  echo "On a deployment host the runtime layer is usually owned by the service user." >&2
+  exit 1
+fi
+# Absolute, so a relative argument still reports where the bytes actually went.
+DEST="$(cd "$DEST" && pwd)"
 echo "Target: $DEST"
 
 while read -r file want_hash want_size; do
