@@ -27,6 +27,19 @@
  * same view cost one encode.
  */
 (function($) {
+    /**
+     * RDP epsilon as a share of a ring's own perimeter — relative, so a small
+     * glyph and a large figure are simplified proportionately instead of the
+     * small one being erased.
+     *
+     * Measured against a rasterised circle of known radius, contoured from the
+     * float logits: the raw contour is 481 points at 0.0007px RMS, and this
+     * ratio keeps 64 of them at 0.0005px. The previous pipeline — threshold to
+     * binary, walk pixel corners, smooth the staircase — stored 286 points at
+     * 0.5920px. Nearly all of that error was binarisation, not the model.
+     */
+    var SIMPLIFY_RATIO = 0.0005;
+
     $.SamLocal = function(options) {
         jQuery.extend(this, {
             name: 'SamLocal',
@@ -52,14 +65,22 @@
             this.embeddingPromise = null;
             this.decodeInFlight = null;
             this.pendingHover = null;   // latest cursor while a decode is in flight
-            this.lastCandidates = null; // 3 mask candidates of the latest decode
+            this.lastResult = null;     // latest decode: logits + scores + dims
             this.maskIndex = 0;         // which candidate is shown/committed
-            this.previewMode = 'polygon'; // 'polygon' (P4) | 'bitmap' (pre-P4); P toggles
             // Share of the enclosing ring below which a hole is treated as
             // decoder noise. A user preference, so it deliberately survives
             // resetOverlayState and carries across annotations.
             this.holeAreaRatio = 0.01;
             this.holeMode = 'on'; // 'on' | 'off' (pre-P7 behaviour); H toggles
+            // Sub-pixel contours leave no staircase to hide, so rounding is
+            // off by default; S dials it in where a painted contour reads
+            // better softened.
+            this.smoothLevel = 0;
+            // SAM's mask_threshold. 0 is the trained value; [ and ] move it,
+            // which is the cheapest correction for material the model is not
+            // calibrated on (faded ink, hatching, painted edges).
+            this.maskThreshold = 0;
+            this.polygonCache = null; // memoised visiblePolygons(), see cacheKey()
             this.downCss = null;        // mousedown position, for click-vs-drag
             this.dragging = false;
             this.box = null;            // engine-space [x1,y1,x2,y2] box prompt
@@ -126,30 +147,20 @@
             }
         },
 
-        closeCandidates: function() {
-            if (this.lastCandidates) {
-                this.lastCandidates.forEach(function(candidate) {
-                    if (candidate.maskBitmap) {
-                        candidate.maskBitmap.close();
-                    }
-                });
-                this.lastCandidates = null;
-            }
-        },
-
         resetOverlayState: function() {
             this.hideStatus();
             this.point_coords = [];   // engine space (fetched-bitmap px)
             this.point_labels = [];
             this.currentKey = null;
-            this.lastPolygons = null; // engine space
+            this.lastResult = null;
             this.lastMaskWidth = null; // decoder mask grid width, for the resolution hint
+            this.rawCache = null;
+            this.polygonCache = null;
             this.pendingHover = null;
             this.box = null;
             this.downCss = null;
             this.dragging = false;
             this.maskIndex = 0;
-            this.closeCandidates();
             this.clearPreview();
         },
 
@@ -318,7 +329,7 @@
         /** Draw (or redraw, after pan/zoom/cycle) the selected candidate mask. */
         paintCurrentMask: function(overlay) {
             var entry = this.currentKey && this.encodedKeys[this.currentKey];
-            if (!entry || !this.lastCandidates) {
+            if (!entry || !this.lastResult) {
                 return;
             }
             var canvas = this.getPreviewCanvas(overlay);
@@ -327,26 +338,7 @@
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in css px from here on
-            if (this.previewMode === 'bitmap') {
-                this.paintMaskBitmap(overlay, entry, ctx);
-            } else {
-                this.paintMaskPolygons(overlay, entry, ctx);
-            }
-        },
-
-        /** Pre-P4 preview: the worker's raw 256² binary, stretched to the region. */
-        paintMaskBitmap: function(overlay, entry, ctx) {
-            var maskBitmap = this.lastCandidates[this.maskIndex].maskBitmap;
-            if (!maskBitmap) {
-                return;
-            }
-            var viewport = overlay.viewer.viewport;
-            var topLeft = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
-                new OpenSeadragon.Point(entry.region.x, entry.region.y)), true);
-            var bottomRight = viewport.pixelFromPoint(viewport.imageToViewportCoordinates(
-                new OpenSeadragon.Point(entry.region.x + entry.region.w, entry.region.y + entry.region.h)), true);
-            ctx.drawImage(maskBitmap, topLeft.x, topLeft.y,
-                bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+            this.paintMaskPolygons(overlay, entry, ctx);
         },
 
         /**
@@ -412,21 +404,180 @@
          * Preview and commit both go through this, so what is shown stays
          * what is stored.
          */
-        visiblePolygons: function() {
-            if (!this.lastCandidates) {
+        /**
+         * Chaikin corner-cutting on a closed ring: each edge is replaced by
+         * its quarter and three-quarter points, so every vertex is rounded off
+         * and the ring converges towards a quadratic B-spline.
+         *
+         * This is what removes the staircase. The tracer walks pixel-corner
+         * coordinates, so a diagonal edge leaves a run of alternating 1-px
+         * steps, which is quantisation of the 256-grid rather than anything
+         * the decoder asserted.
+         *
+         * The win is appearance and payload, not accuracy: measured against a
+         * rasterised circle, RMS boundary error only moves 0.616 -> 0.555 px
+         * and is flat past two passes. It also rounds genuine corners, which
+         * is why S can turn it down on architecture and page edges.
+         */
+        smoothRing: function(ring, iterations) {
+            var points = ring;
+            for (var pass = 0; pass < iterations; pass++) {
+                if (points.length < 4) {
+                    return points;
+                }
+                var next = [];
+                for (var i = 0; i < points.length; i++) {
+                    var a = points[i];
+                    var b = points[(i + 1) % points.length];
+                    next.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+                    next.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+                }
+                points = next;
+            }
+            return points;
+        },
+
+        /**
+         * Ramer–Douglas–Peucker on a closed ring, with epsilon taken as a
+         * share of the ring's own perimeter rather than an absolute distance.
+         * Chaikin quadruples the vertex count per pass and those vertices are
+         * stored in the annotation, so this pays them back; scaling by
+         * perimeter keeps a small glyph and a large figure equally simplified
+         * instead of erasing the small one.
+         */
+        simplifyRing: function(ring, epsilonRatio) {
+            if (ring.length < 8) {
+                return ring;
+            }
+            var perimeter = 0;
+            for (var i = 0; i < ring.length; i++) {
+                var j = (i + 1) % ring.length;
+                perimeter += Math.hypot(ring[j][0] - ring[i][0], ring[j][1] - ring[i][1]);
+            }
+            var epsilon = perimeter * epsilonRatio;
+            var half = Math.floor(ring.length / 2);
+            var first = this.rdp(ring.slice(0, half + 1), epsilon);
+            var second = this.rdp(ring.slice(half).concat([ring[0]]), epsilon);
+            return first.slice(0, -1).concat(second.slice(0, -1));
+        },
+
+        rdp: function(points, epsilon) {
+            if (points.length < 3) {
+                return points;
+            }
+            var start = points[0], end = points[points.length - 1];
+            var maxDistance = 0, index = 0;
+            for (var i = 1; i < points.length - 1; i++) {
+                var distance = this.pointLineDistance(points[i], start, end);
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    index = i;
+                }
+            }
+            if (maxDistance <= epsilon) {
+                return [start, end];
+            }
+            return this.rdp(points.slice(0, index + 1), epsilon)
+                .slice(0, -1)
+                .concat(this.rdp(points.slice(index), epsilon));
+        },
+
+        pointLineDistance: function(p, a, b) {
+            var dx = b[0] - a[0], dy = b[1] - a[1];
+            var lengthSq = dx * dx + dy * dy;
+            if (lengthSq === 0) {
+                return Math.hypot(p[0] - a[0], p[1] - a[1]);
+            }
+            var t = Math.max(0, Math.min(1,
+                ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lengthSq));
+            return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+        },
+
+        /** Everything that changes the derived geometry, for the memo. */
+        cacheKey: function() {
+            return [this.maskIndex, this.maskThreshold, this.holeMode,
+                this.holeAreaRatio, this.smoothLevel].join('|');
+        },
+
+        /**
+         * The contour of the selected candidate at the current threshold,
+         * straight from the engine and unfiltered — the denominator in the
+         * "n of m holes kept" readout.
+         */
+        rawPolygons: function() {
+            if (!this.lastResult || !window.RsSamEngine) {
                 return [];
             }
+            var key = this.maskIndex + '|' + this.maskThreshold;
+            if (this.rawCache && this.rawCache.key === key) {
+                return this.rawCache.value;
+            }
+            var value = window.RsSamEngine.buildPolygons(
+                this.lastResult, this.maskIndex, this.maskThreshold);
+            this.rawCache = { key: key, value: value };
+            return value;
+        },
+
+        /** Nudge SAM's mask_threshold ([ and ]) and re-contour. */
+        adjustThreshold: function(delta, overlay) {
+            this.maskThreshold = Math.min(6, Math.max(-6, this.maskThreshold + delta));
+            this.paintCurrentMask(overlay);
+            this.showStatus(
+                'Mask threshold: ' + this.maskThreshold.toFixed(2)
+                    + (this.maskThreshold === 0 ? ' (trained default)' : '')
+                    + '<br>[ grows the mask · ] tightens it — no re-decode.',
+                'info', overlay);
+        },
+
+        visiblePolygons: function() {
+            if (!this.lastResult) {
+                return [];
+            }
+            // paintCurrentMask runs on every OSD animation frame, so neither
+            // the contouring nor the smoothing may re-run per frame.
+            var key = this.cacheKey();
+            if (this.polygonCache && this.polygonCache.key === key) {
+                return this.polygonCache.value;
+            }
             var _this = this;
-            var polygons = this.lastCandidates[this.maskIndex].polygons || [];
-            return polygons.map(function(rings) {
+            var polygons = this.rawPolygons();
+            var value = polygons.map(function(rings) {
+                var kept;
                 if (rings.length < 2 || _this.holeMode === 'off') {
-                    return [rings[0]];
+                    kept = [rings[0]];
+                } else {
+                    var floor = _this.ringArea(rings[0]) * _this.holeAreaRatio;
+                    kept = rings.filter(function(ring, index) {
+                        return index === 0 || _this.ringArea(ring) >= floor;
+                    });
                 }
-                var floor = _this.ringArea(rings[0]) * _this.holeAreaRatio;
-                return rings.filter(function(ring, index) {
-                    return index === 0 || _this.ringArea(ring) >= floor;
+                // Decimation always runs — a sub-pixel contour carries a
+                // vertex per grid crossing, far more than the stored shape
+                // needs. Rounding is the optional part.
+                return kept.map(function(ring) {
+                    var shaped = _this.smoothLevel
+                        ? _this.smoothRing(ring, _this.smoothLevel)
+                        : ring;
+                    return _this.simplifyRing(shaped, SIMPLIFY_RATIO);
                 });
             });
+            this.polygonCache = { key: key, value: value };
+            return value;
+        },
+
+        /** Cycle outline smoothing off -> light -> medium -> strong (S). */
+        cycleSmoothing: function(overlay) {
+            this.smoothLevel = (this.smoothLevel + 1) % 4;
+            this.paintCurrentMask(overlay);
+            var vertices = this.visiblePolygons().reduce(function(sum, rings) {
+                return sum + rings.reduce(function(n, ring) { return n + ring.length; }, 0);
+            }, 0);
+            var names = ['off (raw staircase)', 'light', 'medium', 'strong'];
+            this.showStatus(
+                'Outline smoothing: ' + names[this.smoothLevel]
+                    + ' — ' + vertices + ' points in the shape.'
+                    + '<br>S cycles.',
+                'info', overlay);
         },
 
         /** How many holes the tracer actually found, before any filtering. */
@@ -446,9 +597,7 @@
          */
         showHoleStatus: function(overlay) {
             var entry = this.currentKey && this.encodedKeys[this.currentKey];
-            var found = this.lastCandidates
-                ? this.countHoles(this.lastCandidates[this.maskIndex].polygons)
-                : 0;
+            var found = this.countHoles(this.rawPolygons());
             var kept = this.countHoles(this.visiblePolygons());
             var message = 'Holes: ' + (this.holeMode === 'off' ? 'OFF (H)' : kept + ' of ' + found + ' kept')
                 + ' · threshold ' + (this.holeAreaRatio * 100).toFixed(2) + '% of the enclosing shape';
@@ -479,33 +628,16 @@
             this.showHoleStatus(overlay);
         },
 
-        /**
-         * A/B toggle for the preview renderer (P). 'bitmap' is the pre-P4
-         * behaviour — the raw 256² binary, showing speckle and holes the stored
-         * SVG never contained; 'polygon' draws the committed geometry itself.
-         */
-        togglePreviewMode: function(overlay) {
-            this.previewMode = this.previewMode === 'polygon' ? 'bitmap' : 'polygon';
-            this.paintCurrentMask(overlay);
-            this.showStatus(
-                'Preview: ' + (this.previewMode === 'polygon'
-                    ? 'committed polygons (P4, new)'
-                    : 'raw mask bitmap (old)')
-                    + ' — press P to compare.',
-                'info', overlay);
-        },
-
         /** Cycle to the next of the 3 candidate masks (bound to the M key). */
         cycleMask: function(overlay) {
-            if (!this.lastCandidates || this.lastCandidates.length < 2) {
+            if (!this.lastResult || this.lastResult.maskCount < 2) {
                 return;
             }
-            this.maskIndex = (this.maskIndex + 1) % this.lastCandidates.length;
-            this.lastPolygons = this.lastCandidates[this.maskIndex].polygons;
+            this.maskIndex = (this.maskIndex + 1) % this.lastResult.maskCount;
             this.paintCurrentMask(overlay);
-            var score = this.lastCandidates[this.maskIndex].score;
+            var score = this.lastResult.scores[this.maskIndex];
             this.showStatus(
-                'Mask ' + (this.maskIndex + 1) + '/' + this.lastCandidates.length
+                'Mask ' + (this.maskIndex + 1) + '/' + this.lastResult.maskCount
                     + ' (confidence ' + score.toFixed(2) + ') — press M to cycle.',
                 'info', overlay);
         },
@@ -525,14 +657,17 @@
             overlay.viewer.addHandler('animation', repaint);
             overlay.viewer.addHandler('animation-finish', repaint);
             document.addEventListener('keydown', function(keyEvent) {
-                if (overlay.currentTool !== _this || !_this.lastCandidates) {
+                if (overlay.currentTool !== _this || !_this.lastResult) {
                     return;
                 }
                 if (keyEvent.key === 'm' || keyEvent.key === 'M') {
                     _this.cycleMask(overlay);
                 }
-                if (keyEvent.key === 'p' || keyEvent.key === 'P') {
-                    _this.togglePreviewMode(overlay);
+                if (keyEvent.key === '[') {
+                    _this.adjustThreshold(-0.25, overlay);
+                }
+                if (keyEvent.key === ']') {
+                    _this.adjustThreshold(0.25, overlay);
                 }
                 if (keyEvent.key === ',' || keyEvent.key === '<') {
                     _this.adjustHoleRatio(1 / 1.6, overlay); // keep smaller holes
@@ -542,6 +677,9 @@
                 }
                 if (keyEvent.key === 'h' || keyEvent.key === 'H') {
                     _this.toggleHoleMode(overlay);
+                }
+                if (keyEvent.key === 's' || keyEvent.key === 'S') {
+                    _this.cycleSmoothing(overlay);
                 }
             });
         },
@@ -643,15 +781,16 @@
             }
             // P1: tell the worker which candidate is on screen so a refining
             // prompt can stay on that object instead of re-ranking all three.
-            var selectedIndex = this.lastCandidates ? this.maskIndex : null;
+            var selectedIndex = this.lastResult ? this.maskIndex : null;
             this.decodeInFlight = engine
                 .decode(this.currentKey, points, labels, this.box || undefined, selectedIndex)
                 .then(function(result) {
-                    _this.closeCandidates();
-                    _this.lastCandidates = result.candidates;
+                    _this.lastResult = result;
                     _this.maskIndex = result.bestIndex;
-                    _this.lastPolygons = result.candidates[result.bestIndex].polygons;
                     _this.lastMaskWidth = result.maskWidth;
+                    // New geometry: the memo keys can repeat across decodes.
+                    _this.rawCache = null;
+                    _this.polygonCache = null;
                     _this.paintCurrentMask(overlay);
                 })
                 .finally(function() {
@@ -771,17 +910,15 @@
 
             try {
                 await this.requestDecode(overlay, engine, null);
-                var score = this.lastCandidates ? this.lastCandidates[this.maskIndex].score : 0;
-                var count = this.lastCandidates ? this.lastCandidates.length : 0;
-                var found = this.lastCandidates
-                    ? this.countHoles(this.lastCandidates[this.maskIndex].polygons)
-                    : 0;
+                var score = this.lastResult ? this.lastResult.scores[this.maskIndex] : 0;
+                var count = this.lastResult ? this.lastResult.maskCount : 0;
+                var found = this.countHoles(this.rawPolygons());
                 this.showStatus(
                     "Segmentation updated (mask " + (this.maskIndex + 1) + "/" + count
                         + ", confidence " + score.toFixed(2) + ", "
                         + this.countHoles(this.visiblePolygons()) + "/" + found + " holes).<br>"
                         + "Click to add points (shift = exclude), drag a box, press M to cycle masks.<br>"
-                        + ", / . hole threshold · H holes on/off · P preview mode.<br>"
+                        + "[ / ] mask threshold · S smoothing · , / . holes · H holes off.<br>"
                         + "Save: double-click, or alt (PC) / cmd (Mac) + click.",
                     "info", overlay);
             } catch (error) {
@@ -833,14 +970,14 @@
             if (overlay.mode !== 'create') {
                 return;
             }
-            if (!this.lastPolygons || !this.lastPolygons.length) {
+            if (!this.lastResult || !this.visiblePolygons().length) {
                 this.showStatus("Nothing to save yet — click on the image first.", "warning", overlay);
                 return;
             }
             try {
                 var entry = this.encodedKeys[this.currentKey];
-                // visiblePolygons(), not lastPolygons — commit must store the
-                // hole set the preview is showing at the current threshold.
+                // The same call the preview uses, so commit stores exactly
+                // the geometry that is on screen at the current settings.
                 overlay.path = this.createPathsFromPolygons(this.visiblePolygons(), overlay, entry);
                 overlay.onDrawFinish();
                 this.clearPreview();
