@@ -283,7 +283,7 @@
                                                                     OPTIONAL {
                                                                         {
                                                                           {
-                                                                            <[[this]]> owl:sameAs ?wikidata_url .
+                                                                            <[[this]]> (owl:sameAs|<https://linked.art/ns/terms/equivalent>) ?wikidata_url .
                                                                             FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
                                                                           }
                                                                           UNION {
@@ -955,7 +955,7 @@
         <semantic-query query='PREFIX wdt: <http://www.wikidata.org/prop/direct/>
                                 SELECT DISTINCT * WHERE {
                                 {
-                                    <[[this]]> owl:sameAs ?wikidata_url .
+                                    <[[this]]> (owl:sameAs|<https://linked.art/ns/terms/equivalent>) ?wikidata_url .
                                     FILTER(STRSTARTS(STR(?wikidata_url), "http://www.wikidata.org/entity/"))
                                 }
                                 UNION

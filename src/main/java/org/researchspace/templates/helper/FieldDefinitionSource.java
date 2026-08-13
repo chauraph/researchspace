@@ -104,6 +104,7 @@ public class FieldDefinitionSource {
 
         // add default field definition for dsannop
         aliasMap.put("owl_sameAs", vf.createIRI("http://www.w3.org/2002/07/owl#sameAs"));
+        aliasMap.put("la_equivalent", vf.createIRI("https://linked.art/ns/terms/equivalent"));
 
         return this.generateFieldDefinitions(aliasMap.isEmpty() ? null : aliasMap, options);
     }

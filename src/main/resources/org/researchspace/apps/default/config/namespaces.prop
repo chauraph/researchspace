@@ -33,6 +33,7 @@ crminf = http://www.cidoc-crm.org/extensions/crminf/
 
 fedsail=http://www.openrdf.org/config/sail/federation#
 crmtex = http://www.cidoc-crm.org/extensions/crmtex/
+la = https://linked.art/ns/terms/
 
 assets = http://www.researchspace.org/resource/assets/
 
