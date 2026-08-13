@@ -4,7 +4,7 @@
  * Drives the *built* worker asset (src/main/webapp/assets/no_auth/sam-worker.js —
  * run `npm run prod` or `npm run dev` first) over its postMessage protocol,
  * serving the ORT runtime and the models exactly at the URLs the worker uses
- * in production (/assets/no_auth/ort/, /assets/models/sam2/). No RS stack.
+ * in production (/assets/no_auth/ort/, /assets/no_auth/models/sam2/). No RS stack.
  *
  * Prints, never asserts: init/encode/decode timings, download progress event
  * count, polygon geometry vs a known ellipse in a NON-square viewport (the
@@ -30,7 +30,7 @@ test.use({
 
 const REPO = path.join(__dirname, '..', '..');
 const NO_AUTH = path.join(REPO, 'src', 'main', 'webapp', 'assets', 'no_auth');
-const MODELS = path.join(REPO, 'runtime-data', 'assets', 'models', 'sam2');
+const MODELS = path.join(REPO, 'runtime-data', 'assets', 'no_auth', 'models', 'sam2');
 
 const PAGE = `<!doctype html>
 <html><head><meta charset="utf-8"><title>sam2 worker probe</title></head><body>
@@ -167,12 +167,15 @@ test('sam2 built worker end-to-end', async ({ page }) => {
       return res.end(PAGE);
     }
     let file: string | undefined;
-    if (pathname.startsWith('/assets/no_auth/')) {
+    // Models first: they live under the no_auth prefix now (so Shiro's ANON
+    // chain covers them and the response carries no session cookie), but they
+    // come from the runtime layer, not from the webapp directory.
+    if (pathname.startsWith('/assets/no_auth/models/sam2/')) {
+      file = path.resolve(MODELS, pathname.slice('/assets/no_auth/models/sam2/'.length));
+      if (!file.startsWith(MODELS + path.sep)) file = undefined;
+    } else if (pathname.startsWith('/assets/no_auth/')) {
       file = path.resolve(NO_AUTH, pathname.slice('/assets/no_auth/'.length));
       if (!file.startsWith(NO_AUTH + path.sep)) file = undefined;
-    } else if (pathname.startsWith('/assets/models/sam2/')) {
-      file = path.resolve(MODELS, pathname.slice('/assets/models/sam2/'.length));
-      if (!file.startsWith(MODELS + path.sep)) file = undefined;
     }
     if (!file || !fs.existsSync(file)) {
       console.log(`  [404] ${pathname}`);

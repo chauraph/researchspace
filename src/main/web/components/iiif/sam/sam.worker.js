@@ -40,7 +40,11 @@
 importScripts('/assets/no_auth/ort/ort.all.min.js');
 
 var ORT_BASE = '/assets/no_auth/ort/';
-var MODEL_BASE = '/assets/models/sam2/'; // AssetFilter -> runtime storage, auth-gated
+// AssetFilter -> runtime storage, as before; the path sits under
+// /assets/no_auth/** so Shiro's existing ANON chain covers it. An
+// authenticated response carries Set-Cookie, and a response with a cookie is
+// private by definition — no shared cache will store it, whatever its size.
+var MODEL_BASE = '/assets/no_auth/models/sam2/';
 var OPFS_DIR = 'sam2-models';
 var INPUT_SIZE = 1024;
 var MEAN = [0.485, 0.456, 0.406];
@@ -213,7 +217,11 @@ async function fetchWithProgress(path, name) {
  * that share a filename cannot collide in the cache.
  */
 async function getModelFile(dir, name, expectedSha) {
-  var path = dir + name;
+  // The pin in the query makes the URL a promise about the bytes: re-pinning a
+  // revision changes the URL, so neither an edge nor a browser cache can serve
+  // the old body, and no purge is needed. Without it, a long TTL on a stable
+  // filename would eventually hand a client bytes that fail the sha256 check.
+  var path = dir + name + '?v=' + expectedSha.slice(0, 8);
   var cacheName = dir.replace('/', '-') + name;
   // OPFS content was verified when written; a partial write is the residual
   // risk, so verify cheaply by re-hashing only if sizes look wrong is not

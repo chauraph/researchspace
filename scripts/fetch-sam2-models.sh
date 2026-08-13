@@ -14,7 +14,7 @@
 # runtime layer next to this repo. On a deployment host pass that instance's
 # runtime assets directory, e.g.
 #
-#   scripts/fetch-sam2-models.sh /srv/researchspace/runtime-data/assets/models/sam2
+#   scripts/fetch-sam2-models.sh /srv/researchspace/runtime-data/assets/no_auth/models/sam2
 #
 # --model picks the set (default tiny, the only one the tool loads unless a
 # user opts into a bigger one). tiny lands in TARGET_DIR itself so that hosts
@@ -55,7 +55,7 @@ if [ "$#" -gt 1 ]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DEST="${1:-${SAM2_MODEL_DIR:-$REPO_ROOT/runtime-data/assets/models/sam2}}"
+DEST="${1:-${SAM2_MODEL_DIR:-$REPO_ROOT/runtime-data/assets/no_auth/models/sam2}}"
 
 # file  sha256  size-in-bytes, per set.
 # (tiny is the revision validated by probes/tests/sam2-webgpu.standalone.spec.ts;

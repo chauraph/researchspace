@@ -2,7 +2,7 @@
  * SAM2 client-side feasibility probe — phase 1 of docs/features/sam2-client-side-plan.md.
  *
  * Needs no ResearchSpace stack and no network: it serves onnxruntime-web and the
- * SAM2.1 hiera-tiny ONNX models (runtime-data/assets/models/sam2/, see the plan
+ * SAM2.1 hiera-tiny ONNX models (runtime-data/assets/no_auth/models/sam2/, see the plan
  * doc for the download script) from disk via route interception on a synthetic
  * https:// origin, so WebGPU gets a secure context inside Playwright's Chromium.
  *
@@ -32,7 +32,7 @@ test.use({
   },
 });
 const ORT_DIST = path.join(__dirname, '..', 'node_modules', 'onnxruntime-web', 'dist');
-const MODELS = path.join(__dirname, '..', '..', 'runtime-data', 'assets', 'models', 'sam2');
+const MODELS = path.join(__dirname, '..', '..', 'runtime-data', 'assets', 'no_auth', 'models', 'sam2');
 
 const MIME: Record<string, string> = {
   '.html': 'text/html',

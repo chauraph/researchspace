@@ -21,9 +21,9 @@ import { contours } from 'd3-contour';
  * shape). Worker scripts sit in the ordinary HTTP cache, so without this a
  * browser that ran an older build keeps its copy and the new op comes back as
  * "unknown op X" — a confusing error for a file the user never sees.
- * 2 = phase 10, setModel.
+ * 2 = phase 10, setModel. 3 = model path moved under /assets/no_auth/.
  */
-const WORKER_PROTOCOL = 2;
+const WORKER_PROTOCOL = 3;
 const WORKER_URL = `/assets/no_auth/sam-worker.js?v=${WORKER_PROTOCOL}`;
 
 /**
