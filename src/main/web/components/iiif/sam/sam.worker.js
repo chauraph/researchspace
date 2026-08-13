@@ -46,22 +46,72 @@ var INPUT_SIZE = 1024;
 var MEAN = [0.485, 0.456, 0.406];
 var STD = [0.229, 0.224, 0.225];
 
-// Must stay in lockstep with scripts/fetch-sam2-models.sh (same pinned revision).
-var MODELS = {
-  encoder: {
-    graph: 'vision_encoder_fp16.onnx',
-    data: 'vision_encoder_fp16.onnx_data',
-    sha256: {
-      'vision_encoder_fp16.onnx': '7773e79d589dada8e1e630cc7eb18b17b2c5b4faeb1eaab5ebf9df618ecbd50a',
-      'vision_encoder_fp16.onnx_data': 'a4dd3759e9b6a476d991fb3493787992e78777e51462695e1bede71ae258103e',
+// Must stay in lockstep with scripts/fetch-sam2-models.sh (same pinned
+// revisions). Every set is fp16 encoder + fp32 decoder: the fp16/webgpu decoder
+// is unusable (IoU 0 — see the plan doc), and that is a property of the export,
+// not of the model size.
+//
+// tiny's dir is '' so that hosts provisioned before the switcher existed keep
+// working untouched, and their OPFS cache entries stay valid. Larger sets live
+// in a subdirectory because the filenames are identical across sizes.
+var DEFAULT_MODEL = 'tiny';
+var MODEL_SETS = {
+  tiny: {
+    dir: '',
+    encoder: {
+      graph: 'vision_encoder_fp16.onnx',
+      data: 'vision_encoder_fp16.onnx_data',
+      sha256: {
+        'vision_encoder_fp16.onnx': '7773e79d589dada8e1e630cc7eb18b17b2c5b4faeb1eaab5ebf9df618ecbd50a',
+        'vision_encoder_fp16.onnx_data': 'a4dd3759e9b6a476d991fb3493787992e78777e51462695e1bede71ae258103e',
+      },
+    },
+    decoder: {
+      graph: 'prompt_encoder_mask_decoder.onnx',
+      data: 'prompt_encoder_mask_decoder.onnx_data',
+      sha256: {
+        'prompt_encoder_mask_decoder.onnx': '874414704c5d686db7d206a35f6e15d26563d50c8c4468fccc6739bd7e491dcf',
+        'prompt_encoder_mask_decoder.onnx_data': 'e9874d900dd4134ed60eab1e97910327c2419e0b2954485d8fd6e7f1a1470f47',
+      },
     },
   },
-  decoder: {
-    graph: 'prompt_encoder_mask_decoder.onnx',
-    data: 'prompt_encoder_mask_decoder.onnx_data',
-    sha256: {
-      'prompt_encoder_mask_decoder.onnx': '874414704c5d686db7d206a35f6e15d26563d50c8c4468fccc6739bd7e491dcf',
-      'prompt_encoder_mask_decoder.onnx_data': 'e9874d900dd4134ed60eab1e97910327c2419e0b2954485d8fd6e7f1a1470f47',
+  small: {
+    dir: 'small/',
+    encoder: {
+      graph: 'vision_encoder_fp16.onnx',
+      data: 'vision_encoder_fp16.onnx_data',
+      sha256: {
+        'vision_encoder_fp16.onnx': 'f236074c31a7ba9d1e00362e8c29cb95bf9dcdd61e208048493902878d9dc4db',
+        'vision_encoder_fp16.onnx_data': '557e013522bace72a6b8441f66747f1c4b2a237d1e3c86f84dba86b6d814ec1f',
+      },
+    },
+    decoder: {
+      graph: 'prompt_encoder_mask_decoder.onnx',
+      data: 'prompt_encoder_mask_decoder.onnx_data',
+      sha256: {
+        'prompt_encoder_mask_decoder.onnx': '079c59b261f723ff5c6a125e69b0170a957b21c58738c28d2b0394ecd0587d7f',
+        'prompt_encoder_mask_decoder.onnx_data': 'f9e59a584ab8ced21fa812c211bc01084204db1c9e92a5ef4fb3a49972b4e864',
+      },
+    },
+  },
+
+  base_plus: {
+    dir: 'base_plus/',
+    encoder: {
+      graph: 'vision_encoder_fp16.onnx',
+      data: 'vision_encoder_fp16.onnx_data',
+      sha256: {
+        'vision_encoder_fp16.onnx': 'cb9324a431bfb78c70e4ead1ffb80766e236b50decd55c236c8eada4f0afde96',
+        'vision_encoder_fp16.onnx_data': '78be422d399181ce3af00130409ebe32eb5b95825e7fe290440fbfaac70b99b4',
+      },
+    },
+    decoder: {
+      graph: 'prompt_encoder_mask_decoder.onnx',
+      data: 'prompt_encoder_mask_decoder.onnx_data',
+      sha256: {
+        'prompt_encoder_mask_decoder.onnx': 'f39eeec20243ed1c8f2cd013812e77813d937ddbc800fa4bc703761adc7e63cd',
+        'prompt_encoder_mask_decoder.onnx_data': '445cd3f72a218815db10e336f4f1c46a6eb2713a0160a85af5365134607f32a7',
+      },
     },
   },
 };
@@ -69,6 +119,7 @@ var MODELS = {
 ort.env.wasm.wasmPaths = ORT_BASE;
 
 var state = {
+  modelId: DEFAULT_MODEL,
   initPromise: null,
   encoderSession: null,
   decoderSession: null,
@@ -122,8 +173,8 @@ async function opfsWrite(name, buffer) {
   await writable.close();
 }
 
-async function fetchWithProgress(name) {
-  var response = await fetch(MODEL_BASE + name, { credentials: 'same-origin' });
+async function fetchWithProgress(path, name) {
+  var response = await fetch(MODEL_BASE + path, { credentials: 'same-origin' });
   if (!response.ok) {
     throw new Error(
       'Fetching ' + name + ' failed with HTTP ' + response.status +
@@ -156,32 +207,39 @@ async function fetchWithProgress(name) {
   return out.buffer;
 }
 
-/** Cached-or-fetched model file as ArrayBuffer, sha256-verified on the fetch path. */
-async function getModelFile(name, expectedSha) {
+/**
+ * Cached-or-fetched model file as ArrayBuffer, sha256-verified on the fetch
+ * path. `dir` selects the model set; the OPFS key carries it too, so two sets
+ * that share a filename cannot collide in the cache.
+ */
+async function getModelFile(dir, name, expectedSha) {
+  var path = dir + name;
+  var cacheName = dir.replace('/', '-') + name;
   // OPFS content was verified when written; a partial write is the residual
   // risk, so verify cheaply by re-hashing only if sizes look wrong is not
   // possible without a manifest — re-hash always: ~67MB hashes in well under
   // a second with SubtleCrypto and only happens once per session.
-  var cached = await opfsRead(name);
+  var cached = await opfsRead(cacheName);
   if (cached && (await sha256Hex(cached)) === expectedSha) {
     return cached;
   }
-  var fetched = await fetchWithProgress(name);
+  var fetched = await fetchWithProgress(path, name);
   var hash = await sha256Hex(fetched);
   if (hash !== expectedSha) {
-    throw new Error('sha256 mismatch for ' + name + ': got ' + hash + ' — truncated download or wrong model revision on the server');
+    throw new Error('sha256 mismatch for ' + path + ': got ' + hash + ' — truncated download or wrong model revision on the server');
   }
   try {
-    await opfsWrite(name, fetched);
+    await opfsWrite(cacheName, fetched);
   } catch (e) {
     // OPFS is an optimization; quota failure must not break segmentation.
   }
   return fetched;
 }
 
-async function createSession(model, executionProviders) {
-  var graphBuffer = await getModelFile(model.graph, model.sha256[model.graph]);
-  var dataBuffer = await getModelFile(model.data, model.sha256[model.data]);
+async function createSession(set, part, executionProviders) {
+  var model = set[part];
+  var graphBuffer = await getModelFile(set.dir, model.graph, model.sha256[model.graph]);
+  var dataBuffer = await getModelFile(set.dir, model.data, model.sha256[model.data]);
   return ort.InferenceSession.create(graphBuffer, {
     executionProviders: executionProviders,
     // .onnx_data sibling resolved by filename, provided as bytes:
@@ -191,11 +249,12 @@ async function createSession(model, executionProviders) {
 
 async function init() {
   if (!state.initPromise) {
+    var set = MODEL_SETS[state.modelId];
     state.initPromise = (async function () {
       var encoderError = null;
       if (self.navigator && navigator.gpu) {
         try {
-          state.encoderSession = await createSession(MODELS.encoder, ['webgpu']);
+          state.encoderSession = await createSession(set, 'encoder', ['webgpu']);
           state.webgpu = true;
         } catch (e) {
           encoderError = e;
@@ -203,17 +262,51 @@ async function init() {
       }
       if (!state.encoderSession) {
         try {
-          state.encoderSession = await createSession(MODELS.encoder, ['wasm']);
+          state.encoderSession = await createSession(set, 'encoder', ['wasm']);
         } catch (e) {
           throw encoderError || e;
         }
       }
       // Decoder pinned to WASM — see header comment.
-      state.decoderSession = await createSession(MODELS.decoder, ['wasm']);
+      state.decoderSession = await createSession(set, 'decoder', ['wasm']);
     })();
   }
   await state.initPromise;
-  return { webgpu: state.webgpu };
+  return { webgpu: state.webgpu, model: state.modelId };
+}
+
+/**
+ * Switch model sets. Embeddings are tensors produced BY the old encoder and
+ * meaningless to the new one, so they are dropped rather than kept: a stale
+ * embedding decoded against a different decoder is silent nonsense, not an
+ * error. The caller must re-encode.
+ */
+async function setModel(id) {
+  if (!MODEL_SETS[id]) {
+    throw new Error('Unknown model "' + id + '" — expected one of ' + Object.keys(MODEL_SETS).join(', '));
+  }
+  if (id === state.modelId && state.initPromise) {
+    return { webgpu: state.webgpu, model: state.modelId, changed: false };
+  }
+  // Wait for any in-flight init before tearing its sessions down.
+  if (state.initPromise) {
+    try { await state.initPromise; } catch (e) { /* replacing it anyway */ }
+  }
+  [state.encoderSession, state.decoderSession].forEach(function (session) {
+    if (session && session.release) {
+      try { session.release(); } catch (e) { /* best effort */ }
+    }
+  });
+  state.encoderSession = null;
+  state.decoderSession = null;
+  state.initPromise = null;
+  state.webgpu = false;
+  state.embeddings.clear();
+  state.lastBinaries = null;
+  state.lastBinariesKey = null;
+  state.modelId = id;
+  var ready = await init();
+  return { webgpu: ready.webgpu, model: state.modelId, changed: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +516,8 @@ self.onmessage = function (event) {
           return encode(msg.key, msg.bitmap);
         case 'decode':
           return decode(msg.key, msg.points, msg.labels, msg.box, msg.selectedIndex);
+        case 'setModel':
+          return setModel(msg.model);
         case 'release':
           release(msg.key);
           return {};
@@ -430,7 +525,10 @@ self.onmessage = function (event) {
           Array.from(state.embeddings.keys()).forEach(release);
           return {};
         default:
-          throw new Error('unknown op ' + msg.op);
+          // Almost always a cached worker script from an older build rather
+          // than a real bug — say so, because the file is invisible to the user.
+          throw new Error('unknown op ' + msg.op
+            + ' — this worker build predates it; reload the page to pick up the current one');
       }
     })
     .then(function (value) {

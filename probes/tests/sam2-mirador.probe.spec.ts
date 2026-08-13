@@ -8,7 +8,7 @@
  * for the mask decode, Accept, count samlocal_ paths, save.
  *
  * Phase 7 (hover/lock/accept) moved every readout from the status pill into
- * .rs-sam-panel, so that is what this reads now. It also drives the parts of
+ * .rs-sam-bar, so that is what this reads now. It also drives the parts of
  * that flow which can silently regress: the lock (hovering after the first
  * click must NOT re-segment), the refusal of a lone exclude point, deleting a
  * placed point by clicking it, and Accept as the only commit path.
@@ -173,13 +173,13 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   }
   await page.waitForTimeout(500);
 
-  const pill = page.locator('.mirador-sam-status-overlay');
-  // hideStatus() fades the pill out, leaving the element in the DOM with its
-  // last message, so innerText alone reports messages that are not on screen.
+  const pill = page.locator('.rs-sam-msg');
+  // hideStatus() hides the message, leaving the element in the DOM with its
+  // last text, so innerText alone reports messages that are not on screen.
   // Visibility is what the user sees, so that is what gets reported.
   const pillState = () =>
     page.evaluate(() => {
-      const el = document.querySelector('.mirador-sam-status-overlay') as HTMLElement | null;
+      const el = document.querySelector('.rs-sam-msg') as HTMLElement | null;
       if (!el) return { present: false, visible: false, text: '(no pill)' };
       const style = getComputedStyle(el);
       const visible = style.display !== 'none' && style.visibility !== 'hidden'
@@ -234,12 +234,14 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   // live one — the last that is not hidden — and report how many there are.
   const panelRead = () =>
     page.evaluate(() => {
-      const all = Array.from(document.querySelectorAll('.rs-sam-panel')) as HTMLElement[];
+      const all = Array.from(document.querySelectorAll('.rs-sam-bar')) as HTMLElement[];
       const visible = all.filter((el) => !el.hidden);
       const p = visible[visible.length - 1] ?? all[all.length - 1] ?? null;
       if (!p) return null;
+      // textContent, not innerText: Edge/Holes/Outline now live in a popover
+      // that is [hidden] until opened, and innerText of a hidden subtree is ''.
       const text = (key: string) =>
-        (p.querySelector(`[data-el="${key}"]`) as HTMLElement | null)?.innerText.trim() ?? '';
+        (p.querySelector(`[data-el="${key}"]`) as HTMLElement | null)?.textContent?.trim() ?? '';
       const disabled = (key: string) =>
         (p.querySelector(`[data-el="${key}"]`) as HTMLButtonElement | null)?.disabled ?? null;
       return {
@@ -251,7 +253,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
         holes: text('holeVal'),
         pos: text('pos'),
         neg: text('neg'),
-        polHint: text('polHint'),
+        theme: p.classList.contains('rs-dark') ? 'dark' : 'light',
         acceptDisabled: disabled('accept'),
         undoDisabled: disabled('undo'),
       };
@@ -262,7 +264,13 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     return p;
   };
   const clickPanel = (key: string) =>
-    page.locator(`.rs-sam-panel:not([hidden]) [data-el="${key}"]`).last().click();
+    page.locator(`.rs-sam-bar:not([hidden]) [data-el="${key}"]`).last().click();
+  // Edge / Holes / Outline / Theme sit behind the sliders button now.
+  const openRefine = async () => {
+    const open = await page.locator('.rs-sam-bar:not([hidden]) [data-el="refine"]').last()
+      .evaluate((el: HTMLElement) => !el.hidden).catch(() => false);
+    if (!open) await clickPanel('tune');
+  };
 
   // --------------------------------------------------------------- phase 4:
   // hover preview, before any click. The first mousemove lazily prepares the
@@ -294,6 +302,97 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   }
   await panelLine('hover');
   console.log(`  [hover] preview painted: ${painted}`);
+
+  // The refine popover is new in phase 9: everything below Include/Exclude and
+  // the mask stepper lives behind the sliders button. Open it once and report
+  // whether it actually appears with the controls the tool expects.
+  await openRefine();
+  const refineState = await page.evaluate(() => {
+    const el = document.querySelector('.rs-sam-bar:not([hidden]) [data-el="refine"]') as HTMLElement | null;
+    if (!el) return { present: false };
+    const has = (key: string) => !!el.querySelector(`[data-el="${key}"]`);
+    return {
+      present: true,
+      open: !el.hidden,
+      width: Math.round(el.getBoundingClientRect().width),
+      controls: ['thr', 'holes', 'holeToggle', 'smooth', 'theme', 'vert'].filter(has),
+    };
+  });
+  console.log(`  [refine] ${JSON.stringify(refineState)}`);
+
+  // Footprint is the point of the redesign, so measure it rather than trust it.
+  const barBox = await page.evaluate(() => {
+    const el = document.querySelector('.rs-sam-bar:not([hidden])') as HTMLElement | null;
+    const osd = document.querySelector('.mirador-osd') as HTMLElement | null;
+    if (!el || !osd) return null;
+    const b = el.getBoundingClientRect(), v = osd.getBoundingClientRect();
+    return { w: Math.round(b.width), h: Math.round(b.height),
+      pctOfViewer: Math.round((b.width * b.height) / (v.width * v.height) * 100) };
+  });
+  console.log(`  [bar] footprint: ${JSON.stringify(barBox)}`);
+
+  // The theme switch is the one control that must change the bar's own paint,
+  // so read the computed background rather than the class.
+  const barPaint = () =>
+    page.evaluate(() => {
+      const el = document.querySelector('.rs-sam-bar:not([hidden])') as HTMLElement | null;
+      if (!el) return null;
+      return { dark: el.classList.contains('rs-dark'), bg: getComputedStyle(el).backgroundColor };
+    });
+  console.log(`  [theme] light: ${JSON.stringify(await barPaint())}`);
+  await page.locator('.rs-sam-bar:not([hidden]) [data-el="theme"] [data-th="dark"]').last().click();
+  console.log(`  [theme] dark:  ${JSON.stringify(await barPaint())}`);
+  console.log(`  [theme] persisted: ${await page.evaluate(() => localStorage.getItem('rs-sam-bar-theme'))}`);
+  await page.locator('.rs-sam-bar:not([hidden]) [data-el="theme"] [data-th="light"]').last().click();
+  console.log(`  [theme] back to light: ${JSON.stringify(await barPaint())}`);
+
+  // Model switcher (phase 10). Switching drops every embedding, so this also
+  // exercises the re-encode path; switching back leaves the rest of the run on
+  // tiny, which is what every later section assumes.
+  const modelRead = () =>
+    page.evaluate(() => {
+      const sel = document.querySelector('.rs-sam-bar:not([hidden]) [data-el="model"]') as HTMLSelectElement | null;
+      const row = document.querySelector('.rs-sam-bar:not([hidden]) [data-el="modelRow"]') as HTMLElement | null;
+      const hint = document.querySelector('.rs-sam-bar:not([hidden]) [data-el="modelHint"]') as HTMLElement | null;
+      if (!sel) return { present: false };
+      return {
+        present: true,
+        visible: !!row && !row.hidden,
+        options: Array.from(sel.options).map((o) => o.value),
+        value: sel.value,
+        hint: (hint?.textContent ?? '').trim(),
+      };
+    });
+  console.log(`  [model] ${JSON.stringify(await modelRead())}`);
+  const beforeSwitch = await previewStats();
+  const modelSelect = page.locator('.rs-sam-bar:not([hidden]) [data-el="model"]').last();
+  const options = (await modelRead()).options ?? [];
+  const waitForModel = async (label: string, seconds: number) => {
+    for (let i = 0; i < seconds; i++) {
+      await page.waitForTimeout(1_000);
+      if (await modelSelect.evaluate((el: HTMLSelectElement) => !el.disabled)) return true;
+      if (i % 15 === 0) console.log(`  [model] ${label} t+${i}s pill: ${(await pillText()).slice(0, 80)}`);
+    }
+    return false;
+  };
+  for (const id of options.filter((o) => o !== 'tiny')) {
+    await modelSelect.selectOption(id);
+    const loaded = await waitForModel(id, 180);
+    let painted = false;
+    for (let i = 0; i < 40 && loaded; i++) {
+      await page.waitForTimeout(1_000);
+      await page.mouse.move(A.x + (i % 2), A.y);
+      if ((await previewStats()).nonzero > 0) { painted = true; break; }
+    }
+    const stats = await previewStats();
+    console.log(`  [model] ${id}: loaded=${loaded} paints=${painted} px=${stats.nonzero} `
+      + `hint="${(await modelRead()).hint}"`);
+  }
+  await modelSelect.selectOption('tiny');
+  await waitForModel('tiny', 120);
+  console.log(`  [model] back to tiny: ${JSON.stringify(await modelRead())} (was ${beforeSwitch.nonzero} px)`);
+
+  await clickPanel('tune'); // leave it closed for the rest of the run
 
   await page.mouse.move(A.x, A.y);
   await page.waitForTimeout(2_000);

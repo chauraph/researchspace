@@ -16,7 +16,15 @@
 
 import { contours } from 'd3-contour';
 
-const WORKER_URL = '/assets/no_auth/sam-worker.js';
+/**
+ * Bump when the worker's message protocol changes (a new op, a changed reply
+ * shape). Worker scripts sit in the ordinary HTTP cache, so without this a
+ * browser that ran an older build keeps its copy and the new op comes back as
+ * "unknown op X" — a confusing error for a file the user never sees.
+ * 2 = phase 10, setModel.
+ */
+const WORKER_PROTOCOL = 2;
+const WORKER_URL = `/assets/no_auth/sam-worker.js?v=${WORKER_PROTOCOL}`;
 
 /**
  * Largest-first cap on the parts of one mask, matching what the annotation
@@ -62,6 +70,22 @@ export interface SamModelDownloadProgress {
   total: number;
 }
 
+/**
+ * The model sets the worker can load, in ascending cost. Labels and download
+ * sizes live here rather than in the worker because only the UI needs them —
+ * the worker needs the sha256 manifest, which the UI must never care about.
+ *
+ * Every set is an fp16 encoder with an fp32 decoder; the fp16/WebGPU decoder is
+ * unusable at any size. Sizes are the encoder weights, which dominate.
+ */
+export const SAM_MODELS = [
+  { id: 'tiny', label: 'Tiny', hint: 'fastest', mb: 67 },
+  { id: 'small', label: 'Small', hint: 'more precise', mb: 81 },
+  { id: 'base_plus', label: 'Base+', hint: 'most precise', mb: 153 },
+] as const;
+
+export type SamModelId = (typeof SAM_MODELS)[number]['id'];
+
 interface PendingRequest {
   resolve: (value: any) => void;
   reject: (error: Error) => void;
@@ -72,6 +96,7 @@ export class SamClientEngine {
   private nextId = 1;
   private pending = new Map<number, PendingRequest>();
   private initResult: Promise<{ webgpu: boolean }> | undefined;
+  private model: SamModelId = 'tiny';
 
   /** Fires during the one-time model download (~88MB); use for progress UI. */
   onDownloadProgress: ((progress: SamModelDownloadProgress) => void) | undefined;
@@ -92,6 +117,27 @@ export class SamClientEngine {
     return Promise.resolve(gpu.requestAdapter())
       .then((adapter: unknown) => !!adapter)
       .catch(() => false);
+  }
+
+  /** The choices, for a UI that cannot import from TypeScript ($.SamLocal). */
+  models(): ReadonlyArray<{ id: string; label: string; hint: string; mb: number }> {
+    return SAM_MODELS;
+  }
+
+  /** Which model set is loaded (or will be, on the next encode). */
+  currentModel(): SamModelId {
+    return this.model;
+  }
+
+  /**
+   * Load a different model set. Every cached embedding is dropped worker-side —
+   * they were produced by the old encoder and mean nothing to the new decoder —
+   * so the caller must re-encode. Resolves once the new sessions are ready,
+   * which on a first switch includes the download.
+   */
+  setModel(model: SamModelId): Promise<{ webgpu: boolean; model: string; changed: boolean }> {
+    this.model = model;
+    return this.init().then(() => this.request({ op: 'setModel', model }));
   }
 
   /**
