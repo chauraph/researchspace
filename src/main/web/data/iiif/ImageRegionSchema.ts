@@ -2,6 +2,9 @@
  * ResearchSpace
  * Copyright (C) 2022-2024, © Kartography Community Interest Company
  * Copyright (C) 2015-2020, © Trustees of the British Museum
+ * Copyright (C) 2025, Tsz Kin Chau, eM+ / EPFL
+ *
+ * Modified in 2025 by Tsz Kin Chau.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
