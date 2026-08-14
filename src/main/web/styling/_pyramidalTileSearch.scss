@@ -1,0 +1,645 @@
+/**
+ * ResearchSpace
+ * Copyright (C) 2026, Tsz Kin Chau, eM+ / EPFL
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Styles for <dsanno-pyramidal-tile-search>. Every value comes from _variables.scss so the
+ * component reads as part of the platform rather than as a guest.
+ */
+
+.pts {
+  background: $color-white;
+  border: 1px solid $color-border;
+
+  &__toolbar {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  &__queryline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid $color-border-darker;
+    border-radius: $input-border-radius-small;
+    padding: 6px 11px;
+    color: $color-dark;
+    background: $color-white;
+  }
+
+  &__ctrls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 11px 20px;
+    align-items: flex-end;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+
+    > label {
+      font-size: $font-size-small;
+      color: $color-secondary-light;
+      margin: 0;
+      font-weight: normal;
+    }
+  }
+
+  &__seg {
+    display: inline-flex;
+    border: 1px solid $color-border-darker;
+    border-radius: $input-border-radius-small;
+    overflow: hidden;
+
+    button {
+      background: $color-white;
+      border: 0;
+      padding: 5px 14px;
+      font-size: $font-size-small;
+      color: $color-secondary;
+
+      + button {
+        border-left: 1px solid $color-border-darker;
+      }
+
+      &[aria-pressed='true'] {
+        background: $color-action;
+        color: $color-white;
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__sel {
+    background: $color-white;
+    color: $color-dark;
+    border: 1px solid $color-border-darker;
+    border-radius: $input-border-radius-small;
+    padding: 5px 9px;
+    font-size: $font-size-small;
+  }
+
+  &__num {
+    width: 70px;
+  }
+
+  &__chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  &__chip {
+    background: $color-white;
+    border: 1px solid $color-border-darker;
+    border-radius: $input-border-radius-small;
+    padding: 4px 10px;
+    font-size: 13px;
+    color: $color-secondary;
+    font-family: monospace;
+
+    &[aria-pressed='true'] {
+      background: $color-action;
+      border-color: $color-action;
+      color: $color-white;
+      font-weight: 600;
+    }
+  }
+
+  &__check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: $font-size-small;
+    color: $color-secondary;
+    font-weight: normal;
+    margin: 0;
+  }
+
+  &__warning {
+    padding: 9px 16px;
+    background: $color-warning-light;
+    color: $color-warning-text;
+    border-top: 1px solid $color-warning;
+    border-bottom: 1px solid $color-warning;
+    font-size: $font-size-small;
+  }
+
+  &__state {
+    padding: 34px 16px;
+    text-align: center;
+    color: $color-secondary-light;
+  }
+
+  &__panelhead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    border-top: 1px solid $color-border;
+    border-bottom: 1px solid $color-border;
+    background: $color-off-white;
+
+    h3 {
+      margin: 0;
+      font-size: $font-size-base;
+      font-weight: 600;
+      flex: 1;
+    }
+  }
+
+  &__filter {
+    font-size: 13px;
+    color: $color-secondary-light;
+  }
+
+  &__count {
+    background: $color-secondary;
+    color: $color-white;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 1px 9px;
+  }
+
+  &__pipe {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+    padding: 9px 16px;
+    border-bottom: 1px solid $color-border;
+    font-size: $font-size-small;
+    color: $color-secondary;
+
+    b {
+      color: $color-dark;
+      font-family: monospace;
+    }
+  }
+
+  &__arrow {
+    color: $color-base;
+  }
+
+  &__div {
+    width: 1px;
+    height: 14px;
+    background: $color-border;
+  }
+
+  // ------------------------------------------------------------------ locator
+
+  &__locator {
+    padding: 12px 16px;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__lochead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+
+    h4 {
+      margin: 0;
+      font-size: $font-size-small;
+      font-weight: 600;
+      color: $color-secondary;
+    }
+
+    span {
+      font-size: 13px;
+      color: $color-secondary-light;
+    }
+  }
+
+  &__strip {
+    position: relative;
+    border: 1px solid $color-border-darker;
+    line-height: 0;
+    background: $color-lighter;
+
+    img {
+      width: 100%;
+      display: block;
+      filter: saturate(0.45) contrast(0.88);
+    }
+  }
+
+  &__mark {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    margin-left: -8px;
+    background: transparent;
+    border: 0;
+    padding: 0;
+
+    // The line scheme draws its own full height rule. The other schemes draw explicit
+    // children instead, and only show a rule on hover.
+    &--line::after,
+    &:hover::after,
+    &[data-on='1']::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      margin-left: -1px;
+      background: $color-danger;
+      opacity: 0.6;
+    }
+
+    &:hover::after {
+      opacity: 1;
+      width: 4px;
+      margin-left: -2px;
+    }
+
+    &:hover .pts__markn {
+      display: block;
+    }
+  }
+
+  &__markn {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 2px;
+    transform: translateX(-50%);
+    background: $color-danger;
+    color: $color-white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 4px;
+    font-family: monospace;
+  }
+
+  &__mrect {
+    position: absolute;
+    border: 1.5px solid $color-danger;
+    background: rgba(244, 54, 78, 0.2);
+    pointer-events: none;
+  }
+
+  &__mdot {
+    position: absolute;
+    border-radius: 50%;
+    background: $color-danger;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  &__mfaint {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    margin-left: -0.5px;
+    background: $color-danger;
+    opacity: 0.28;
+    pointer-events: none;
+  }
+
+  // -------------------------------------------------------------------- grid
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: 8px;
+    padding: 16px;
+  }
+
+  &__card {
+    border: 1px solid $color-border;
+    background: $color-white;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    &:hover {
+      border-color: $color-action-border;
+    }
+
+    &[data-open='true'] {
+      grid-column: 1 / -1;
+      border-color: $color-action;
+      display: grid;
+      grid-template-columns: 196px 1fr;
+      grid-template-rows: auto auto;
+
+      .pts__thumb {
+        grid-row: 1 / 3;
+      }
+
+      .pts__cap {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .pts__detail {
+        grid-column: 2;
+        grid-row: 2;
+        border-left: 1px solid $color-border;
+        border-top: 0;
+      }
+    }
+  }
+
+  &__thumb {
+    position: relative;
+    aspect-ratio: 1;
+    background: $color-lighter;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &__lvl {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: rgba(36, 36, 38, 0.76);
+    color: $color-white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 5px;
+    font-family: monospace;
+  }
+
+  &__star {
+    position: absolute;
+    right: 0;
+    top: 0;
+    background: $color-action;
+    color: $color-white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 4px;
+  }
+
+  &__cap {
+    padding: 7px 10px 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  &__captype {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    color: $color-secondary-light;
+  }
+
+  &__sim {
+    color: $color-dark;
+    font-weight: 600;
+    font-family: monospace;
+  }
+
+  &__caplabel {
+    font-size: 12.5px;
+    color: $color-dark;
+    text-decoration: underline;
+    background: none;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__simbar {
+    display: block;
+    height: 2px;
+    background: $color-light;
+    margin-top: 3px;
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 2px;
+      background: $color-action;
+    }
+  }
+
+  &__pill {
+    align-self: flex-start;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    background: $color-warning-light;
+    color: $color-warning-text;
+    border: 1px solid $color-warning;
+    border-radius: $input-border-radius-small;
+    padding: 0 6px;
+  }
+
+  &__override {
+    font-size: 12px;
+    color: $color-action;
+  }
+
+  // ------------------------------------------------------------------ detail
+
+  &__detail {
+    padding: 11px 14px 13px;
+    border-top: 1px solid $color-border;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 28px;
+  }
+
+  &__k {
+    display: block;
+    font-size: 13px;
+    color: $color-secondary-light;
+  }
+
+  &__v {
+    color: $color-dark;
+  }
+
+  &__bboxrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 10px;
+  }
+
+  &__bbox {
+    background: $color-action--op10;
+    color: $color-action;
+    border: 1px solid $color-action-border;
+    border-radius: $input-border-radius-small;
+    padding: 1px 7px;
+  }
+
+  &__hint {
+    font-size: 13px;
+    color: $color-secondary-light;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+
+  // --------------------------------------------------------- merge inspector
+
+  &__merge {
+    border: 1px solid $color-border;
+    background: $color-off-white;
+    padding: 10px 12px;
+  }
+
+  &__mergehead {
+    font-size: $font-size-small;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  // Members can span a very wide size range, so display size is uniform and the real scale
+  // is carried by the figure and the bar underneath.
+  &__strip2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+
+  &__mem {
+    border: 1px solid $color-border;
+    background: $color-white;
+
+    &--on {
+      border-color: $color-action;
+    }
+  }
+
+  &__memimg {
+    position: relative;
+    aspect-ratio: 1;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &__memmeta {
+    padding: 5px 6px 6px;
+    font-size: 11.5px;
+    overflow: hidden;
+  }
+
+  &__mempx {
+    display: block;
+    font-family: monospace;
+    color: $color-dark;
+  }
+
+  &__memsim {
+    display: block;
+    font-family: monospace;
+    color: $color-secondary-light;
+  }
+
+  &__memscale {
+    display: block;
+    height: 3px;
+    background: $color-light;
+    margin: 5px 0 4px;
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 3px;
+      background: $color-secondary-light;
+    }
+  }
+
+  &__pick {
+    display: block;
+    width: 100%;
+    font-size: 11.5px;
+    line-height: 1.5;
+    padding: 1px 0;
+    text-align: center;
+  }
+
+  &__done {
+    background: $color-success-light;
+    border: 1px solid $color-success;
+    color: $color-success-text;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 700px) {
+  .pts__card[data-open='true'] {
+    grid-template-columns: 1fr;
+
+    .pts__thumb {
+      grid-row: 1;
+    }
+
+    .pts__cap {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .pts__detail {
+      grid-column: 1;
+      grid-row: 3;
+      border-left: 0;
+      border-top: 1px solid $color-border;
+    }
+  }
+}

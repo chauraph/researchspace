@@ -243,6 +243,7 @@
   "bs-progress-bar": "react-bootstrap/es/ProgressBar.js",
 
   "rs-iiif-image-thumbnail": "platform/components/iiif/ImageThumbnail.ts",
+  "dsanno-pyramidal-tile-search": "platform/components/dsanno/PyramidalTileSearch.tsx",
   "rs-image-upload": "platform/widgets/image-upload-widget.ts",
 
   "rs-iiif-overlay": "platform/components/iiif/OverlayComparison.ts",
