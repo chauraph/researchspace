@@ -1,0 +1,48 @@
+{
+  "@context": "http://www.shared-canvas.org/ns/context.json",
+  "@id": "http://www.example.org/iiif/book1/manifest.json",
+  "@type": "sc:Manifest",
+  "label": "Book 1",
+  "sequences": [
+    {
+      "@id": "http://www.example.org/iiif/book1/sequence/normal.json",
+      "@type": "sc:Sequence",
+      "label": "Current Page Order",
+      "canvases": [
+        {
+          "@id": "http://www.example.org/iiif/book1/canvas/p1.json",
+          "@type": "sc:Canvas",
+          "label": "p. 1",
+          "height": 1000,
+          "width": 750,
+          "images": [
+            {
+              "@id": "http://www.example.org/iiif/book1/annotation/p0001-image.json",
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "http://www.example.org/iiif/book1/res/page1.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "service": {
+                  "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede",
+                  "profile": "http://iiif.io/api/image/2/level2.json",
+                  "scale_factors": [
+                    1,
+                    2,
+                    4
+                  ],
+                  "tile_width": 1024,
+                  "tile_height": 1024
+                },
+                "height": 2000,
+                "width": 1500
+              },
+              "on": "http://www.example.org/iiif/book1/canvas/p1.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "https://iiif.bodleian.ox.ac.uk/iiif/manifest/e32a277e-91e2-4a6d-8ba6-cc4bad230410.json",
+  "@type": "sc:Manifest",
+  "label": "Bodleian Library MS. Ind. Inst. Misc. 22",
+  "description": "[Kalighat paintings - separate sheets]",
+  "metadata": [
+    {
+      "label": "Homepage",
+      "value": "<span><a href=\"https://digital.bodleian.ox.ac.uk/objects/e32a277e-91e2-4a6d-8ba6-cc4bad230410/\">View on Digital Bodleian</a></span>"
+    },
+    {
+      "label": "Title",
+      "value": "[Kalighat paintings - separate sheets]"
+    },
+    {
+      "label": "Shelfmark",
+      "value": "Bodleian Library MS. Ind. Inst. Misc. 22"
+    },
+    {
+      "label": "Date Statement",
+      "value": "1875"
+    },
+    {
+      "label": "Description",
+      "value": "Digitized Kalighat paintings from 19th century Calcutta, created as inexpensive souvenirs for Hindu pilgrims visiting the famous temple of Kali"
+    },
+    {
+      "label": "Description",
+      "value": "These paintings were acquired by Sir Monier Monier-Williams for the Indian Institute Library and Museum at Oxford as a result of his third fund-raising trip to India in the winter of 1883-1884. During this trip, he secured the help of various regional authorities in obtaining local art and craft works and sending them to Oxford. The Kalighat paintings are listed in Babu T.N. Mukherji's \"List of Articles collected for the Oxford Institute under the instruction of T.W. Holderness Esq. and Dr. George Watt,\" Calcutta, 1884, which is bound in the \"Original Lists\" MS. volume held in the Department of Eastern Art, Ashmolean Museum.The paintings are homogenous in style, resembling that of collections in documented ownership by about 1875: the India Office Library from the 1871 exhibition, the museums in Prague and St. Petersburg, the Herwitz batch A (1870) published by Jyotindra Jain and those acquired by the Victoria and Albert Museum in 1887. Some of the paintings originally had labels stuck to them, which indicated they had cost 1 anna each."
+    },
+    {
+      "label": "Extent",
+      "value": "445 x 280 mm"
+    },
+    {
+      "label": "Extent",
+      "value": "Waterbased colour on machine made paper over pencil, mounted on paper"
+    },
+    {
+      "label": "Collection",
+      "value": "South Asian Manuscripts"
+    },
+    {
+      "label": "Subject",
+      "value": "Kalighat (Calcutta, India)--Social life and customs--Pictorial works--19th century"
+    },
+    {
+      "label": "Other Identifier",
+      "value": "MS. Ind. Inst. Misc. 22"
+    },
+    {
+      "label": "Record Created",
+      "value": "2015-07-10T00:00:00+00:00"
+    },
+    {
+      "label": "Holding Institution",
+      "value": "Bodleian Libraries, University of Oxford"
+    }
+  ],
+  "navDate": "1875-01-01T00:00:00Z",
+  "rendering": {
+    "@id": "https://digital.bodleian.ox.ac.uk/objects/e32a277e-91e2-4a6d-8ba6-cc4bad230410/",
+    "label": "View on Digital Bodleian",
+    "format": "text/html"
+  },
+  "attribution": "Access to this manuscript is restricted - please email for details",
+  "logo": {
+    "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/f27e28db-0b08-4f16-9bdf-3565f591fb71/full/256,/0/default.jpg",
+    "@type": "dctypes:Image",
+    "format": "image/jpeg",
+    "service": {
+      "@context": "http://iiif.io/api/image/2/context.json",
+      "profile": "http://iiif.io/api/image/2/level1.json",
+      "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/f27e28db-0b08-4f16-9bdf-3565f591fb71"
+    }
+  },
+  "thumbnail": {
+    "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede/full/256,/0/default.jpg",
+    "@type": "dctypes:Image",
+    "format": "image/jpeg",
+    "service": {
+      "@context": "http://iiif.io/api/image/2/context.json",
+      "profile": "http://iiif.io/api/image/2/level1.json",
+      "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede"
+    }
+  },
+  "viewingHint": "paged",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://iiif.bodleian.ox.ac.uk/iiif/canvas/e58b8c60-005c-4c41-a22f-07d49cb25ede.json",
+          "@type": "sc:Canvas",
+          "label": "[f. 1 Krishna and his lover Radha seated face-to-face]",
+          "width": 5392,
+          "height": 8158,
+          "images": [
+            {
+              "@id": "https://iiif.bodleian.ox.ac.uk/iiif/annotation/e58b8c60-005c-4c41-a22f-07d49cb25ede.json",
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "on": "https://iiif.bodleian.ox.ac.uk/iiif/canvas/e58b8c60-005c-4c41-a22f-07d49cb25ede.json",
+              "resource": {
+                "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 5392,
+                "height": 8158,
+                "service": {
+                  "@context": "http://library.stanford.edu/iiif/image-api/1.1/context.json",
+                  "@id": "http://www.example.org/images/book1-page1",
+                  "profile": "http://library.stanford.edu/iiif/image-api/1.1/compliance.html#level1"
+                }
+              }
+            }
+          ],
+          "otherContent": []
+        }
+      ]
+    }
+  ]
+}

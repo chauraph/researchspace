@@ -1,0 +1,84 @@
+{
+ "@context": "http://iiif.io/api/presentation/2/context.json",
+ "@id": "https://iiif.bodleian.ox.ac.uk/iiif/manifest/e32a277e-91e2-4a6d-8ba6-cc4bad230410.json",
+ "@type": "sc:Manifest",
+ "label": "Bodleian Library MS. Ind. Inst. Misc. 22",
+ "description": "[Kalighat paintings - separate sheets]",
+ "navDate": "1875-01-01T00:00:00Z",
+ "thumbnail": {
+  "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede/full/256,/0/default.jpg",
+  "@type": "dctypes:Image",
+  "format": "image/jpeg",
+  "service": {
+   "@context": "http://iiif.io/api/image/2/context.json",
+   "profile": "http://iiif.io/api/image/2/level1.json",
+   "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede"
+  }
+ },
+ "viewingHint": "paged",
+ "sequences": [
+  {
+   "@id": "https://iiif.bodleian.ox.ac.uk/iiif/sequence/e32a277e-91e2-4a6d-8ba6-cc4bad230410_default.json",
+   "@type": "sc:Sequence",
+   "label": "Default",
+   "canvases": [
+    {
+     "@id": "https://iiif.bodleian.ox.ac.uk/iiif/canvas/e58b8c60-005c-4c41-a22f-07d49cb25ede.json",
+     "@type": "sc:Canvas",
+     "label": "[f. 1 Krishna and his lover Radha seated face-to-face]",
+     "width": 5392,
+     "height": 8158,
+     "images": [
+      {
+       "@id": "https://iiif.bodleian.ox.ac.uk/iiif/annotation/e58b8c60-005c-4c41-a22f-07d49cb25ede.json",
+       "@type": "oa:Annotation",
+       "motivation": "sc:painting",
+       "on": "https://iiif.bodleian.ox.ac.uk/iiif/canvas/e58b8c60-005c-4c41-a22f-07d49cb25ede.json",
+       "resource": {
+        "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede",
+        "@type": "dctypes:Image",
+        "format": "image/jpeg",
+        "width": 5392,
+        "height": 8158,
+        "service": {
+         "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/e58b8c60-005c-4c41-a22f-07d49cb25ede",
+         "@context": "http://iiif.io/api/image/2/context.json",
+         "profile": "http://iiif.io/api/image/2/level1.json"
+        }
+       }
+      }
+     ],
+     "otherContent": []
+    },
+    {
+     "@id": "https://iiif.bodleian.ox.ac.uk/iiif/canvas/02ddc913-ecab-471e-8ca3-6bd402bff215.json",
+     "@type": "sc:Canvas",
+     "label": "[f. 2 Cat (with Vaishnavite mark on forehead) with crayfish: perhaps represents a Bengali proverb or satire on religion]",
+     "width": 5344,
+     "height": 8158,
+     "images": [
+      {
+       "@id": "https://iiif.bodleian.ox.ac.uk/iiif/annotation/02ddc913-ecab-471e-8ca3-6bd402bff215.json",
+       "@type": "oa:Annotation",
+       "motivation": "sc:painting",
+       "on": "https://iiif.bodleian.ox.ac.uk/iiif/canvas/02ddc913-ecab-471e-8ca3-6bd402bff215.json",
+       "resource": {
+        "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/02ddc913-ecab-471e-8ca3-6bd402bff215",
+        "@type": "dctypes:Image",
+        "format": "image/jpeg",
+        "width": 5344,
+        "height": 8158,
+        "service": {
+         "@id": "https://iiif.bodleian.ox.ac.uk/iiif/image/02ddc913-ecab-471e-8ca3-6bd402bff215",
+         "@context": "http://iiif.io/api/image/2/context.json",
+         "profile": "http://iiif.io/api/image/2/level1.json"
+        }
+       }
+      }
+     ],
+     "otherContent": []
+    }
+   ]
+  }
+ ]
+}

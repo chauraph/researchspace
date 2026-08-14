@@ -1,0 +1,51 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "https://iiif.io/api/cookbook/recipe/0005-image-service/manifest.json",
+  "type": "Manifest",
+  "label": {
+    "en": [
+      "Picture of G\u00f6ttingen taken during the 2019 IIIF Conference"
+    ]
+  },
+  "items": [
+    {
+      "id": "https://iiif.io/api/cookbook/recipe/0005-image-service/canvas/p1",
+      "type": "Canvas",
+      "label": {
+        "en": [
+          "Canvas with a single IIIF image"
+        ]
+      },
+      "height": 3024,
+      "width": 4032,
+      "items": [
+        {
+          "id": "https://iiif.io/api/cookbook/recipe/0005-image-service/page/p1/1",
+          "type": "AnnotationPage",
+          "items": [
+            {
+              "id": "https://iiif.io/api/cookbook/recipe/0005-image-service/annotation/p0001-image",
+              "type": "Annotation",
+              "motivation": "painting",
+              "body": {
+                "id": "https://iiif.io/api/image/3.0/example/reference/918ecd18c2592080851777620de9bcb5-gottingen/full/max/0/default.jpg",
+                "type": "Image",
+                "format": "image/jpeg",
+                "height": 3024,
+                "width": 4032,
+                "service": [
+                  {
+                    "@id": "https://iiif.wellcomecollection.org/image/b18035723_0001.JP2",
+                    "@type": "ImageService2",
+                    "profile": "http://iiif.io/api/image/2/level1.json"
+                  }
+                ]
+              },
+              "target": "https://iiif.io/api/cookbook/recipe/0005-image-service/canvas/p1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
