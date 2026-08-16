@@ -22,12 +22,15 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.researchspace.iiif.IIIFManifestNormalizer;
+import org.researchspace.iiif.ImageServiceProbe;
+import org.researchspace.iiif.SafeHttpFetcher;
 import org.researchspace.rest.feature.CacheControl.NoCache;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.DocumentContext;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -35,11 +38,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
 
-import java.net.URL;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import org.apache.commons.io.IOUtils;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Endpoint to support Ephedra Federation
@@ -56,16 +55,22 @@ public class FederationSupportEndpoint {
     HttpServletRequest request;
 
     /*
-     * Simple proxy service to pass IIIF manifest to the Ephedra Federation client accessible only from localhost 
-     * When processForImageImport = true: Augment manifest id to the canvas level (_manifest) to support semantic-search
+     * Proxy service that passes a IIIF manifest to the Ephedra Federation client, accessible only
+     * from localhost.
+     *
+     * When processForImageImport = true it returns one flat row per canvas instead of the manifest,
+     * so that the SPARQL service descriptor and the Handlebars template carry no IIIF version logic.
+     * See IIIFManifestNormalizer for the supported versions and ImageServiceProbe for the measured
+     * columns.
      */
     @GET()
     @NoCache
     @Path("iiifProxy")
     @Produces(APPLICATION_JSON)
     public String iiifProxy(@QueryParam("manifest") String manifest,
-                            @QueryParam("processForImageImport") boolean processForImageImport) throws Exception {
-        
+                            @QueryParam("processForImageImport") boolean processForImageImport,
+                            @QueryParam("probe") @DefaultValue("true") boolean probeServices) throws Exception {
+
         logger.info("Received manifest URL: {}", manifest);
 
         String clientIp = request.getRemoteAddr();
@@ -76,75 +81,43 @@ public class FederationSupportEndpoint {
             throw new SecurityException("Access denied: Only localhost is allowed to access this endpoint.");
         }
 
-        URL manifestURL;
+        // The manifest URL is user input, so the fetch policy lives in SafeHttpFetcher.
+        SafeHttpFetcher.Result response;
         try {
-            manifestURL = new URL(manifest);
-        } catch (MalformedURLException e) {
-            logger.error("Invalid URL format for manifest: {}", manifest);
-            throw new IllegalArgumentException("Invalid URL format");
-        }
-
-        String jsonContent;
-        try {
-            jsonContent = IOUtils.toString(manifestURL, StandardCharsets.UTF_8);
+            response = SafeHttpFetcher.get(manifest);
+        } catch (IllegalArgumentException e) {
+            logger.error("Refused manifest URL {}: {}", manifest, e.getMessage());
+            throw e;
         } catch (IOException e) {
-            logger.error("IO error occurred while fetching manifest: {}", manifest, e);
+            logger.error("IO error while fetching manifest: {}", manifest, e);
             throw new RuntimeException("Failed to fetch manifest due to IO error", e);
-        } catch (Exception e) {
-            logger.error("Unexpected error occurred: {}", manifest, e);
-            throw new RuntimeException("An unexpected error occurred while fetching manifest", e);
+        }
+        if (!response.isSuccessful()) {
+            throw new RuntimeException("Manifest request failed with HTTP status " + response.status);
         }
 
-        JsonNode rootNode;
-        DocumentContext jsonContext;
+        JsonNode manifestNode;
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            rootNode = objectMapper.readTree(jsonContent); // Parse JSON to verify validity
-            jsonContext = JsonPath.parse(jsonContent);
+            manifestNode = new ObjectMapper().readTree(response.body);
         } catch (Exception e) {
-            logger.error("Manifest content is not valid JSON: {}", jsonContent);
+            logger.error("Manifest content is not valid JSON: {}", manifest);
             throw new IllegalArgumentException("Manifest is not a valid JSON file", e);
         }
 
-        if (!rootNode.has("@context")) { // Check if JSON is JSON-LD
-            logger.error("Manifest JSON does not contain '@context': {}", jsonContent);
-            throw new IllegalArgumentException("Invalid JSON-LD: '@context' is missing");
+        if (!processForImageImport) {
+            return response.body;
         }
 
-        String context = rootNode.get("@context").asText();
-        context = context.replaceFirst("^https?://", ""); // Normalize to match only the path
-        String idValue = null;
-
-        // Switch IIIF presentation API v2 and v3 by the value of "@context"
-        switch (context) {
-            case "iiif.io/api/presentation/2/context.json":
-                if (!rootNode.has("@id")) {
-                    logger.error("Manifest JSON does not contain '@id': {}", jsonContent);
-                    throw new IllegalArgumentException("Invalid JSON-LD: '@id' is missing");
-                }
-                if (processForImageImport) {
-                    idValue = rootNode.get("@id").asText();
-                    jsonContext.put("$..sequences[*].canvases[*]", "_manifest", idValue);
-                }
-                break;
-
-            case "iiif.io/api/presentation/3/context.json":
-                if (!rootNode.has("id")) {
-                    logger.error("Manifest JSON does not contain 'id': {}", jsonContent);
-                    throw new IllegalArgumentException("Invalid JSON-LD: 'id' is missing");
-                }
-                if (processForImageImport) {
-                    idValue = rootNode.get("id").asText();
-                    jsonContext.put("$..items[?(@.type == 'Canvas')]", "_manifest", idValue);
-                }
-                break;
-
-            default:
-                logger.error("Unknown '@context' value: {}", context);
-                throw new IllegalArgumentException("Unsupported IIIF manifest version: " + context);
+        ObjectNode normalized = IIIFManifestNormalizer.normalize(manifestNode);
+        if (probeServices) {
+            new ImageServiceProbe().enrichAll(normalized.withArray("rows"));
+        } else {
+            normalized.withArray("rows").forEach(row -> ImageServiceProbe.applyClaim((ObjectNode) row,
+                    ImageServiceProbe.NOT_VERIFIED));
         }
 
-        logger.info("Successfully processed manifest URL: {}", manifest);
-        return jsonContext.jsonString();
+        logger.info("Normalized manifest {} (IIIF presentation {}) into {} canvas rows", manifest,
+                normalized.path("version").asText(), normalized.withArray("rows").size());
+        return normalized.toString();
     }
 }

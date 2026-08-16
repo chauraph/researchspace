@@ -6,114 +6,80 @@
                                   escape-lucene-syntax=false
                                   debounce=500
                                   query='PREFIX iiif: <https://w3id.org/dsanno/platform/services/iiif/>
-                                  SELECT DISTINCT ?subject ?canvastype ?proxied_manifest ?canvaslabel_v3 ?canvasid_v3 ?imageservice_v3 ?imageserviceprofile_v3 ?canvaslabel_v2 ?canvasid_v2 ?imageservice_v2 ?imageserviceprofile_v2 WHERE {
+                                  SELECT DISTINCT ?subject ?proxied_manifest ?manifestversion ?canvasid ?canvaslabel ?imageservice ?apiversion ?level ?quality ?importable ?blockedreason ?verified WHERE {
                                     ?subject iiif:manifest ?__token__ ;
-                                      iiif:canvastype ?canvastype;
                                       iiif:proxied_manifest ?proxied_manifest;
-                                      iiif:label_v3 ?canvaslabel_v3;
-                                      iiif:canvasid_v3 ?canvasid_v3;
-                                      iiif:imageservice_v3 ?imageservice_v3;
-                                      iiif:imageserviceprofile_v3 ?imageserviceprofile_v3;
-                                      iiif:label_v2 ?canvaslabel_v2;
-                                      iiif:canvasid_v2 ?canvasid_v2;
-                                      iiif:imageservice_v2 ?imageservice_v2;
-                                      iiif:imageserviceprofile_v2 ?imageserviceprofile_v2.
+                                      iiif:manifestversion ?manifestversion;
+                                      iiif:canvasid ?canvasid;
+                                      iiif:label ?canvaslabel;
+                                      iiif:imageservice ?imageservice;
+                                      iiif:apiversion ?apiversion;
+                                      iiif:level ?level;
+                                      iiif:quality ?quality;
+                                      iiif:importable ?importable;
+                                      iiif:blockedreason ?blockedreason;
+                                      iiif:verified ?verified.
                                     }'
   ></semantic-search-query-keyword>
-  
+
   <semantic-search-result-holder>
     <div style="margin-top: 25px;">
       <semantic-search-result>
         <div class="wikipediaResultsTable">
           <semantic-context repository='iiif-canvas-extraction'>
             <semantic-table id='semantic-search-result-table'
-                            query='SELECT DISTINCT ?subject ?canvastype ?proxied_manifest ?canvaslabel_v3 ?canvasid_v3 ?imageservice_v3 ?canvaslabel_v2 ?canvasid_v2 ?imageservice_v2 WHERE {
+                            query='SELECT DISTINCT ?subject ?proxied_manifest ?manifestversion ?canvasid ?canvaslabel ?imageservice ?apiversion ?level ?quality ?importable ?blockedreason ?verified WHERE {
                                     BIND(?subject as ?iri) .
                                   } ORDER BY ?subject'
 
-                            options='{"showFilter":true, "resultsPerPage":6}' 
+                            options='{"showFilter":true, "resultsPerPage":6}'
                             column-configuration='[
                                     {"displayName": "IIIF Canvas ID", "cellTemplate": "{{> canvasId}}" },
                                     {"displayName": "IIIF Canvas Label", "cellTemplate": "{{> canvasLabel}}" },
                                     {"displayName": "Image", "cellTemplate": "{{> images}}"},
                                     {"displayName": "Actions", "cellTemplate": "{{> actions}}" }
-                                  ]'   
+                                  ]'
             >
 
               <template id='canvasId'>
-                <div>
-                  {{#if (includes canvastype.value "sc:Canvas")}}
-                    {{canvasid_v2.value}}
-                  {{else}}
-                    {{canvasid_v3.value}}
-                  {{/if}}
-                </div>
+                <div>{{canvasid.value}}</div>
               </template>
 
               <template id='canvasLabel'>
-                <div>
-                  {{#if (includes canvastype.value "sc:Canvas")}}
-                    {{#if canvaslabel_v2.value}}
-                      {{#if (findDoubleQuoteGroup canvaslabel_v2.value 0)}}
-                        {{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v2.value 0)}}
-                      {{else}}
-                        {{canvaslabel_v2.value}}
-                      {{/if}}
-                    {{/if}}
-                  {{else}}
-                    {{#if canvaslabel_v3.value}}
-                      {{#if (findDoubleQuoteGroup canvaslabel_v3.value 0)}}
-                        {{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v3.value 0)}}
-                      {{else}}
-                        {{canvaslabel_v3.value}}
-                      {{/if}}
-                    {{/if}}
-                  {{/if}}
-                </div>
+                <div>{{canvaslabel.value}}</div>
               </template>
 
               <template id='images'>
                 <div>
-                  {{#if (includes canvastype.value "sc:Canvas")}}
-                  {{log (removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v2.value 0))) this}}
-                  <div>                      
-                      <img src="{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v2.value 0))}}/full/250,/0/default.jpg"
-                          width="auto" height="180" style="max-width: 15vw; object-fit: contain;">
-                  </div>
-                  {{else}}
-                  <div>                      
-                    <img src="{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v3.value 0))}}/full/250,/0/default.jpg"
-                        width="auto" height="180" style="max-width: 15vw; object-fit: contain;">
-                  </div>
+                  {{#if imageservice.value}}
+                    <img src="{{imageservice.value}}/full/250,/0/{{quality.value}}.jpg"
+                         width="auto" height="180" style="max-width: 15vw; object-fit: contain;">
                   {{/if}}
                 </div>
               </template>
-              
+
               <template id='actions'>
                 <div>
-          
-                    <mp-event-trigger id='{{viewId}}-select-api-resource-trigger' 
-                                      type='apiResourceSelect' 
-                                      data='{"apiResourceName": "{{#if (includes canvastype.value "sc:Canvas")}}{{#if canvaslabel_v2.value}}{{#if (findDoubleQuoteGroup canvaslabel_v2.value 0)}}{{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v2.value 0)}}{{else}}{{canvaslabel_v2.value}}{{/if}}{{/if}}{{else}}{{#if canvaslabel_v3.value}}{{#if (findDoubleQuoteGroup canvaslabel_v3.value 0)}}{{removeDoubleQuotes (findDoubleQuoteGroup canvaslabel_v3.value 0)}}{{else}}{{canvaslabel_v3.value}}{{/if}}{{/if}}{{/if}}",
+                    <mp-event-trigger id='{{viewId}}-select-api-resource-trigger'
+                                      type='apiResourceSelect'
+                                      data='{"apiResourceName": "{{canvaslabel.value}}",
                                              "apiResourceIIIFManifest": "{{proxied_manifest.value}}",
-                                             "apiResourceIIIFCanvasId": "{{#if (includes canvastype.value "sc:Canvas")}}{{canvasid_v2.value}}{{else}}{{canvasid_v3.value}}{{/if}}",
-                                             "apiResourceIIIFImageService": "{{#if (includes canvastype.value "sc:Canvas")}}{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v2.value 0))}}{{else}}{{removeEscapeBackslashes (removeDoubleQuotes (findDoubleQuoteGroup imageservice_v3.value 0))}}{{/if}}",
+                                             "apiResourceIIIFCanvasId": "{{canvasid.value}}",
+                                             "apiResourceIIIFImageService": "{{imageservice.value}}",
                                             {{#if scheme}}"scheme": "{{scheme}}",{{/if}}
-                                            "viewId": "{{viewId}}"
+                                             "viewId": "{{viewId}}"
                                             }' >
-                    {{#ifCond (includes imageserviceprofile_v3.value "level2") "||" (includes imageserviceprofile_v2.value "level2")}}                        
-                      <button class="btn btn-action" title="Import image">Import image</button>
-                    {{else}}
-                      {{#ifCond (includes imageserviceprofile_v3.value "level1") "||" (includes imageserviceprofile_v2.value "level1")}}
-                        <button class="btn btn-action" title="Import image">Import image</button>
+                      {{#if blockedreason.value}}
+                        <button disabled class="btn btn-action" title="{{blockedreason.value}}">{{blockedreason.value}}</button>
                       {{else}}
-                        <button disabled class="btn btn-action" title="Cannot import IIIF images below Level 1 compliance">Cannot import IIIF images below Level 1 compliance</button>
-                      {{/ifCond}}
-                    {{/ifCond}}
+                        {{#ifCond verified.value "==" "true"}}
+                          <button class="btn btn-action" title="Image API {{apiversion.value}}, {{level.value}}">Import image</button>
+                        {{else}}
+                          <button class="btn btn-action" title="{{level.value}} claimed by the manifest, the service was not verified">Import image (unverified)</button>
+                        {{/ifCond}}
+                      {{/if}}
                     </mp-event-trigger>
-
                 </div>
-
               </template>
 
             </semantic-table>
@@ -122,6 +88,5 @@
       </semantic-search-result>
     </div>
   </semantic-search-result-holder>
-  
-</semantic-search>
 
+</semantic-search>

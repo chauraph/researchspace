@@ -4,11 +4,18 @@ PREFIX spl: <http://spinrdf.org/spl#>
 PREFIX ephedra: <http://www.researchspace.org/resource/system/ephedra#>
 PREFIX sail: <http://www.openrdf.org/config/sail#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX : <https://w3id.org/dsanno/platform/services/iiif/>
+
+# One row per canvas, already flattened by org.researchspace.iiif.IIIFManifestNormalizer.
+# The proxy hides the IIIF presentation version (1, 2, 3 and the 4.0 draft) and the image service
+# version (Image API 1.x, 2 and 3), so no column here is version specific. The apiversion, level,
+# quality and blockedreason columns are measured from the service info.json by ImageServiceProbe,
+# not copied from the manifest, because manifests under-declare their own compliance level.
 
 :IIIFManifestCanvasExtraction a ephedra:Service;
 	sail:sailType "researchspace:RESTSail" ;
-	rdfs:label "A canvas extractor for IIIF manifest v2/v3";
+	rdfs:label "A canvas extractor for IIIF manifests, presentation API v1 to v4";
 	ephedra:hasSPARQLPattern (
 
     [
@@ -19,62 +26,80 @@ PREFIX : <https://w3id.org/dsanno/platform/services/iiif/>
 
     [
       sp:subject :_results ;
-      sp:predicate :canvastype ;
-      sp:object :_canvastype
-    ]
-
-    [
-      sp:subject :_results ;
       sp:predicate :proxied_manifest ;
       sp:object :_proxied_manifest
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :label_v3 ;
-      sp:object :_label_v3
+      sp:predicate :manifestversion ;
+      sp:object :_manifestversion
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :canvasid_v3 ;
-      sp:object :_canvasid_v3
+      sp:predicate :canvasid ;
+      sp:object :_canvasid
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :imageservice_v3 ;
-      sp:object :_imageservice_v3
+      sp:predicate :label ;
+      sp:object :_label
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :imageserviceprofile_v3 ;
-      sp:object :_imageserviceprofile_v3
+      sp:predicate :imageservice ;
+      sp:object :_imageservice
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :label_v2 ;
-      sp:object :_label_v2
+      sp:predicate :servicetype ;
+      sp:object :_servicetype
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :canvasid_v2 ;
-      sp:object :_canvasid_v2
+      sp:predicate :claimedprofile ;
+      sp:object :_claimedprofile
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :imageservice_v2 ;
-      sp:object :_imageservice_v2
+      sp:predicate :apiversion ;
+      sp:object :_apiversion
     ]
 
-	[
+    [
       sp:subject :_results ;
-      sp:predicate :imageserviceprofile_v2 ;
-      sp:object :_imageserviceprofile_v2
+      sp:predicate :level ;
+      sp:object :_level
+    ]
+
+    [
+      sp:subject :_results ;
+      sp:predicate :quality ;
+      sp:object :_quality
+    ]
+
+    [
+      sp:subject :_results ;
+      sp:predicate :importable ;
+      sp:object :_importable
+    ]
+
+    [
+      sp:subject :_results ;
+      sp:predicate :blockedreason ;
+      sp:object :_blockedreason
+    ]
+
+    [
+      sp:subject :_results ;
+      sp:predicate :verified ;
+      sp:object :_verified
     ]
 
   );
@@ -88,88 +113,112 @@ PREFIX : <https://w3id.org/dsanno/platform/services/iiif/>
 
 	spin:column [
 		a spin:Column ;
-		rdfs:comment "Results" ;
+		rdfs:comment "One row per canvas" ;
 		spl:predicate :_results ;
 		spl:valueType rdfs:Resource;
-		ephedra:jsonPath "$..['items', 'canvases'][?(@.type == 'Canvas' || @['@type'] == 'sc:Canvas')]"
+		ephedra:jsonPath "$.rows[*]"
 	] ;
 
 	spin:column [
 		a spin:Column ;
-		rdfs:comment "Type of admissible canvases" ;
-		spl:predicate :_canvastype ;
-		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['type', '@type']"
-	] ;
-
-	spin:column [
-		a spin:Column ;
-		rdfs:comment "IIIF manifest url" ;
+		rdfs:comment "Manifest id as the manifest declares it, for provenance" ;
 		spl:predicate :_proxied_manifest ;
 		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['_manifest']"
+		ephedra:jsonPath "$.manifest"
 	] ;
 
 	spin:column [
 		a spin:Column ;
-		rdfs:comment "Labels of admissible canvases (API v3)" ;
-		spl:predicate :_label_v3 ;
+		rdfs:comment "IIIF presentation API version of the manifest: 1, 2, 3 or 4" ;
+		spl:predicate :_manifestversion ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.manifestversion"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Canvas id" ;
+		spl:predicate :_canvasid ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.canvasid"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Canvas label, flattened from a language map or an array" ;
+		spl:predicate :_label ;
 		spl:valueType xsd:string ;
 		ephedra:jsonPath "$.label"
 	] ;
-	
+
 	spin:column [
 		a spin:Column ;
-		rdfs:comment "Canvas ID (API v3)" ;
-		spl:predicate :_canvasid_v3 ;
+		rdfs:comment "IIIF image service base URL, the only value the viewer needs" ;
+		spl:predicate :_imageservice ;
 		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['id']"
-	] ;
-	
-	spin:column [
-		a spin:Column ;
-		rdfs:comment "Image Services (API v3)" ;
-		spl:predicate :_imageservice_v3 ;
-		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['items'][?(@.type == 'AnnotationPage')].['items'][?(@.type == 'Annotation' && @.motivation == 'painting')].body..service[*].id"
+		ephedra:jsonPath "$.imageservice"
 	] ;
 
 	spin:column [
 		a spin:Column ;
-		rdfs:comment "Image Services Profile (API v3)" ;
-		spl:predicate :_imageserviceprofile_v3 ;
+		rdfs:comment "Service type as the manifest declares it, e.g. ImageService2" ;
+		spl:predicate :_servicetype ;
 		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['items'][?(@.type == 'AnnotationPage')].['items'][?(@.type == 'Annotation' && @.motivation == 'painting')].body..service[*].profile"
-	] ;
-	
-	spin:column [
-		a spin:Column ;
-		rdfs:comment "Labels of admissible canvases (API v2)" ;
-		spl:predicate :_label_v2 ;
-		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.label"
-	] ;
-	
-	spin:column [
-		a spin:Column ;
-		rdfs:comment "Canvas ID (API v2)" ;
-		spl:predicate :_canvasid_v2 ;
-		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['@id']"
-	] ;
-	
-	spin:column [
-		a spin:Column ;
-		rdfs:comment "Image Services (API v2)" ;
-		spl:predicate :_imageservice_v2 ;
-		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['images'][?(@['@type'] == 'oa:Annotation' && @.motivation == 'sc:painting')]..service.['@id']"
+		ephedra:jsonPath "$.servicetype"
 	] ;
 
 	spin:column [
 		a spin:Column ;
-		rdfs:comment "Image Services Profile (API v2)" ;
-		spl:predicate :_imageserviceprofile_v2 ;
+		rdfs:comment "Compliance level as the manifest claims it, kept for comparison only" ;
+		spl:predicate :_claimedprofile ;
 		spl:valueType xsd:string ;
-		ephedra:jsonPath "$.['images'][?(@['@type'] == 'oa:Annotation' && @.motivation == 'sc:painting')]..service.profile"
+		ephedra:jsonPath "$.claimedprofile"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Image API version measured from info.json: 1.1, 2.0 or 3.0" ;
+		spl:predicate :_apiversion ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.apiversion"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Compliance level measured from info.json: level0, level1 or level2" ;
+		spl:predicate :_level ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.level"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Quality token this service expects: default for Image API 2 and 3, native for 1.x" ;
+		spl:predicate :_quality ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.quality"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Whether ResearchSpace can use this service" ;
+		spl:predicate :_importable ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.importable"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "Empty when importable, otherwise why the service was refused" ;
+		spl:predicate :_blockedreason ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.blockedreason"
+	] ;
+
+	spin:column [
+		a spin:Column ;
+		rdfs:comment "true when info.json was read, false when the columns come from the manifest claim" ;
+		spl:predicate :_verified ;
+		spl:valueType xsd:string ;
+		ephedra:jsonPath "$.verified"
 	] .
