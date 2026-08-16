@@ -4,6 +4,8 @@
  * Copyright (C) 2020, © Trustees of the British Museum
  * Copyright (C) 2015-2019, metaphacts GmbH
  *
+ * Modified 2026 by Tsz Kin Chau (eM+ / EPFL).
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -37,6 +39,8 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.shiro.authz.annotation.RequiresAuthentication;
+import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.researchspace.cache.LabelCache;
@@ -75,6 +79,8 @@ public class KnowledgePatternsEndpoint {
 
     @POST
     @Path("/generateKps")
+    @RequiresAuthentication
+    @RequiresPermissions("ontologies:*:*")
     public Response generateKps(@QueryParam("ontologyIri") IRI ontologyIri) {
         try {
             pg.generateKnowledgePatternsFromOntology(ontologyIri);
