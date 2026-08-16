@@ -54,12 +54,17 @@ public class SafeHttpFetcher {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration PROBE_READ_TIMEOUT = Duration.ofSeconds(5);
 
+    /** A redirect chain longer than this is treated as a loop and refused. */
+    private static final int MAX_REDIRECTS = 5;
+
+    // The client must never follow a redirect on its own: a validated host can redirect to a private
+    // or loopback target, so every hop is followed here instead, with validate() re-run on each one.
     private static final HttpClient CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
-            .followRedirects(HttpClient.Redirect.NORMAL).build();
+            .followRedirects(HttpClient.Redirect.NEVER).build();
 
     /** A separate client so that a dead host costs a probe three seconds, not five. */
     private static final HttpClient PROBE_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3))
-            .followRedirects(HttpClient.Redirect.NORMAL).build();
+            .followRedirects(HttpClient.Redirect.NEVER).build();
 
     /**
      * A failure of the host itself: it does not resolve, refuses the connection, or is unroutable.
@@ -107,21 +112,44 @@ public class SafeHttpFetcher {
     }
 
     private static Result get(String url, HttpClient client, Duration readTimeout, int maxBytes) throws IOException {
-        URI uri = validate(url);
-        HttpRequest request = HttpRequest.newBuilder(uri).timeout(readTimeout).header("Accept", "application/json")
-                .GET().build();
-        HttpResponse<InputStream> response;
-        try {
-            response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Request interrupted: " + uri, e);
-        }
-        try (InputStream stream = response.body()) {
-            byte[] bytes = stream.readNBytes(maxBytes);
-            String body = new String(bytes, StandardCharsets.UTF_8);
-            return new Result(response.statusCode(), body,
-                    response.headers().firstValue("access-control-allow-origin"));
+        String currentUrl = url;
+        for (int hop = 0;; hop++) {
+            URI uri = validate(currentUrl);
+            HttpRequest request = HttpRequest.newBuilder(uri).timeout(readTimeout).header("Accept", "application/json")
+                    .GET().build();
+            HttpResponse<InputStream> response;
+            try {
+                response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Request interrupted: " + uri, e);
+            }
+            int status = response.statusCode();
+            if (status >= 300 && status < 400) {
+                Optional<String> location = response.headers().firstValue("location");
+                try (InputStream redirectBody = response.body()) {
+                    // Discard the redirect body; only the Location matters.
+                }
+                if (!location.isPresent()) {
+                    throw new IOException("Redirect without a Location header from: " + uri);
+                }
+                if (hop >= MAX_REDIRECTS) {
+                    throw new IOException("Too many redirects starting at: " + url);
+                }
+                // Resolve against the current URI so that a relative Location is handled, then loop
+                // back to validate() — a redirect target gets the same policy as the first URL.
+                try {
+                    currentUrl = uri.resolve(location.get()).toString();
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Invalid redirect target: " + location.get());
+                }
+                continue;
+            }
+            try (InputStream stream = response.body()) {
+                byte[] bytes = stream.readNBytes(maxBytes);
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                return new Result(status, body, response.headers().firstValue("access-control-allow-origin"));
+            }
         }
     }
 
@@ -168,13 +196,58 @@ public class SafeHttpFetcher {
         } catch (UnknownHostException e) {
             throw new UnreachableHostException("Host does not resolve: " + host);
         }
+        // Every address the name resolves to must pass, so a name with one public and one private
+        // address cannot slip through. This check runs on the resolution done here; the connection
+        // re-resolves the name, a residual this HTTP stack (JDK 11) cannot pin without a custom
+        // resolver. The redirect and range checks are the material controls.
         for (InetAddress address : addresses) {
-            if (address.isLoopbackAddress() || address.isAnyLocalAddress() || address.isLinkLocalAddress()
-                    || address.isSiteLocalAddress() || address.isMulticastAddress()) {
+            if (isBlocked(address)) {
                 throw new IllegalArgumentException("Refusing to fetch an address on this network: " + host);
             }
         }
         return uri;
+    }
+
+    /**
+     * Whether an address is on this machine or a network that a public fetch must never reach. Covers
+     * what {@link InetAddress} classifies (loopback, any-local, link-local, site-local, multicast) plus
+     * ranges it does not: IPv4 CGNAT 100.64.0.0/10, 0.0.0.0/8, 192.0.0.0/24, IPv6 unique-local fc00::/7,
+     * and IPv4-mapped IPv6 addresses (re-checked as their embedded IPv4).
+     */
+    private static boolean isBlocked(InetAddress address) {
+        if (address.isLoopbackAddress() || address.isAnyLocalAddress() || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress() || address.isMulticastAddress()) {
+            return true;
+        }
+        byte[] a = address.getAddress();
+        if (a.length == 4) {
+            int b0 = a[0] & 0xff, b1 = a[1] & 0xff, b2 = a[2] & 0xff;
+            if (b0 == 0) {
+                return true; // 0.0.0.0/8 "this network"
+            }
+            if (b0 == 100 && b1 >= 64 && b1 <= 127) {
+                return true; // 100.64.0.0/10 carrier-grade NAT
+            }
+            if (b0 == 192 && b1 == 0 && b2 == 0) {
+                return true; // 192.0.0.0/24 IETF protocol assignments
+            }
+        } else if (a.length == 16) {
+            if ((a[0] & 0xfe) == 0xfc) {
+                return true; // fc00::/7 unique local address
+            }
+            boolean mappedV4 = (a[10] & 0xff) == 0xff && (a[11] & 0xff) == 0xff;
+            for (int i = 0; i < 10 && mappedV4; i++) {
+                mappedV4 = a[i] == 0;
+            }
+            if (mappedV4) {
+                try {
+                    return isBlocked(InetAddress.getByAddress(new byte[] { a[12], a[13], a[14], a[15] }));
+                } catch (UnknownHostException e) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private SafeHttpFetcher() {
