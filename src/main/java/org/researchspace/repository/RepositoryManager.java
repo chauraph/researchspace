@@ -4,6 +4,8 @@
  * Copyright (C) 2020, © Trustees of the British Museum
  * Copyright (C) 2015-2019, metaphacts GmbH
  *
+ * Modified 2026 by Tsz Kin Chau (eM+ / EPFL).
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -65,6 +67,7 @@ import org.researchspace.repository.memory.MpMemoryRepositoryImplConfig;
 import org.researchspace.repository.sparql.DefaultMpSPARQLRepositoryFactory;
 import org.researchspace.repository.sparql.MpSPARQLRepositoryConfig;
 import org.researchspace.repository.sparql.MpSharedHttpClientSessionManager;
+import org.researchspace.sail.rest.RESTSail;
 import org.researchspace.services.storage.api.ObjectMetadata;
 import org.researchspace.services.storage.api.ObjectStorage;
 import org.researchspace.services.storage.api.PlatformStorage;
@@ -139,6 +142,10 @@ public class RepositoryManager implements RepositoryManagerInterface {
         File baseDataFolder = new File(Configuration.getRuntimeDirectory(), "data");
         this.repositoryDataFolder = new File(baseDataFolder, "repositories");
         this.client = new MpSharedHttpClientSessionManager(config);
+
+        // Feed the RESTSail client timeout before any sail initialises, so every RESTSail member is
+        // bounded. Local repositories are unaffected; the remote-SPARQL client keeps its own timeout.
+        RESTSail.setTimeoutSeconds(config.getEnvironmentConfig().getRestSailHttpConnectionTimeout());
 
         init();
         this.hookReference = new WeakReference<>(addShutdownHook(this));

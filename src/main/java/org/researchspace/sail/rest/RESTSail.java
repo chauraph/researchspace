@@ -2,6 +2,8 @@
  * ResearchSpace
  * Copyright (C) 2021, © Trustees of the British Museum
  *
+ * Modified 2026 by Tsz Kin Chau (eM+ / EPFL).
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -22,6 +24,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 
 import org.eclipse.rdf4j.sail.SailException;
+import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
 import org.researchspace.rest.filters.RequestRateLimitFilter;
 import org.researchspace.rest.filters.UserAgentFilter;
@@ -42,6 +45,25 @@ public class RESTSail extends AbstractServiceWrappingSail<RESTSailConfig> {
      * the sail and access it from multiple sail connections.
      */
     private Client client;
+
+    /**
+     * Connect and read timeout in seconds for every RESTSail client. Fed once at start-up from
+     * {@code environment.restSailHttpConnectionTimeout} (see RepositoryManager). Null means unset:
+     * no timeout is applied and the client behaves exactly as the original RESTSail did, so an
+     * existing deployment that sets nothing is unchanged. An operator sets it to bound a stalled
+     * authority.
+     */
+    private static volatile Integer timeoutSeconds = null;
+
+    /**
+     * Set the RESTSail client timeout in seconds. A null or non-positive value leaves it unset, so
+     * the original no-timeout behaviour stands. Called at start-up, before any sail initialises.
+     */
+    public static void setTimeoutSeconds(Integer seconds) {
+        if (seconds != null && seconds > 0) {
+            timeoutSeconds = seconds;
+        }
+    }
 
     public RESTSail(RESTSailConfig config) {
         super(config);
@@ -78,6 +100,15 @@ public class RESTSail extends AbstractServiceWrappingSail<RESTSailConfig> {
             HttpAuthenticationFeature basicAuthFeature = HttpAuthenticationFeature.basic(config.getUsername(),
                     config.getPassword());
             clientBuilder = clientBuilder.register(basicAuthFeature);
+        }
+
+        // Only when the operator sets a timeout do we bound the remote egress; unset leaves the
+        // client exactly as before, so an existing deployment is unchanged. When set, it applies to
+        // every RESTSail member, and so to every SERVICE clause that reaches one. Milliseconds.
+        if (timeoutSeconds != null) {
+            int timeoutMillis = timeoutSeconds * 1000;
+            clientBuilder = clientBuilder.property(ClientProperties.CONNECT_TIMEOUT, timeoutMillis)
+                    .property(ClientProperties.READ_TIMEOUT, timeoutMillis);
         }
 
         this.client = clientBuilder.build();

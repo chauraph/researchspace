@@ -3,6 +3,8 @@
  * Copyright (C) 2020, © Trustees of the British Museum
  * Copyright (C) 2015-2019, metaphacts GmbH
  *
+ * Modified 2026 by Tsz Kin Chau (eM+ / EPFL).
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -216,6 +218,23 @@ public class EnvironmentConfiguration extends ConfigurationGroupBase {
     @ConfigurationParameter
     public Integer getSparqlHttpConnectionTimeout() {
         return getInteger("sparqlHttpConnectionTimeout");
+    }
+
+    /**
+     * Timeout in seconds for the RESTSail HTTP client, applied as both the connect and the read
+     * timeout on every RESTSail-backed federation member (VIAF, GND, Wikidata, OSM, and so on). It
+     * is the RESTSail counterpart of {@link #getSparqlHttpConnectionTimeout()}, which covers only the
+     * remote-SPARQL client. It bounds a stalled external authority so that it cannot hold a request
+     * thread indefinitely. Local repositories are not affected.
+     *
+     * Default: null (no timeout), which leaves RESTSail behaving exactly as before, so an existing
+     * deployment that sets nothing is unchanged.
+     *
+     * @return
+     */
+    @ConfigurationParameter
+    public Integer getRestSailHttpConnectionTimeout() {
+        return getInteger("restSailHttpConnectionTimeout");
     }
 
     /**
