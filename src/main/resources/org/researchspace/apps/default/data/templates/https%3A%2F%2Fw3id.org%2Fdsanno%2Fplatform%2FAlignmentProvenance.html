@@ -251,6 +251,8 @@
                                                     namespace. --]]
                                               BIND(REPLACE(STR(<{{entity.value}}>), "/vocab/.*$", "/") AS ?localBase)
                                               FILTER(!STRSTARTS(STR(?alignedTo), ?localBase))
+                                              [[!-- defence in depth: ?alignedTo is rendered as an href, so force an http(s) IRI --]]
+                                              FILTER(isIRI(?alignedTo) && REGEX(STR(?alignedTo), "^https?://") && !CONTAINS(STR(?alignedTo), ">"))
 
                                               [[!-- one act can cover several members; keep this
                                                     members rows, and keep annotations that state
@@ -315,6 +317,8 @@
                                             ?refusal crm:P2_has_type ?verdictType .
                                             FILTER(STRENDS(STR(?verdictType), "/rejected"))
                                             ?refusal crminf:J31_has_range ?refusedTarget .
+                                            [[!-- defence in depth: ?refusedTarget is rendered as an href, so force an http(s) IRI --]]
+                                            FILTER(isIRI(?refusedTarget) && REGEX(STR(?refusedTarget), "^https?://") && !CONTAINS(STR(?refusedTarget), ">"))
                                             OPTIONAL { ?refusal crminf:J32_has_property_type ?predicate }
                                             BIND(REPLACE(STR(?predicate), "^.*[#/]", "") AS ?predicateLabel)
                                          } ORDER BY ?predicateLabel ?refusedTarget'
@@ -429,6 +433,12 @@
                                      ?annotation crminf:J30_has_domain ?entity ;
                                                  crminf:J31_has_range ?target ;
                                                  crm:P2_has_type ?annoType .
+                                     [[!-- defence in depth: ?target is spliced into the adjudication
+                                           update pattern and into href attributes, so it must be a
+                                           plain http(s) IRI with no ">" that could end the <IRI>
+                                           early or a non-http scheme that could carry javascript:.
+                                           A crafted authority value is dropped, not rendered. --]]
+                                     FILTER(isIRI(?target) && REGEX(STR(?target), "^https?://") && !CONTAINS(STR(?target), ">"))
                                      FILTER(STRENDS(STR(?annoType), "/alignment") ||
                                             STRENDS(STR(?annoType), "/pending-adjudication"))
                                      BIND(REPLACE(STR(?annoType), "^.*/", "") AS ?kind)
@@ -619,9 +629,11 @@
                           <mp-overlay-dialog id='{{viewId.value}}-adj-move-{{annotationId.value}}'
                                              type='modal'
                                              title='Adopt {{predicateLabel.value}}, replacing {{divergentLabel.value}} — {{target.value}}'>
+                            [[#if (hasPermission "ontologies:*:*")]]
                             <mp-overlay-dialog-trigger>
                               <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Adopt {{predicateLabel.value}} (replaces {{divergentLabel.value}})</button>
                             </mp-overlay-dialog-trigger>
+                            [[/if]]
                             <mp-overlay-dialog-content>
                               <div>
                                 <semantic-context repository='default'>
@@ -673,9 +685,11 @@
                           <mp-overlay-dialog id='{{viewId.value}}-adj-adopt-{{annotationId.value}}'
                                              type='modal'
                                              title='Adopt — {{predicateLabel.value}} {{target.value}}'>
+                            [[#if (hasPermission "ontologies:*:*")]]
                             <mp-overlay-dialog-trigger>
                               <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Adopt</button>
                             </mp-overlay-dialog-trigger>
+                            [[/if]]
                             <mp-overlay-dialog-content>
                               <div>
                                 [[!-- the overlay renders in a separate React root at app root, so
@@ -757,9 +771,11 @@
                           <mp-overlay-dialog id='{{viewId.value}}-adj-reinstate-{{annotationId.value}}'
                                              type='modal'
                                              title='Reinstate — {{predicateLabel.value}} {{target.value}}'>
+                            [[#if (hasPermission "ontologies:*:*")]]
                             <mp-overlay-dialog-trigger>
                               <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Reinstate</button>
                             </mp-overlay-dialog-trigger>
+                            [[/if]]
                             <mp-overlay-dialog-content>
                               <div>
                                 [[!-- the overlay renders in a separate React root at app root, so
@@ -840,9 +856,11 @@
                           <mp-overlay-dialog id='{{viewId.value}}-adj-refuse-{{annotationId.value}}'
                                              type='modal'
                                              title='Refuse — {{predicateLabel.value}} {{target.value}}'>
+                            [[#if (hasPermission "ontologies:*:*")]]
                             <mp-overlay-dialog-trigger>
                               <button type='button' class='btn btn-default btn-sm provenance-decision-btn'>Refuse</button>
                             </mp-overlay-dialog-trigger>
+                            [[/if]]
                             <mp-overlay-dialog-content>
                               <div>
                                 [[!-- the overlay renders in a separate React root at app root, so
@@ -1093,7 +1111,10 @@
                                                   FILTER(?anyProp IN (skos:exactMatch, skos:closeMatch, skos:broadMatch, skos:narrowMatch, skos:relatedMatch, owl:sameAs, <https://linked.art/ns/terms/equivalent>)) }
 
                               OPTIONAL { ?pending crm:P3_has_note ?pendingNote }
-                              OPTIONAL { ?pending crminf:J31_has_range ?target }
+                              [[!-- defence in depth: ?target is rendered as an href; filter inside the
+                                    OPTIONAL so a bad value leaves it unbound rather than dropping the row --]]
+                              OPTIONAL { ?pending crminf:J31_has_range ?target
+                                         FILTER(isIRI(?target) && REGEX(STR(?target), "^https?://") && !CONTAINS(STR(?target), ">")) }
                               OPTIONAL { ?pending crminf:J32_has_property_type ?predicate }
                               BIND(REPLACE(STR(?predicate), "^.*[#/]", "") AS ?predicateLabel)
 

@@ -25,6 +25,9 @@
 
 <div class="page">
   <div class="page__body">
+    [[#if (hasPermission "ontologies:*:*")]]
+    [[!-- Admin/dev-only harness. The gate stops the raw [[urlParam "member"]] below from being a
+          reflected SPARQL-injection sink for any visitor: only an ontology admin can render it. --]]
     <h2>Alignment adjudication — harness</h2>
     <p class="provenance-muted">
       Member: <code data-testid="harness-member">[[urlParam "member"]]</code>
@@ -46,5 +49,9 @@
         {{/each}}
       </template>
     </semantic-query>
+    [[else]]
+    <h2>Alignment adjudication — harness</h2>
+    <p class="provenance-muted">You do not have permission to use this page.</p>
+    [[/if]]
   </div>
 </div>
