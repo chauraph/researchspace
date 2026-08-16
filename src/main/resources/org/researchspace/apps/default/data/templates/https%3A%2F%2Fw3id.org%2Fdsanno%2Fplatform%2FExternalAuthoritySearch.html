@@ -55,6 +55,7 @@
 
       See docs/features/external-authority-federation.md --]]
 
+[[#if (hasPermission "forms:ldp:*")]]
 <div style="margin-bottom: 20px;">
   <div class="semantic-form-input-title">Search external authorities</div>
   <div class="text-muted" style="margin-bottom: 8px; font-size: 90%;">
@@ -238,6 +239,9 @@
 
   </rs-tabs>
 </div>
+[[else]]
+<div class="text-muted">You do not have permission to search external authorities.</div>
+[[/if]]
 
 [[!-- The results table is identical for every source: one Handlebars inline partial, stamped
       into each tab above. ?description and ?detail are simply unbound for sources that do not

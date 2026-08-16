@@ -1,3 +1,4 @@
+[[#if (hasPermission "forms:ldp:*")]]
 <semantic-search>
   <semantic-search-query-keyword  domain='<http://www.researchspace.org/ontology/EX_Digital_Image>'
                                   placeholder="Input IIIF Manifest"
@@ -90,3 +91,6 @@
   </semantic-search-result-holder>
 
 </semantic-search>
+[[else]]
+<div class="text-muted">You do not have permission to import images.</div>
+[[/if]]
