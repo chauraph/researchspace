@@ -331,7 +331,9 @@ export class PyramidalTileSearch extends Component<Props, State> {
               backend: event.data.backend || this.state.backend,
               topK: event.data.topK || this.state.topK,
             },
-            () => this.runSearch()
+            // Abort and replace rather than guard: another component asking for a query has
+            // moved the page on, so the answer still in flight is no longer the one wanted.
+            () => this.startSearch()
           );
         },
       });
@@ -339,7 +341,18 @@ export class PyramidalTileSearch extends Component<Props, State> {
 
   // ------------------------------------------------------------------- search
 
+  /**
+   * The user asking again. The service is CPU bound and admits one search at a time, so a
+   * second click or Enter while one is running only buys a queue place and a 503; ignore it.
+   */
   private runSearch = () => {
+    if (this.state.searching) {
+      return;
+    }
+    this.startSearch();
+  };
+
+  private startSearch = () => {
     const { mode, query, imageFile, backend, levels, tileSize, topK } = this.state;
     if (mode === 'text' && !query.trim()) {
       return;
@@ -470,7 +483,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
   }
 
   private renderToolbar() {
-    const { capabilities, mode, backend, levels, tileSize, topK, query } = this.state;
+    const { capabilities, mode, backend, levels, tileSize, topK, query, searching } = this.state;
     const modes = this.effectiveModes(capabilities.configured_query_type_backend_lists);
     const backends = capabilities.configured_query_type_backend_lists[mode] || [];
     const warm = capabilities.query_type_backend_lists[mode] || [];
@@ -506,7 +519,12 @@ export class PyramidalTileSearch extends Component<Props, State> {
               }}
             />
           )}
-          <button className="btn btn-action" type="button" onClick={this.runSearch}>
+          <button
+            className="btn btn-action"
+            type="button"
+            disabled={searching}
+            onClick={this.runSearch}
+          >
             Search
           </button>
         </div>

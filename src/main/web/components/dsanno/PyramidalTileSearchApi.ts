@@ -137,6 +137,19 @@ export interface SearchParams {
   dedupPreset?: string;
 }
 
+/**
+ * The service reports errors as `{"detail": "..."}`. A proxy or a gateway in front of it may
+ * answer with HTML instead, so parse defensively and take the field only when it is a string.
+ */
+function detailOf(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body);
+    return parsed && typeof parsed.detail === 'string' ? parsed.detail.trim() || undefined : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class TileSearchClient {
   constructor(private readonly proxyPath: string) {}
 
@@ -155,6 +168,14 @@ export class TileSearchClient {
         );
       }
       const body = await response.text().catch(() => '');
+      // 503 is the backend admission gate and 429 the reverse proxy's rate limit — both mean
+      // "too fast", not a failure. 503 carries a sentence meant for the reader in `detail`;
+      // 429 is usually the proxy's stock HTML page, so fall back to our own wording.
+      if (response.status === 503 || response.status === 429) {
+        throw new Error(
+          detailOf(body) || 'The search service is busy. Try again in a few seconds.'
+        );
+      }
       throw new Error(`Tile search service returned ${response.status}. ${body}`.trim());
     }
     return response.json() as Promise<T>;
