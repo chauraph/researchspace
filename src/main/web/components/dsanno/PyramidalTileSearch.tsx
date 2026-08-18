@@ -46,6 +46,13 @@ import {
 export type MarkerKind = 'line' | 'rect' | 'dot' | 'hairline-dot';
 export type DiagnosticsMode = boolean | 'toggle';
 export type QueryMode = 'text' | 'image';
+export type ResultOrder = 'relevance' | 'position';
+
+/** The tick gradient and the width it was computed against, built once per result set. */
+interface PlaceBar {
+  liftW: number;
+  ticks: string;
+}
 
 export interface Props {
   /** Event addressing. */
@@ -96,6 +103,23 @@ export interface Props {
 
   /** Locator marker scheme. Default `'hairline-dot'`. */
   locatorMarker?: MarkerKind;
+
+  /**
+   * Height of the scrolling result grid. `'auto'`, the default, measures the space left
+   * between the grid's own top and the bottom of the viewport, so the panel fills the window
+   * on a laptop and on a wall display alike. A CSS length is used verbatim. `'none'` restores
+   * the old behaviour, where the whole component grows with the result count.
+   *
+   * The locator pins above the grid either way, so the map stays on screen however far the
+   * reader scrolls.
+   */
+  resultsHeight?: string;
+
+  /**
+   * Above this many results the marker numbers hide and return on hover, because a hundred
+   * numbered tags on one strip cannot be read. Default 30.
+   */
+  markerNumberLimit?: number;
 }
 
 interface State {
@@ -124,6 +148,13 @@ interface State {
   /** Overrides of the automatic merge pick, keyed by the representative tile id. */
   chosenCrop: { [representativeId: string]: PreviewTile };
   openMergeFor?: string;
+
+  /** Reading order of the grid. Relevance answers "the best match", position "walk the image". */
+  order: ResultOrder;
+  /** The hit under the pointer, on either end of the link. */
+  hoverTileId?: string;
+  /** Measured height of the scrolling grid, when `results-height` is `'auto'`. */
+  scrollerHeight?: number;
 
   diagOn: boolean;
 }
@@ -155,6 +186,10 @@ const SERVICE_TO_IMAGE = `${ID_PREFIXES} SELECT DISTINCT ?image WHERE {${ID_WHER
 const IMAGE_TO_SERVICE = `${ID_PREFIXES} SELECT DISTINCT ?service WHERE {${ID_WHERE}}`;
 
 const DEFAULT_PROXY = '/proxy/tile-search';
+/** Below this the scrolling grid is not worth having, so it stops shrinking. */
+const MIN_SCROLLER_HEIGHT = 260;
+/** Breathing room under the panel, so the last row does not sit on the viewport edge. */
+const SCROLLER_BOTTOM_GAP = 24;
 const MAX_MERGE_MEMBERS = 8;
 
 export class PyramidalTileSearch extends Component<Props, State> {
@@ -164,9 +199,15 @@ export class PyramidalTileSearch extends Component<Props, State> {
     defaultTopK: 20,
     showDiagnostics: false,
     locatorMarker: 'hairline-dot',
+    resultsHeight: 'auto',
+    markerNumberLimit: 30,
   };
 
   private readonly cancellation = new Cancellation();
+  /** Cards by tile id, so a marker can bring its own card into view. */
+  private cardRefs: { [tileId: string]: HTMLElement } = {};
+  /** The scrolling grid, measured against the viewport when the height is automatic. */
+  private scrollerNode?: HTMLElement;
   private client: TileSearchClient;
   /** In flight search, aborted when a new one starts so results cannot arrive out of order. */
   private inflight?: AbortController;
@@ -181,6 +222,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
       topK: Number(props.defaultTopK) || 20,
       searching: false,
       chosenCrop: {},
+      order: 'relevance',
       diagOn: props.showDiagnostics === true,
     };
   }
@@ -189,14 +231,51 @@ export class PyramidalTileSearch extends Component<Props, State> {
     this.resolveIdentifiers();
     this.loadCapabilities();
     this.listenForSearch();
+    window.addEventListener('resize', this.measureScroller);
+    window.addEventListener('orientationchange', this.measureScroller);
+  }
+
+  componentDidUpdate() {
+    // The locator appears with the first result set and the toolbar wraps at narrow widths,
+    // so the space left for the grid changes with the content, not only with the window.
+    this.measureScroller();
   }
 
   componentWillUnmount() {
     this.cancellation.cancelAll();
+    window.removeEventListener('resize', this.measureScroller);
+    window.removeEventListener('orientationchange', this.measureScroller);
     if (this.inflight) {
       this.inflight.abort();
     }
   }
+
+  /**
+   * Give the grid whatever is left between its own top and the bottom of the window. Measured
+   * rather than set in `vh`, because everything above it — the toolbar, a warning, the
+   * locator — varies in height with the page and the result set.
+   *
+   * Deliberately not recomputed on page scroll: the panel is sized once for its position, and
+   * resizing it under a scrolling reader would move the content they are reading.
+   */
+  /** A stable ref, so React does not detach and reattach the node on every render. */
+  private holdScroller = (node: HTMLElement | null) => {
+    this.scrollerNode = node || undefined;
+  };
+
+  private measureScroller = () => {
+    if (this.props.resultsHeight !== 'auto' || !this.scrollerNode) {
+      return;
+    }
+    const top = this.scrollerNode.getBoundingClientRect().top;
+    const next = Math.max(
+      MIN_SCROLLER_HEIGHT,
+      Math.round(window.innerHeight - top - SCROLLER_BOTTOM_GAP)
+    );
+    if (Math.abs((this.state.scrollerHeight || 0) - next) > 1) {
+      this.setState({ scrollerHeight: next });
+    }
+  };
 
   // ---------------------------------------------------------------- identifiers
 
@@ -369,7 +448,13 @@ export class PyramidalTileSearch extends Component<Props, State> {
     this.inflight = new AbortController();
     const signal = this.inflight.signal;
 
-    this.setState({ searching: true, error: undefined, openTileId: undefined, openMergeFor: undefined });
+    this.setState({
+      searching: true,
+      error: undefined,
+      openTileId: undefined,
+      openMergeFor: undefined,
+      hoverTileId: undefined,
+    });
 
     // A metadata filter costs the index about a second, against ten milliseconds for an
     // unfiltered query, and it costs that whether or not it excludes anything. Selecting
@@ -423,6 +508,42 @@ export class PyramidalTileSearch extends Component<Props, State> {
   };
 
   // ------------------------------------------------------------------ helpers
+
+  /**
+   * The reading order of the grid. In position order the grid reads left to right across the
+   * image, so the marker numbers run 1…N along the strip and a card's place bar marches
+   * steadily down the page. Relevance order stays the default, because "the best match" is
+   * the common question.
+   */
+  private ordered(response: SearchResponse): SearchHit[] {
+    const list = response.results.slice();
+    if (this.state.order === 'position') {
+      list.sort((a, b) => a.global_x - b.global_x);
+    }
+    return list;
+  }
+
+  /** The horizontal centre of a hit, as a fraction of the full image width. */
+  private placeOf(hit: SearchHit, liftW: number): number {
+    return (hit.global_x + hit.global_w / 2) / liftW;
+  }
+
+  private setHover = (id?: string) => {
+    if (this.state.hoverTileId !== id) {
+      this.setState({ hoverTileId: id });
+    }
+  };
+
+  /**
+   * Hovering a marker brings its card into view. `nearest` keeps the grid still when the
+   * card is already visible, so sweeping the strip does not make the page jump.
+   */
+  private revealCard(id: string) {
+    const node = this.cardRefs[id];
+    if (node && node.scrollIntoView) {
+      node.scrollIntoView({ block: 'nearest' });
+    }
+  }
 
   private diagnosticsVisible(): boolean {
     const mode = this.props.showDiagnostics;
@@ -657,10 +778,34 @@ export class PyramidalTileSearch extends Component<Props, State> {
     }
 
     const diag = this.diagnosticsVisible();
+    const hits = this.ordered(response);
+    const liftW = capabilities.corpus.lift_width || response.results[0].lift_width;
+    // The place bar repeats what the locator already says, so it is retrieval detail: on with
+    // the diagnostics toggle, off for a reader who only wants the results.
+    const place: PlaceBar | undefined =
+      diag && liftW ? { liftW, ticks: this.placeTicks(hits, liftW) } : undefined;
     return (
       <div className="pts__results">
+        {this.renderLocator(response, hits)}
+
         <div className="pts__panelhead">
           <h3>Results</h3>
+          <div className="pts__seg" role="group" aria-label="Result order">
+            <button
+              type="button"
+              aria-pressed={this.state.order === 'relevance'}
+              onClick={() => this.setState({ order: 'relevance' })}
+            >
+              Relevance
+            </button>
+            <button
+              type="button"
+              aria-pressed={this.state.order === 'position'}
+              onClick={() => this.setState({ order: 'position' })}
+            >
+              Left to right
+            </button>
+          </div>
           {response.filter_info ? <span className="pts__filter">{response.filter_info}</span> : null}
           {this.props.showDiagnostics === 'toggle' ? (
             <label className="pts__check">
@@ -676,11 +821,30 @@ export class PyramidalTileSearch extends Component<Props, State> {
         </div>
 
         {diag ? this.renderPipeline(response) : null}
-        {this.renderLocator(response)}
 
-        <div className="pts__grid">{response.results.map((hit, i) => this.renderCard(hit, i, diag))}</div>
+        <div
+          className="pts__scroller"
+          ref={this.holdScroller}
+          style={this.scrollerStyle()}
+        >
+          <div className="pts__grid">
+            {hits.map((hit, i) => this.renderCard(hit, i, diag, place))}
+          </div>
+        </div>
       </div>
     );
+  }
+
+  /** `'none'` lets the grid grow with the page; `'auto'` uses the measured height. */
+  private scrollerStyle(): React.CSSProperties | undefined {
+    const asked = this.props.resultsHeight;
+    if (!asked || asked === 'none') {
+      return undefined;
+    }
+    if (asked === 'auto') {
+      return this.state.scrollerHeight ? { maxHeight: this.state.scrollerHeight } : undefined;
+    }
+    return { maxHeight: asked };
   }
 
   private renderPipeline(response: SearchResponse) {
@@ -715,8 +879,13 @@ export class PyramidalTileSearch extends Component<Props, State> {
     );
   }
 
-  private renderLocator(response: SearchResponse) {
-    const { resolvedService, capabilities } = this.state;
+  /**
+   * The map, pinned above the result grid. Every marker carries its rank, and hovering
+   * either end lights the pair and dims the rest, so the reader never has to sweep the strip
+   * to find out which card a marker belongs to.
+   */
+  private renderLocator(response: SearchResponse, hits: SearchHit[]) {
+    const { resolvedService, capabilities, hoverTileId, openTileId } = this.state;
     const liftW = capabilities.corpus.lift_width || response.results[0].lift_width;
     const liftH = capabilities.corpus.lift_height || response.results[0].lift_height;
     if (!liftW || !liftH) {
@@ -724,28 +893,49 @@ export class PyramidalTileSearch extends Component<Props, State> {
     }
     const kind = this.props.locatorMarker;
     const context = `${resolvedService.replace(/\/$/, '')}/full/1400,/0/default.jpg`;
+    // A hundred numbered tags on one strip cannot be read, so past the limit the number
+    // hides and comes back on hover — on either end of the link.
+    const quiet = hits.length > (Number(this.props.markerNumberLimit) || 30);
 
     return (
       <div className="pts__locator">
         <div className="pts__lochead">
           <h4>Where these hits sit on the image</h4>
-          <span>Hover a marker or a card to link the two</span>
+          <span>
+            {hits.length} results ·{' '}
+            {quiet ? 'hover a marker or a card to mark the pair' : 'the number is the same on both'}
+          </span>
         </div>
         <div className="pts__strip">
           <img src={context} alt="The whole image, for locating results" />
-          {response.results.map((hit, i) => {
-            const cx = (100 * (hit.global_x + hit.global_w / 2)) / liftW;
+          {hits.map((hit, i) => {
+            const cx = 100 * this.placeOf(hit, liftW);
             const cy = (100 * (hit.global_y + hit.global_h / 2)) / liftH;
             const w = (100 * hit.global_w) / liftW;
             const h = (100 * hit.global_h) / liftH;
             const d = 4 + ((hit.pyramid_level || 3) - 3) * 1.8;
+            const hot = hoverTileId === hit.id;
+            const on = openTileId === hit.id;
             return (
               <button
                 key={hit.id}
                 type="button"
                 className={`pts__mark pts__mark--${kind}`}
                 style={{ left: `${cx}%` }}
-                aria-label={`Hit ${i + 1}`}
+                aria-label={`Result ${i + 1}`}
+                data-quiet={quiet ? '1' : '0'}
+                data-hot={hot ? '1' : '0'}
+                data-on={on ? '1' : '0'}
+                onMouseEnter={() => {
+                  this.setHover(hit.id);
+                  this.revealCard(hit.id);
+                }}
+                onMouseLeave={() => this.setHover(undefined)}
+                onFocus={() => {
+                  this.setHover(hit.id);
+                  this.revealCard(hit.id);
+                }}
+                onBlur={() => this.setHover(undefined)}
                 onClick={() => this.openHit(hit)}
               >
                 <span className="pts__markn">{i + 1}</span>
@@ -768,6 +958,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
                   />
                 ) : null}
                 {kind === 'hairline-dot' ? <span className="pts__mfaint" style={{ left: '50%' }} /> : null}
+                <span className="pts__mflag" />
               </button>
             );
           })}
@@ -776,21 +967,38 @@ export class PyramidalTileSearch extends Component<Props, State> {
     );
   }
 
-  private renderCard(hit: SearchHit, index: number, diag: boolean) {
-    const { resolvedService, resolvedImageIri, openTileId, chosenCrop } = this.state;
+  private renderCard(hit: SearchHit, index: number, diag: boolean, place?: PlaceBar) {
+    const { resolvedService, resolvedImageIri, openTileId, chosenCrop, hoverTileId } = this.state;
     const open = openTileId === hit.id;
+    const hot = hoverTileId === hit.id;
     const crop = this.cropFor(hit);
     const override = chosenCrop[hit.id];
     const merged = hit.dedup && hit.dedup.merged;
 
     return (
-      <article key={hit.id} className="pts__card" data-open={open}>
+      <article
+        key={hit.id}
+        className="pts__card"
+        data-open={open}
+        data-hot={hot ? '1' : '0'}
+        ref={(node) => {
+          if (node) {
+            this.cardRefs[hit.id] = node;
+          } else {
+            delete this.cardRefs[hit.id];
+          }
+        }}
+        onMouseEnter={() => this.setHover(hit.id)}
+        onMouseLeave={() => this.setHover(undefined)}
+      >
         <div className="pts__thumb">
           <img src={tileUrl(resolvedService, crop.region as any)} alt={`Result ${index + 1}`} />
+          <span className="pts__rank">{index + 1}</span>
           {diag && hit.pyramid_level !== undefined ? (
             <span className="pts__lvl">{`L${hit.pyramid_level}`}</span>
           ) : null}
         </div>
+        {place ? this.renderPlaceBar(hit, place.liftW, place.ticks) : null}
         <div className="pts__cap">
           <div className="pts__captype">
             <span>{`${(crop.region as any).global_w / 1000}k px wide`}</span>
@@ -890,6 +1098,44 @@ export class PyramidalTileSearch extends Component<Props, State> {
           </div>
         ) : null}
       </article>
+    );
+  }
+
+  /**
+   * Every hit as a tick, drawn once as a gradient rather than as one element per hit per
+   * card. A hundred results in a hundred cards would otherwise be ten thousand nodes; this
+   * is two. The colour is `currentColor`, so it still comes from the stylesheet.
+   */
+  private placeTicks(hits: SearchHit[], liftW: number): string {
+    const half = 0.3;
+    const stops: string[] = [];
+    hits
+      .map((h) => 100 * this.placeOf(h, liftW))
+      .sort((a, b) => a - b)
+      .forEach((p) => {
+        const from = Math.max(0, p - half);
+        const to = Math.min(100, p + half);
+        stops.push(
+          `transparent ${from}%`,
+          `currentColor ${from}%`,
+          `currentColor ${to}%`,
+          `transparent ${to}%`
+        );
+      });
+    return stops.length ? `linear-gradient(90deg, ${stops.join(', ')})` : 'none';
+  }
+
+  /**
+   * The whole image, end to end, under every thumbnail. Faint ticks are the other hits; the
+   * solid one is this hit. A card then says where it sits before anyone reaches for the
+   * mouse, which is the part hovering could never do.
+   */
+  private renderPlaceBar(hit: SearchHit, liftW: number, ticks: string) {
+    return (
+      <div className="pts__place" aria-hidden="true">
+        <i className="pts__place-all" style={{ backgroundImage: ticks }} />
+        <i className="pts__place-me" style={{ left: `${100 * this.placeOf(hit, liftW)}%` }} />
+      </div>
     );
   }
 

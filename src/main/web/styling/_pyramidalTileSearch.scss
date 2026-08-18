@@ -211,9 +211,15 @@
 
   // ------------------------------------------------------------------ locator
 
+  // The map is pinned above the scrolling grid, so it never leaves while the reader works
+  // through the results. It is about 100px tall, which it can afford to be.
   &__locator {
     padding: 12px 16px;
     border-bottom: 1px solid $color-border;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: $color-white;
   }
 
   &__lochead {
@@ -259,10 +265,15 @@
     border: 0;
     padding: 0;
 
+    &[data-hot='1'] {
+      z-index: 3;
+    }
+
     // The line scheme draws its own full height rule. The other schemes draw explicit
     // children instead, and only show a rule on hover.
     &--line::after,
     &:hover::after,
+    &[data-hot='1']::after,
     &[data-on='1']::after {
       content: '';
       position: absolute;
@@ -275,14 +286,34 @@
       opacity: 0.6;
     }
 
-    &:hover::after {
+    // The rule reads at full strength whichever end of the pair the pointer is on, so
+    // hovering a card and hovering its marker look the same on the strip.
+    &:hover::after,
+    &[data-hot='1']::after,
+    &[data-on='1']::after {
       opacity: 1;
-      width: 4px;
-      margin-left: -2px;
+      width: 3px;
+      margin-left: -1.5px;
     }
 
-    &:hover .pts__markn {
+    &[data-on='1']::after {
+      background: $color-dark;
+    }
+
+    &:hover .pts__markn,
+    &[data-hot='1'] .pts__markn,
+    &[data-on='1'] .pts__markn {
       display: block;
+    }
+
+    // Past the number limit the tag hides and returns on hover, because a hundred numbered
+    // tags on one strip cannot be read.
+    &[data-quiet='0'] .pts__markn {
+      display: block;
+    }
+
+    &[data-on='1'] .pts__markn {
+      background: $color-dark;
     }
   }
 
@@ -298,6 +329,11 @@
     font-weight: 700;
     padding: 0 4px;
     font-family: monospace;
+    // The strip zeroes its line height to kill the image's inline gap, and that inherits
+    // here — without an explicit one the tag collapses to zero height and only the glyph
+    // shows, over whatever the picture happens to be.
+    line-height: 15px;
+    z-index: 2;
   }
 
   &__mrect {
@@ -314,6 +350,44 @@
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
     transform: translate(-50%, -50%);
     pointer-events: none;
+    transition: box-shadow .14s;
+  }
+
+  // Marking, not dimming. A halo makes the linked dot findable over sky or over a crowd
+  // without anything else on the strip having to change, so the picture keeps its contrast
+  // and only two small elements repaint.
+  &__mark[data-hot='1'] &__mdot,
+  &__mark[data-on='1'] &__mdot {
+    box-shadow: 0 0 0 2px $color-white, 0 0 0 3.5px $color-dark;
+  }
+
+  &__mark[data-on='1'] &__mdot {
+    background: $color-dark;
+  }
+
+  // A flag on the strip's bottom edge — the one horizontal band that is never busy picture.
+  &__mflag {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    margin-left: -7px;
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 8px solid $color-danger;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .14s;
+  }
+
+  &__mark[data-hot='1'] &__mflag,
+  &__mark[data-on='1'] &__mflag {
+    opacity: 1;
+  }
+
+  &__mark[data-on='1'] &__mflag {
+    border-bottom-color: $color-dark;
   }
 
   &__mfaint {
@@ -329,6 +403,14 @@
 
   // -------------------------------------------------------------------- grid
 
+  // The grid scrolls inside the component so the locator above it can stay pinned. Set
+  // results-height='none' to give the grid back to the page.
+  &__scroller {
+    overflow-y: auto;
+    position: relative;
+    overscroll-behavior: contain;
+  }
+
   &__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
@@ -342,13 +424,24 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    transition: border-color .14s, box-shadow .14s;
 
     &:hover {
       border-color: $color-action-border;
     }
 
+    // Hovering either end of a pair marks that pair and leaves the rest alone. The ring and
+    // the badge are chrome; the thumbnail is the content the reader is judging, and it stays
+    // at full strength while they compare it with the others.
+    &[data-hot='1'] {
+      border-color: $color-danger;
+      box-shadow: 0 0 0 2px $color-danger-border;
+    }
+
+    // Pinned is a decision, so it changes hue rather than degree.
     &[data-open='true'] {
       grid-column: 1 / -1;
+      box-shadow: 0 0 0 2px $color-border-darker;
       border-color: $color-action;
       display: grid;
       grid-template-columns: 196px 1fr;
@@ -385,9 +478,71 @@
     }
   }
 
-  &__lvl {
+  // The same figure as the marker on the strip, in the same red, always shown.
+  &__rank {
     position: absolute;
     left: 0;
+    top: 0;
+    background: $color-danger;
+    color: $color-white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 17px;
+    min-width: 19px;
+    padding: 0 4px;
+    text-align: center;
+    font-family: monospace;
+    transition: transform .14s, box-shadow .14s;
+  }
+
+  &__card[data-open='true'] &__rank {
+    background: $color-dark;
+  }
+
+  &__card[data-hot='1'] &__rank,
+  &__card[data-open='true'] &__rank {
+    box-shadow: 0 0 0 2px $color-white;
+    transform: scale(1.1);
+    transform-origin: left top;
+  }
+
+  // The whole image end to end: faint ticks are the other hits, the solid one is this hit.
+  &__place {
+    position: relative;
+    height: 13px;
+    background: $color-off-white;
+    border-top: 1px solid $color-border;
+    border-bottom: 1px solid $color-border;
+    flex: 0 0 auto;
+
+    // Every hit, drawn once as a gradient of hairlines. `currentColor` keeps the value here.
+    .pts__place-all {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 4px;
+      height: 5px;
+      color: $color-base;
+      opacity: .55;
+    }
+
+    .pts__place-me {
+      position: absolute;
+      top: 1px;
+      height: 11px;
+      width: 2px;
+      margin-left: -1px;
+      background: $color-danger;
+    }
+  }
+
+  &__card[data-open='true'] &__place .pts__place-me {
+    background: $color-dark;
+  }
+
+  &__lvl {
+    position: absolute;
+    right: 0;
     top: 0;
     background: rgba(36, 36, 38, 0.76);
     color: $color-white;
