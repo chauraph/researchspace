@@ -27,11 +27,13 @@ test('probe: locator linking and pinned map', async ({ page }) => {
   console.log('cards            :', await page.locator('.pts__card').count());
   console.log('markers          :', await page.locator('.pts__mark').count());
   console.log('rank badges      :', await page.locator('.pts__rank').count());
+  console.log('query tiles     :', await page.locator('.pts__qtile').count(), '| toolbar thumb', await page.locator('.pts__filethumb').count());
   console.log('place bars (off) :', await page.locator('.pts__place').count(), '— expected 0 without diagnostics');
   console.log('order buttons    :', await page.locator('.pts__panelhead .pts__seg button').count());
   console.log('scroller present :', await page.locator('.pts__scroller').count());
 
-  await page.locator('.pts__card').nth(2).hover();
+  const cd = await page.locator('.pts__grid .pts__card').nth(2).boundingBox();
+  await page.mouse.move(cd!.x + cd!.width / 2, cd!.y + cd!.height / 2);
   await page.waitForTimeout(400);
   const markerOpacity = await page.$$eval('.pts__mark', (els) =>
     Array.from(new Set(els.map((e) => getComputedStyle(e).opacity))).join(','));
@@ -42,7 +44,10 @@ test('probe: locator linking and pinned map', async ({ page }) => {
               '| dot halo', await page.locator('.pts__mark[data-hot="1"] .pts__mdot')
                 .evaluate((e) => getComputedStyle(e).boxShadow.slice(0, 46)).catch(() => 'n/a'));
 
-  await page.locator('.pts__mark').nth(1).hover();
+  // move the pointer to the marker's centre rather than using hover(), which scrolls the
+  // element into view first and can land off a 16px-wide target
+  const mk = await page.locator('.pts__mark').nth(1).boundingBox();
+  await page.mouse.move(mk!.x + mk!.width / 2, mk!.y + mk!.height / 2);
   await page.waitForTimeout(400);
   const cardOpacity = await page.$$eval('.pts__card', (els) =>
     Array.from(new Set(els.map((e) => getComputedStyle(e).opacity))).join(','));

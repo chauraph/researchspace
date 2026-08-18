@@ -54,6 +54,16 @@ interface PlaceBar {
   ticks: string;
 }
 
+/** What was actually asked, kept beside what came back. */
+interface ExecutedQuery {
+  kind: QueryMode;
+  /** Text queries: the phrase the service echoed back, so it is the one it ran. */
+  text?: string;
+  /** Image queries: an object URL of its own, so replacing the file does not blank the cell. */
+  url?: string;
+  label?: string;
+}
+
 export interface Props {
   /** Event addressing. */
   id: string;
@@ -120,6 +130,16 @@ export interface Props {
    * numbered tags on one strip cannot be read. Default 30.
    */
   markerNumberLimit?: number;
+
+  /**
+   * Show the query beside the results, in a sticky first column at the size of a result card,
+   * so an image query can be compared with what came back. Default `true`.
+   *
+   * The two states are exclusive. With the cell on, the toolbar carries the picker but no
+   * thumbnail; with it off, the toolbar carries the small thumbnail it always had and the
+   * grid takes the full width.
+   */
+  queryCell?: boolean;
 }
 
 interface State {
@@ -134,6 +154,17 @@ interface State {
   query: string;
   imageFile?: File;
   imagePreview?: string;
+  /** Where the query image came from, for the reader: a file name, or the result it crops. */
+  imageLabel?: string;
+  /** The hit whose crop is being fetched, so its button can say so and not fire twice. */
+  cropQueryFor?: string;
+  /**
+   * The query that produced the results on screen — not the one in the box, which the reader
+   * may already have edited. Snapshotted when a search returns.
+   */
+  executed?: ExecutedQuery;
+  /** Width of the query column, measured from a card so the two match. */
+  queryWidth?: number;
 
   backend?: string;
   levels: number[];
@@ -186,6 +217,11 @@ const SERVICE_TO_IMAGE = `${ID_PREFIXES} SELECT DISTINCT ?image WHERE {${ID_WHER
 const IMAGE_TO_SERVICE = `${ID_PREFIXES} SELECT DISTINCT ?service WHERE {${ID_WHERE}}`;
 
 const DEFAULT_PROXY = '/proxy/tile-search';
+/**
+ * Long edge of the crop sent as a query image. Big enough for the image tower to see the
+ * subject, small enough that fetching it is not felt.
+ */
+const CROP_QUERY_SIZE = 512;
 /** Below this the scrolling grid is not worth having, so it stops shrinking. */
 const MIN_SCROLLER_HEIGHT = 260;
 /** Breathing room under the panel, so the last row does not sit on the viewport edge. */
@@ -201,6 +237,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
     locatorMarker: 'hairline-dot',
     resultsHeight: 'auto',
     markerNumberLimit: 30,
+    queryCell: true,
   };
 
   private readonly cancellation = new Cancellation();
@@ -208,6 +245,8 @@ export class PyramidalTileSearch extends Component<Props, State> {
   private cardRefs: { [tileId: string]: HTMLElement } = {};
   /** The scrolling grid, measured against the viewport when the height is automatic. */
   private scrollerNode?: HTMLElement;
+  /** The result grid, measured so the query column can match a card. */
+  private gridNode?: HTMLElement;
   private client: TileSearchClient;
   /** In flight search, aborted when a new one starts so results cannot arrive out of order. */
   private inflight?: AbortController;
@@ -231,20 +270,30 @@ export class PyramidalTileSearch extends Component<Props, State> {
     this.resolveIdentifiers();
     this.loadCapabilities();
     this.listenForSearch();
-    window.addEventListener('resize', this.measureScroller);
-    window.addEventListener('orientationchange', this.measureScroller);
+    window.addEventListener('resize', this.onViewportChange);
+    window.addEventListener('orientationchange', this.onViewportChange);
   }
+
+  private onViewportChange = () => {
+    this.measureScroller();
+    this.matchQueryWidth();
+  };
 
   componentDidUpdate() {
     // The locator appears with the first result set and the toolbar wraps at narrow widths,
     // so the space left for the grid changes with the content, not only with the window.
     this.measureScroller();
+    this.matchQueryWidth();
   }
 
   componentWillUnmount() {
     this.cancellation.cancelAll();
-    window.removeEventListener('resize', this.measureScroller);
-    window.removeEventListener('orientationchange', this.measureScroller);
+    this.releasePreview();
+    if (this.state.executed && this.state.executed.url) {
+      URL.revokeObjectURL(this.state.executed.url);
+    }
+    window.removeEventListener('resize', this.onViewportChange);
+    window.removeEventListener('orientationchange', this.onViewportChange);
     if (this.inflight) {
       this.inflight.abort();
     }
@@ -261,6 +310,36 @@ export class PyramidalTileSearch extends Component<Props, State> {
   /** A stable ref, so React does not detach and reattach the node on every render. */
   private holdScroller = (node: HTMLElement | null) => {
     this.scrollerNode = node || undefined;
+  };
+
+  private holdGrid = (node: HTMLElement | null) => {
+    this.gridNode = node || undefined;
+  };
+
+  /**
+   * Give the query column the width the grid actually gave a card, so the two are the same
+   * size whatever the viewport does to the track count.
+   *
+   * Setting the width changes the space left for the grid, which changes the card width, so
+   * this settles rather than fires once. It stops as soon as the difference is under two
+   * pixels, which is also what keeps it from oscillating across a track-count threshold.
+   */
+  private matchQueryWidth = (pass = 0) => {
+    if (!this.props.queryCell || !this.gridNode) {
+      return;
+    }
+    const card = this.gridNode.querySelector('.pts__card');
+    if (!card) {
+      return;
+    }
+    const width = Math.round(card.getBoundingClientRect().width);
+    if (width > 0 && Math.abs(width - (this.state.queryWidth || 0)) > 2) {
+      this.setState({ queryWidth: width }, () => {
+        if (pass < 3) {
+          window.requestAnimationFrame(() => this.matchQueryWidth(pass + 1));
+        }
+      });
+    }
   };
 
   private measureScroller = () => {
@@ -478,7 +557,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
         if (signal.aborted) {
           return;
         }
-        this.setState({ searching: false, response });
+        this.setState({ searching: false, response, executed: this.snapshotQuery(response) });
         trigger({
           eventType: ResultsLoadedEvent,
           source: this.props.id,
@@ -535,15 +614,119 @@ export class PyramidalTileSearch extends Component<Props, State> {
   };
 
   /**
-   * Hovering a marker brings its card into view. `nearest` keeps the grid still when the
-   * card is already visible, so sweeping the strip does not make the page jump.
+   * Hovering a marker brings its card into view.
+   *
+   * Scrolled by hand rather than with `scrollIntoView`, which walks up and scrolls every
+   * scrollable ancestor including the page. Moving the page slides the strip out from under
+   * the pointer, which fires `mouseleave` and drops the very link being made.
    */
   private revealCard(id: string) {
     const node = this.cardRefs[id];
-    if (node && node.scrollIntoView) {
-      node.scrollIntoView({ block: 'nearest' });
+    const box = this.scrollerNode;
+    if (!node || !box) {
+      return;
+    }
+    const card = node.getBoundingClientRect();
+    const view = box.getBoundingClientRect();
+    if (card.top < view.top) {
+      box.scrollTop -= view.top - card.top + 8;
+    } else if (card.bottom > view.bottom) {
+      box.scrollTop += card.bottom - view.bottom + 8;
     }
   }
+
+  // ------------------------------------------------------------- query image
+
+  /**
+   * Keep what was asked, at the moment it was answered. The image gets an object URL of its
+   * own so that picking another file — without searching — does not blank the cell or make it
+   * describe a query that never ran.
+   */
+  private snapshotQuery(response: SearchResponse): ExecutedQuery | undefined {
+    if (!this.props.queryCell) {
+      return undefined;
+    }
+    const previous = this.state.executed;
+    if (previous && previous.url) {
+      URL.revokeObjectURL(previous.url);
+    }
+    if (this.state.mode === 'image' && this.state.imageFile) {
+      return {
+        kind: 'image',
+        url: URL.createObjectURL(this.state.imageFile),
+        label: this.state.imageLabel || this.state.imageFile.name,
+      };
+    }
+    return { kind: 'text', text: response.query || this.state.query };
+  }
+
+  private releasePreview() {
+    if (this.state.imagePreview) {
+      URL.revokeObjectURL(this.state.imagePreview);
+    }
+  }
+
+  /**
+   * Take a file as the query image, whoever produced it — the file picker or a result crop.
+   * The old preview URL is revoked here, so the object URLs do not accumulate over a session
+   * of trying one crop after another.
+   */
+  private adoptQueryImage(file: File, label: string, runNow: boolean) {
+    this.releasePreview();
+    const { capabilities, backend } = this.state;
+    const forImage = capabilities && capabilities.default_backend_for_query_type.image;
+    this.setState(
+      {
+        mode: 'image',
+        imageFile: file,
+        imagePreview: URL.createObjectURL(file),
+        imageLabel: label,
+        backend: forImage || backend,
+        cropQueryFor: undefined,
+      },
+      runNow ? () => this.startSearch() : undefined
+    );
+  }
+
+  private clearQueryImage = () => {
+    this.releasePreview();
+    this.setState({ imageFile: undefined, imagePreview: undefined, imageLabel: undefined });
+  };
+
+  /**
+   * Query by example: take the crop the reader is looking at and search with it.
+   *
+   * The tile comes from the IIIF service rather than from the index, so it is the same crop
+   * the card shows, including a merge-inspector override. The service accepts multipart only,
+   * so the bytes have to come to the browser first; the IIIF host allows the cross-origin read.
+   */
+  private searchWithCrop = (hit: SearchHit, index: number) => {
+    if (this.state.searching || this.state.cropQueryFor) {
+      return;
+    }
+    const crop = this.cropFor(hit);
+    const url = tileUrl(this.state.resolvedService, crop.region as any, CROP_QUERY_SIZE);
+    this.setState({ cropQueryFor: hit.id, error: undefined });
+    fetch(url, { mode: 'cors' })
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error(`the image service answered HTTP ${r.status}`);
+        }
+        return r.blob();
+      })
+      .then((blob) => {
+        const file = new File([blob], `${crop.tileId}.jpg`, { type: blob.type || 'image/jpeg' });
+        this.adoptQueryImage(file, `Crop of result ${index + 1}`, true);
+      })
+      .catch((e) => {
+        this.setState({
+          cropQueryFor: undefined,
+          error:
+            `Could not read the crop to search with it — ${e && e.message ? e.message : e}. ` +
+            'The image service must allow a cross-origin read for this to work.',
+        });
+      });
+  };
 
   private diagnosticsVisible(): boolean {
     const mode = this.props.showDiagnostics;
@@ -627,18 +810,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
               }}
             />
           ) : (
-            <input
-              className="pts__input"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              aria-label="Image to search with"
-              onChange={(e) => {
-                const file = e.currentTarget.files && e.currentTarget.files[0];
-                if (file) {
-                  this.setState({ imageFile: file, imagePreview: URL.createObjectURL(file) });
-                }
-              }}
-            />
+            this.renderImagePicker()
           )}
           <button
             className="btn btn-action"
@@ -749,6 +921,53 @@ export class PyramidalTileSearch extends Component<Props, State> {
     );
   }
 
+  /**
+   * The image query, with the image visible. A file name says nothing about what is being
+   * searched for, and the query image can also arrive from a result crop, where a name would
+   * be meaningless.
+   */
+  private renderImagePicker() {
+    const { imageFile, imagePreview, imageLabel } = this.state;
+    return (
+      <div className="pts__filepick">
+        {imagePreview ? (
+          <>
+            {this.props.queryCell ? null : (
+              <img className="pts__filethumb" src={imagePreview} alt="The image being searched with" />
+            )}
+            <span className="pts__filename" title={imageFile ? imageFile.name : ''}>
+              {imageLabel || (imageFile ? imageFile.name : '')}
+            </span>
+            <button
+              type="button"
+              className="pts__fileclear"
+              aria-label="Remove the query image"
+              onClick={this.clearQueryImage}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <span className="pts__filenone">No image chosen</span>
+        )}
+        <label className="btn btn-default pts__filebtn">
+          {imageFile ? 'Replace' : 'Choose image'}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Image to search with"
+            onChange={(e) => {
+              const file = e.currentTarget.files && e.currentTarget.files[0];
+              if (file) {
+                this.adoptQueryImage(file, file.name, false);
+              }
+            }}
+          />
+        </label>
+      </div>
+    );
+  }
+
   private renderResults() {
     const { searching, error, response, capabilities } = this.state;
     if (searching) {
@@ -827,9 +1046,23 @@ export class PyramidalTileSearch extends Component<Props, State> {
           ref={this.holdScroller}
           style={this.scrollerStyle()}
         >
-          <div className="pts__grid">
-            {hits.map((hit, i) => this.renderCard(hit, i, diag, place))}
-          </div>
+          {this.props.queryCell ? (
+            <div className="pts__rbody">
+              <aside
+                className="pts__qcol"
+                style={this.state.queryWidth ? { width: this.state.queryWidth } : undefined}
+              >
+                {this.renderQueryTile()}
+              </aside>
+              <div className="pts__grid" ref={this.holdGrid}>
+                {hits.map((hit, i) => this.renderCard(hit, i, diag, place))}
+              </div>
+            </div>
+          ) : (
+            <div className="pts__grid">
+              {hits.map((hit, i) => this.renderCard(hit, i, diag, place))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -845,6 +1078,34 @@ export class PyramidalTileSearch extends Component<Props, State> {
       return this.state.scrollerHeight ? { maxHeight: this.state.scrollerHeight } : undefined;
     }
     return { maxHeight: asked };
+  }
+
+  /**
+   * The query, beside the results, in the card's own clothes. Same box, same thumbnail slot,
+   * same caption row — one step of contrast on the border, and where a result puts its rank
+   * the query puts its name. Nothing new to learn, and nothing that can drift out of step
+   * with the cards.
+   */
+  private renderQueryTile() {
+    const asked = this.state.executed;
+    if (!asked) {
+      return null;
+    }
+    return (
+      <article className="pts__card pts__qtile">
+        {asked.kind === 'image' && asked.url ? (
+          <div className="pts__thumb">
+            <img src={asked.url} alt="The image this search was made with" />
+            <span className="pts__qbadge">Asked for</span>
+          </div>
+        ) : (
+          <div className="pts__qtext">
+            <q>{asked.text}</q>
+            <span className="pts__qbadge">Asked for</span>
+          </div>
+        )}
+      </article>
+    );
   }
 
   private renderPipeline(response: SearchResponse) {
@@ -968,9 +1229,16 @@ export class PyramidalTileSearch extends Component<Props, State> {
   }
 
   private renderCard(hit: SearchHit, index: number, diag: boolean, place?: PlaceBar) {
-    const { resolvedService, resolvedImageIri, openTileId, chosenCrop, hoverTileId } = this.state;
+    const {
+      resolvedService, resolvedImageIri, openTileId, chosenCrop, hoverTileId, capabilities,
+    } = this.state;
     const open = openTileId === hit.id;
     const hot = hoverTileId === hit.id;
+    // Query by example needs the deployment to configure an image backend, and the prop may
+    // have restricted the modes further.
+    const imageQueryAvailable =
+      this.effectiveModes(capabilities.configured_query_type_backend_lists).indexOf('image') >= 0;
+    const fetchingCrop = this.state.cropQueryFor === hit.id;
     const crop = this.cropFor(hit);
     const override = chosenCrop[hit.id];
     const merged = hit.dedup && hit.dedup.merged;
@@ -1069,6 +1337,20 @@ export class PyramidalTileSearch extends Component<Props, State> {
             {this.state.openMergeFor === hit.id ? this.renderMergeInspector(hit) : null}
 
             <div className="pts__actions">
+              {imageQueryAvailable ? (
+                <button
+                  className="btn btn-default"
+                  type="button"
+                  disabled={fetchingCrop || this.state.searching}
+                  onClick={() => this.searchWithCrop(hit, index)}
+                  title={
+                    'Search the index with this crop instead of a description. The crop is ' +
+                    'the one shown, including any override chosen in the merge inspector.'
+                  }
+                >
+                  {fetchingCrop ? 'Reading the crop…' : 'Search with this crop'}
+                </button>
+              ) : null}
               {resolvedImageIri ? (
                 <>
                   <button

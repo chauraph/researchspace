@@ -46,6 +46,77 @@
     background: $color-white;
   }
 
+  // The image query, with the image visible. A file name says nothing about what is being
+  // searched for, and the query image can arrive from a result crop, where a name would be
+  // meaningless.
+  &__filepick {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid $color-border-darker;
+    border-radius: $input-border-radius-small;
+    background: $color-white;
+    padding: 4px 4px 4px 8px;
+  }
+
+  &__filethumb {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border: 1px solid $color-border;
+    flex: 0 0 auto;
+    background: $color-lighter;
+  }
+
+  &__filename {
+    flex: 1;
+    min-width: 0;
+    font-size: $font-size-small;
+    color: $color-dark;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__filenone {
+    flex: 1;
+    font-size: $font-size-small;
+    color: $color-secondary-light;
+  }
+
+  &__fileclear {
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    color: $color-secondary-light;
+    font-size: 17px;
+    line-height: 1;
+    padding: 2px 6px;
+
+    &:hover {
+      color: $color-danger;
+    }
+  }
+
+  // A styled label over a hidden native input, so the control matches the platform buttons.
+  &__filebtn {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: $font-size-small;
+    font-weight: normal;
+    cursor: pointer;
+
+    input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
   &__ctrls {
     display: flex;
     flex-wrap: wrap;
@@ -409,6 +480,99 @@
     overflow-y: auto;
     position: relative;
     overscroll-behavior: contain;
+  }
+
+  // The query is the first column of the result body, and it sticks. Its containing block is
+  // the whole column, which is as tall as the grid, so it travels the full scroll — where a
+  // sticky grid item could not, its containing block being one cell.
+  &__rbody {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  &__rbody &__grid {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+  }
+
+  &__qcol {
+    position: sticky;
+    top: 16px;
+    z-index: 2;
+    flex: 0 0 auto;
+    width: 200px;
+  }
+
+  // The query wears the card's own clothes: one step of contrast on the border, and no hover
+  // or link state, because it is the question rather than an answer.
+  &__qtile {
+    border-color: $color-dark;
+    cursor: default;
+
+    &:hover {
+      border-color: $color-dark;
+      box-shadow: none;
+    }
+
+    // A result is square by construction, so a card crops to fill. A query image is whatever
+    // the reader brought — a wide halberd, a tall portrait — and cropping the reference is
+    // the one thing this cell must never do. Fit it whole and let the ground show.
+    .pts__thumb img {
+      object-fit: contain;
+      background: $color-lighter;
+    }
+  }
+
+  // Where a result puts its rank, the query puts its name.
+  &__qbadge {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: $color-dark;
+    color: $color-white;
+    font-family: monospace;
+    font-size: 9.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    line-height: 18px;
+    height: 18px;
+    padding: 0 7px;
+  }
+
+  // A text query fills the same square, flush left and vertically centred, so a short phrase
+  // reads as a label rather than as a caption lost in an empty card.
+  &__qtext {
+    position: relative;
+    aspect-ratio: 1;
+    background: $color-off-white;
+    display: flex;
+    align-items: center;
+    padding: 26px 15px 15px;
+
+    q {
+      font-size: 19px;
+      line-height: 1.3;
+      color: $color-dark;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+
+  @media (max-width: 720px) {
+    &__rbody {
+      flex-wrap: wrap;
+    }
+
+    &__qcol {
+      position: static;
+      width: 100%;
+      max-width: 240px;
+    }
   }
 
   &__grid {
