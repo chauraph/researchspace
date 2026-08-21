@@ -485,6 +485,8 @@
   // The query is the first column of the result body, and it sticks. Its containing block is
   // the whole column, which is as tall as the grid, so it travels the full scroll — where a
   // sticky grid item could not, its containing block being one cell.
+  // The padding, the gap and the grid's minimum track are mirrored by the track solver in
+  // PyramidalTileSearch.tsx, which sizes the query column to one track. Change them together.
   &__rbody {
     display: flex;
     gap: 8px;
@@ -498,6 +500,7 @@
     padding: 0;
   }
 
+  // 200px is the width before the solver runs, and the one it keeps under 720px.
   &__qcol {
     position: sticky;
     top: 16px;

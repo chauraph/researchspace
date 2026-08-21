@@ -163,8 +163,10 @@ interface State {
    * may already have edited. Snapshotted when a search returns.
    */
   executed?: ExecutedQuery;
-  /** Width of the query column, measured from a card so the two match. */
+  /** Width of the query column, solved with the track count so the two match exactly. */
   queryWidth?: number;
+  /** Number of card tracks the solved layout leaves beside the query column. */
+  gridTracks?: number;
 
   backend?: string;
   levels: number[];
@@ -226,6 +228,15 @@ const CROP_QUERY_SIZE = 512;
 const MIN_SCROLLER_HEIGHT = 260;
 /** Breathing room under the panel, so the last row does not sit on the viewport edge. */
 const SCROLLER_BOTTOM_GAP = 24;
+/** How many measure-and-apply passes a settle cycle gets before it accepts what it has. */
+const MAX_HEIGHT_PASSES = 4;
+// The three numbers the track solver shares with `_pyramidalTileSearch.scss`. They live in
+// both places because the layout has to hold with the stylesheet alone, before any measuring.
+const RBODY_PADDING = 16;
+const GRID_GAP = 8;
+const MIN_TRACK_WIDTH = 196;
+/** Below this the stylesheet stacks the query above the grid and owns both widths. */
+const QCOL_STACK_WIDTH = 720;
 const MAX_MERGE_MEMBERS = 8;
 
 export class PyramidalTileSearch extends Component<Props, State> {
@@ -247,6 +258,7 @@ export class PyramidalTileSearch extends Component<Props, State> {
   private scrollerNode?: HTMLElement;
   /** The result grid, measured so the query column can match a card. */
   private gridNode?: HTMLElement;
+  private rbodyNode?: HTMLElement;
   private client: TileSearchClient;
   /** In flight search, aborted when a new one starts so results cannot arrive out of order. */
   private inflight?: AbortController;
@@ -275,15 +287,21 @@ export class PyramidalTileSearch extends Component<Props, State> {
   }
 
   private onViewportChange = () => {
+    this.solvedFor = undefined;
+    this.heightsTried.clear();
     this.measureScroller();
-    this.matchQueryWidth();
+    this.fitQueryColumn();
   };
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps: Props, prevState: State) {
+    // A new result set is a new layout, so the height settle cycle starts over.
+    if (prevState.response !== this.state.response || prevState.order !== this.state.order) {
+      this.heightsTried.clear();
+    }
     // The locator appears with the first result set and the toolbar wraps at narrow widths,
     // so the space left for the grid changes with the content, not only with the window.
     this.measureScroller();
-    this.matchQueryWidth();
+    this.fitQueryColumn();
   }
 
   componentWillUnmount() {
@@ -317,30 +335,57 @@ export class PyramidalTileSearch extends Component<Props, State> {
   };
 
   /**
-   * Give the query column the width the grid actually gave a card, so the two are the same
-   * size whatever the viewport does to the track count.
+   * Size the query column and the grid together, from the one width neither of them can
+   * change: the space the result body has to lay out in.
    *
-   * Setting the width changes the space left for the grid, which changes the card width, so
-   * this settles rather than fires once. It stops as soon as the difference is under two
-   * pixels, which is also what keeps it from oscillating across a track-count threshold.
+   * Measuring a rendered card and copying its width onto the column cannot work — the column
+   * is the card's flex sibling, so widening it narrows the grid, which can drop a track and
+   * widen the card again. The two chase each other across the track-count threshold and never
+   * meet (React #185, and a query cell blown up to half the panel).
+   *
+   * So the track count is solved for instead. `n` cards plus the column is `n + 1` equal
+   * tracks with `n` gaps between them, and the widest layout that still keeps every track at
+   * or above the CSS minimum is the one to use. Nothing here reads a width this method sets,
+   * so it runs once per layout change rather than settling.
    */
-  private matchQueryWidth = (pass = 0) => {
-    if (!this.props.queryCell || !this.gridNode) {
+  private holdRbody = (node: HTMLElement | null) => {
+    this.rbodyNode = node || undefined;
+  };
+
+  /** The inner width the last solution was computed for, so an unchanged layout is a no-op. */
+  private solvedFor?: number;
+
+  private fitQueryColumn = () => {
+    if (!this.props.queryCell || !this.rbodyNode) {
       return;
     }
-    const card = this.gridNode.querySelector('.pts__card');
-    if (!card) {
+    // Below the breakpoint the column goes full width above the grid, and the stylesheet owns
+    // both. An inline width would fight it.
+    if (window.innerWidth <= QCOL_STACK_WIDTH) {
+      this.solvedFor = undefined;
+      if (this.state.queryWidth !== undefined) {
+        this.setState({ queryWidth: undefined, gridTracks: undefined });
+      }
       return;
     }
-    const width = Math.round(card.getBoundingClientRect().width);
-    if (width > 0 && Math.abs(width - (this.state.queryWidth || 0)) > 2) {
-      this.setState({ queryWidth: width }, () => {
-        if (pass < 3) {
-          window.requestAnimationFrame(() => this.matchQueryWidth(pass + 1));
-        }
-      });
+    const inner = this.rbodyNode.clientWidth - 2 * RBODY_PADDING;
+    if (inner <= 0 || inner === this.solvedFor) {
+      return;
+    }
+    this.solvedFor = inner;
+    const trackAt = (n: number) => (inner - GRID_GAP * n) / (n + 1);
+    let tracks = 1;
+    while (trackAt(tracks + 1) >= MIN_TRACK_WIDTH) {
+      tracks += 1;
+    }
+    const width = Math.floor(trackAt(tracks));
+    if (width !== this.state.queryWidth || tracks !== this.state.gridTracks) {
+      this.setState({ queryWidth: width, gridTracks: tracks });
     }
   };
+
+  /** Same feedback loop as the query column: capping the panel can move its own top. */
+  private heightsTried = new Set<number>();
 
   private measureScroller = () => {
     if (this.props.resultsHeight !== 'auto' || !this.scrollerNode) {
@@ -351,9 +396,14 @@ export class PyramidalTileSearch extends Component<Props, State> {
       MIN_SCROLLER_HEIGHT,
       Math.round(window.innerHeight - top - SCROLLER_BOTTOM_GAP)
     );
-    if (Math.abs((this.state.scrollerHeight || 0) - next) > 1) {
-      this.setState({ scrollerHeight: next });
+    if (Math.abs((this.state.scrollerHeight || 0) - next) <= 1) {
+      return;
     }
+    if (this.heightsTried.has(next) || this.heightsTried.size >= MAX_HEIGHT_PASSES) {
+      return;
+    }
+    this.heightsTried.add(next);
+    this.setState({ scrollerHeight: next });
   };
 
   // ---------------------------------------------------------------- identifiers
@@ -1047,14 +1097,14 @@ export class PyramidalTileSearch extends Component<Props, State> {
           style={this.scrollerStyle()}
         >
           {this.props.queryCell ? (
-            <div className="pts__rbody">
+            <div className="pts__rbody" ref={this.holdRbody}>
               <aside
                 className="pts__qcol"
                 style={this.state.queryWidth ? { width: this.state.queryWidth } : undefined}
               >
                 {this.renderQueryTile()}
               </aside>
-              <div className="pts__grid" ref={this.holdGrid}>
+              <div className="pts__grid" ref={this.holdGrid} style={this.gridStyle()}>
                 {hits.map((hit, i) => this.renderCard(hit, i, diag, place))}
               </div>
             </div>
@@ -1066,6 +1116,16 @@ export class PyramidalTileSearch extends Component<Props, State> {
         </div>
       </div>
     );
+  }
+
+  /**
+   * Pin the track count to the solved one. Without it `auto-fill` would pick its own count
+   * from the width the query column left over, and land one track off the solution.
+   */
+  private gridStyle(): React.CSSProperties | undefined {
+    return this.state.gridTracks
+      ? { gridTemplateColumns: `repeat(${this.state.gridTracks}, 1fr)` }
+      : undefined;
   }
 
   /** `'none'` lets the grid grow with the page; `'auto'` uses the measured height. */
