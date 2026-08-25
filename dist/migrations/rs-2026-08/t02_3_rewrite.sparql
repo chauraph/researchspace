@@ -1,0 +1,53 @@
+# t02_3_rewrite.sparql — retire the server-side SAM tool's shape prefix:
+# rewrite `id="sam_…"` to `id="samlocal_…"` inside stored ImageRegion SVG.
+#
+# WHY THIS IS DATA AND NOT A CODE BRANCH. The server-side $.Sam tool is removed
+# and $.SamLocal is promoted to be the only SAM. The promoted tool keeps its own
+# idPrefix `samlocal_`, so without this rewrite every region drawn by the old
+# tool resolves to no tool at all: osd-svg-overlay.js:654/:818 map a stored
+# shape back to its tool by prefix, and :571 needs that tool for onMouseDrag.
+# Orphaned regions would render and select but could never be reshaped again.
+#
+# ORDERING. Run this BEFORE the code excise deploys, so no region is ever
+# tool-less. Running it early is safe: $.SamLocal already claims `samlocal_`.
+#
+# SCOPE. Allowlist by owned region namespace (?ns), per the wave rule — never a
+# blocklist. This deviates from t01's per-graph VALUES list only in granularity:
+# each region lives in its own …/container/context graph, so a per-graph list
+# would be 23 entries on dev and 176 on prod. The namespace prefix is the same
+# allowlist one level up, and t02_1 proves which namespaces are in play.
+#
+# IDEMPOTENT: `id="samlocal_` does not contain `id="sam_`, so a second run
+# matches nothing. One request = one Blazegraph transaction.
+#
+# BACK UP FIRST. Targeted export of exactly the rows this touches:
+#     curl -s -u admin:admin "$SPARQL" -H 'Accept: application/sparql-results+json' \
+#       --data-urlencode 'query=PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+#         SELECT ?g ?s ?v WHERE { GRAPH ?g { ?s rdf:value ?v .
+#           FILTER(CONTAINS(STR(?v), "id=\"sam_")) } } ORDER BY ?s' \
+#       -o backups/t02_<env>_pre_<date>.json
+#
+# ROLLBACK: the same update with the two string arguments swapped, scoped to the
+# subjects in that backup file.
+#
+# Usage:
+#     curl -s -u admin:admin "$SPARQL" --data-urlencode "update=$(cat t02_3_rewrite.sparql)"
+#
+# Dev run 2026-08-25: 23 regions, 110 path ids rewritten; verified byte-identical
+# to the backup apart from the prefix, same graphs, zero residue in either
+# repository. (That run used the unscoped form; t02_1 had already proven all 23
+# graphs were owned murtenpanorama ImageRegion containers. The allowlist below is
+# the tightened form for prod — re-running it on dev is a no-op.)
+# ─────────────────────────────────────────────────────────────────────────────
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+DELETE { GRAPH ?g { ?s rdf:value ?old } }
+INSERT { GRAPH ?g { ?s rdf:value ?new } }
+WHERE {
+  VALUES ?ns { "https://w3id.org/murtenpanorama/resource/ImageRegion/" }  # <- from t02_1_inventory
+  GRAPH ?g {
+    ?s rdf:value ?old .
+    FILTER(CONTAINS(STR(?old), 'id="sam_') && STRSTARTS(STR(?s), ?ns))
+  }
+  BIND(STRDT(REPLACE(STR(?old), 'id="sam_', 'id="samlocal_'), xsd:string) AS ?new)
+}

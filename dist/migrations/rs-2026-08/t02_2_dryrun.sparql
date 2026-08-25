@@ -1,0 +1,39 @@
+# t02_2_dryrun.sparql — preview of the t02_3 rewrite. READ-ONLY.
+#
+# Same WHERE and the same BIND as t02_3, so what it lists is exactly what the
+# update would change. Nothing is written.
+#
+# EDIT THE VALUES ALLOWLIST to match t02_3 before reading the output.
+#
+# Columns, and what they must show:
+#   ?idsRewritten     path ids in that literal. "samlocal_" is exactly 5 chars
+#                     longer than "sam_", so (newLen-oldLen)/5 IS the count of
+#                     rewritten `id=` attributes — a whole number, never 0.
+#   ?leftover         must be false everywhere (no `id="sam_` survives).
+#   ?datatypeChanged  must be false everywhere (plain xsd:string in, out).
+#
+# Usage:
+#     curl -s -u admin:admin "$SPARQL" --data-urlencode "query=$(cat t02_2_dryrun.sparql)"
+#
+# Aggregate variant — one row, all three bad_* columns must be 0:
+#     ./checks.sh S2
+#
+# Dev 2026-08-25 before the rewrite: 23 rows, 110 path ids, all flags clean.
+# ─────────────────────────────────────────────────────────────────────────────
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?s
+       (SUBSTR(STRAFTER(STR(?old), 'id="'), 1, 46) AS ?firstIdBefore)
+       (SUBSTR(STRAFTER(STR(?new), 'id="'), 1, 46) AS ?firstIdAfter)
+       ((STRLEN(STR(?new)) - STRLEN(STR(?old))) / 5 AS ?idsRewritten)
+       (CONTAINS(STR(?new), 'id="sam_') AS ?leftover)
+       (DATATYPE(?new) != DATATYPE(?old) AS ?datatypeChanged)
+WHERE {
+  VALUES ?ns { "https://w3id.org/murtenpanorama/resource/ImageRegion/" }  # <- from t02_1_inventory
+  GRAPH ?g {
+    ?s rdf:value ?old .
+    FILTER(CONTAINS(STR(?old), 'id="sam_') && STRSTARTS(STR(?s), ?ns))
+  }
+  BIND(STRDT(REPLACE(STR(?old), 'id="sam_', 'id="samlocal_'), xsd:string) AS ?new)
+}
+ORDER BY ?s

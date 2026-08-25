@@ -1,0 +1,39 @@
+# t02_1_inventory.sparql — image-region drawing-tool census, by tool and by
+# region namespace. READ-ONLY.
+#
+# Run BEFORE t02_2/t02_3 and read the result before writing anything:
+#
+#   - `sam-server` rows are what t02 migrates. Zero rows => nothing to do on
+#     this instance, go straight to `./checks.sh t02`.
+#   - `?regionNamespace` is the edit point for t02_3's VALUES allowlist. Every
+#     namespace listed against `sam-server` must be one you OWN. A namespace you
+#     do not recognise stays OUT of the allowlist — investigate it first.
+#   - A file-backed region graph would mean force-load reverts the rewrite at the
+#     next boot. ImageRegion containers are store-only on dev (nothing matching
+#     under runtime-data/ldp/** or the app layer) — re-verify per instance with:
+#         grep -rl 'id="sam_' <runtime>/ ; find <runtime> -path '*ldp*' -iname '*ImageRegion*'
+#
+# Shape names are written by paper.js as the SVG `id` attribute
+# (mirador-src/vendors/10-paper.js:14939) and stored as rdf:value on the
+# ImageRegion resource, each region in its own …/container/context graph.
+#
+# Usage:
+#     curl -s -u admin:admin "$SPARQL" --data-urlencode "query=$(cat t02_1_inventory.sparql)"
+#
+# Dev observed 2026-08-25 (before the rewrite): sam-server 23, samlocal 25,
+# other 32 (rectangle 24, ellipse 8) — all under
+# https://w3id.org/murtenpanorama/resource/ImageRegion/.
+# Prod observed 2026-08-25: sam-server 176, samlocal 0, other 25.
+# ─────────────────────────────────────────────────────────────────────────────
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?tool ?regionNamespace (COUNT(*) AS ?n)
+WHERE {
+  GRAPH ?g { ?s rdf:value ?v . FILTER(isLiteral(?v) && CONTAINS(STR(?v), "<svg")) }
+  BIND(IF(CONTAINS(STR(?v), 'id="samlocal_'), "samlocal",
+       IF(CONTAINS(STR(?v), 'id="sam_'),      "sam-server", "other")) AS ?tool)
+  BIND(IF(CONTAINS(STR(?s), "ImageRegion/"),
+          CONCAT(STRBEFORE(STR(?s), "ImageRegion/"), "ImageRegion/"),
+          STR(?s)) AS ?regionNamespace)
+}
+GROUP BY ?tool ?regionNamespace
+ORDER BY ?tool DESC(?n)
