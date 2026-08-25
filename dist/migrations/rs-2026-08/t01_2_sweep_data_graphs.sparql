@@ -1,0 +1,29 @@
+# t01_2_sweep_data_graphs.sparql — rewrite flat owl:sameAs -> la:equivalent in
+# form-authored data graphs (graphs NOT under force-load).
+#
+# Run AFTER: rs-ldp deploy of the migrated authority trigs (commit fb133f6+)
+# and an instance restart — force-load handles the file-backed graphs; this
+# update handles only what force-load never touches.
+#
+# EDIT THE VALUES ALLOWLIST from t01_1_inventory output before running. It is an
+# allowlist by design — never invert it into FILTER(?g != …): a blocklist
+# silently admits future graphs you don't own (offline external loads,
+# ontology graphs).
+#
+# One request = one Blazegraph transaction; idempotent (re-running matches
+# nothing). J32 act predicates are NOT touched: zero owl:sameAs-backed D29s
+# exist by construction (sameAs was only ever minted flat — verified in data
+# and stated in rs-ldp spec/shapes/annotations.ttl; checks.sh A1 re-proves it).
+#
+# Usage:
+#     curl -s -u admin:admin "$SPARQL" --data-urlencode "update=$(cat t01_2_sweep_data_graphs.sparql)"
+#
+# Dev run 2026-08-13: 30 triples in rsp:g/data rewritten, verified zero residue.
+# ─────────────────────────────────────────────────────────────────────────────
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+DELETE { GRAPH ?g { ?s owl:sameAs ?o } }
+INSERT { GRAPH ?g { ?s <https://linked.art/ns/terms/equivalent> ?o } }
+WHERE  {
+  VALUES ?g { <http://www.researchspace.org/resource/g/data> }   # <- from t01_1_inventory
+  GRAPH ?g { ?s owl:sameAs ?o }
+}

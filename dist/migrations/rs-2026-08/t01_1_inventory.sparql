@@ -1,0 +1,26 @@
+# t01_1_inventory.sparql — owl:sameAs residue, by graph. READ-ONLY.
+#
+# Run BEFORE t01_2_sweep and read the result before writing anything:
+#
+#   - A file-backed authority graph in the list means the rs-ldp deploy or the
+#     restart did not land — fix the FILES (deploy.sh + restart), do not sweep
+#     that graph here. Force-load would silently revert a DB-side rewrite on
+#     the next boot (forceLDPLoadFromStorages=runtime).
+#   - Only graphs you OWN go into 02's VALUES allowlist. Ontology graphs and
+#     offline-loaded external graphs stay out (load-once; a rewrite there is
+#     permanent drift in axioms we don't own).
+#   - Zero rows => nothing to sweep, go straight to checks.sh verify.
+#
+# Usage:
+#     curl -s -u admin:admin "$SPARQL" --data-urlencode "query=$(cat t01_1_inventory.sparql)"
+#
+# Dev observed 2026-08-13 (after full deploy+restart): one graph,
+# <http://www.researchspace.org/resource/g/data>, 30 triples (murtenpanorama
+# place entities -> Wikidata/VIAF/GND/DBpedia; authored by the old owl_sameAs
+# form field).
+# ─────────────────────────────────────────────────────────────────────────────
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?g (COUNT(*) AS ?n)
+WHERE { GRAPH ?g { ?s owl:sameAs ?o } }
+GROUP BY ?g
+ORDER BY DESC(?n)
