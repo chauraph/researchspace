@@ -23,7 +23,8 @@
 # Dev observed 2026-08-25 (before the rewrite): sam-server 23, samlocal 25,
 # other 32 (rectangle 24, ellipse 8) — all under
 # https://w3id.org/murtenpanorama/resource/ImageRegion/.
-# Prod observed 2026-08-25: sam-server 176, samlocal 0, other 25.
+# Prod observed 2026-08-25 (before): sam-server 176, samlocal 0, other 25.
+# Prod after the rewrite 2026-08-26: sam-server 0, samlocal 176, other 25.
 # ─────────────────────────────────────────────────────────────────────────────
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?tool ?regionNamespace (COUNT(*) AS ?n)

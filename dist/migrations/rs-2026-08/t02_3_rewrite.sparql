@@ -44,8 +44,12 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 DELETE { GRAPH ?g { ?s rdf:value ?old } }
 INSERT { GRAPH ?g { ?s rdf:value ?new } }
 WHERE {
-  VALUES ?ns { "https://w3id.org/murtenpanorama/resource/ImageRegion/" }  # <- from t02_1_inventory
   GRAPH ?g {
+    # VALUES MUST STAY INSIDE THIS GRAPH GROUP. A FILTER cannot see a variable
+    # bound by a VALUES in the enclosing group: ?ns arrives unbound, STRSTARTS
+    # errors, the filter goes false and the whole query silently matches NOTHING.
+    # Measured 2026-08-26 on dev: outside 0 rows, inside 50 rows, same data.
+    VALUES ?ns { "https://w3id.org/murtenpanorama/resource/ImageRegion/" }  # <- from t02_1_inventory
     ?s rdf:value ?old .
     FILTER(CONTAINS(STR(?old), 'id="sam_') && STRSTARTS(STR(?s), ?ns))
   }

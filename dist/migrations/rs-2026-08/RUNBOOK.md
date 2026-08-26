@@ -75,7 +75,7 @@ The server-side Mirador drawing tool `$.Sam` — which posted to
 is promoted to be the only SAM tool and loses its "experimental"/"in-browser"
 qualifiers. This directory is the **database side**: the code excise and the
 proxy/service decommission are tracked separately.
-Dev done 2026-08-25; **prod pending**.
+Dev done 2026-08-25; prod done 2026-08-26 (176 regions).
 
 ## Mental model — the prefix is the tool binding
 
@@ -114,6 +114,13 @@ do not assume.
 4. **`t02_2_dryrun.sparql`** — edit the allowlist, read the output. `?leftover`
    and `?datatypeChanged` must be false on every row; `?idsRewritten` must be a
    whole number ≥ 1.
+   **If step 2 found `sam-server` rows and this returns none, STOP.** The two
+   disagreeing means the query is broken, not that the work is done; an empty
+   dry run is never a licence to run step 5. Prod hit this on 2026-08-26: the
+   `VALUES ?ns` allowlist sat outside the `GRAPH` group, so the `FILTER` inside
+   saw `?ns` unbound, errored, and matched nothing — t02_3 would have been a
+   silent no-op on all 176 regions. Fixed by moving `VALUES` inside the group;
+   the header carries a self-test for instances with no `sam_` data left.
 5. **`t02_3_rewrite.sparql`** — same allowlist, run once. Atomic, idempotent.
 6. **`./checks.sh t02`** — S1 zero rows, S2 all zeros, S3 totals conserved
    (`sam-server` gone, `samlocal` up by exactly the pre-run `sam-server` count,
@@ -134,7 +141,19 @@ stop the service — **in that order**:
 
 - dev: `config.proxy.segmentation.targetUri=http://localhost:7860` in
   `runtime-data/config/proxy.prop` (leave `tile-search`, it is unrelated);
-- prod: the same key in that instance's config repo.
+- prod: `config.proxy.segmentation.targetUri=http://segdrawer:7860` in
+  `~/Documents/code/murten-config-prod/proxy.prop`.
+
+Both of those are **tracked** — `runtime-data/config/` is its own git repo on dev,
+and prod's history lives in the Mac-local `murten-config-prod` clone (the host is
+git-dark; transport is `rsync -a --exclude shiro.ini --exclude .git` both ways,
+see that repo's README). So each removal is a commit, and prod additionally needs
+the rsync and a restart.
+
+Prod's target is a **container name**, not localhost: retiring it there also means
+removing the `segdrawer` service from the prod docker-compose and recreating the
+stack — the same class of visit as the `extra_hosts` edit that repo's README
+records for tile-search.
 
 Until that entry is gone **and** the code is deployed, the removed tool is still
 clickable and still mints fresh `sam_` regions — S1 turning non-zero again is the

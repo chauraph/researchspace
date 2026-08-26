@@ -14,7 +14,7 @@ run against dev first, then prod.
 | task | what | scripts | status |
 |---|---|---|---|
 | **t01** | `owl:sameAs` retired → `la:equivalent` (store sweep; code + rs-ldp SOT migrated separately) | `t01_1_inventory`, `t01_2_sweep_data_graphs`, checks `I1 E1 A1 K1` | **dev DONE 2026-08-13; prod pending** |
-| **t02** | server-side SAM tool retired; `sam_` → `samlocal_` shape prefix in stored ImageRegion SVG (code excise + proxy decommission tracked separately) | `t02_1_inventory`, `t02_2_dryrun`, `t02_3_rewrite`, checks `S1 S2 S3` | **dev DONE 2026-08-25; prod pending** |
+| **t02** | server-side SAM tool retired; `sam_` → `samlocal_` shape prefix in stored ImageRegion SVG (code excise + proxy decommission tracked separately) | `t02_1_inventory`, `t02_2_dryrun`, `t02_3_rewrite`, checks `S1 S2 S3` | **dev DONE 2026-08-25; prod DONE 2026-08-26** |
 
 Adding a task: define it here, add `tNN_M_*.sparql` steps (header comment states
 purpose, ordering constraints, idempotency, usage curl line), add its checks to

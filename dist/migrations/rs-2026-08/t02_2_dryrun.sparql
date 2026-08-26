@@ -5,6 +5,13 @@
 #
 # EDIT THE VALUES ALLOWLIST to match t02_3 before reading the output.
 #
+# ZERO ROWS IS A RED FLAG, NOT A GREEN ONE, whenever t02_1 reported sam-server
+# rows on this instance. The two disagreeing means this query is broken — not
+# that there is nothing to migrate. Never run t02_3 on the strength of an empty
+# dry run; go and find out why it is empty. (2026-08-26: prod hit exactly this,
+# t02_1 saying 176 and t02_2 saying nothing, which is how the VALUES scoping bug
+# below was caught.)
+#
 # Columns, and what they must show:
 #   ?idsRewritten     path ids in that literal. "samlocal_" is exactly 5 chars
 #                     longer than "sam_", so (newLen-oldLen)/5 IS the count of
@@ -18,6 +25,12 @@
 # Aggregate variant — one row, all three bad_* columns must be 0:
 #     ./checks.sh S2
 #
+# SELF-TEST on an instance with no sam_ data left (dev, after its rewrite): swap
+# the marker for one that does exist and confirm the query still BINDS —
+#     sed 's/id="sam_/id="samlocal_/g' t02_2_dryrun.sparql | grep -v '^#' > /tmp/t.rq
+#     curl -s -u admin:admin "$SPARQL" --data-urlencode "query=$(cat /tmp/t.rq)"
+# Dev 2026-08-26: 50 rows. Zero rows would mean the scoping is broken again.
+#
 # Dev 2026-08-25 before the rewrite: 23 rows, 110 path ids, all flags clean.
 # ─────────────────────────────────────────────────────────────────────────────
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -29,8 +42,12 @@ SELECT ?s
        (CONTAINS(STR(?new), 'id="sam_') AS ?leftover)
        (DATATYPE(?new) != DATATYPE(?old) AS ?datatypeChanged)
 WHERE {
-  VALUES ?ns { "https://w3id.org/murtenpanorama/resource/ImageRegion/" }  # <- from t02_1_inventory
   GRAPH ?g {
+    # VALUES MUST STAY INSIDE THIS GRAPH GROUP. A FILTER cannot see a variable
+    # bound by a VALUES in the enclosing group: ?ns arrives unbound, STRSTARTS
+    # errors, the filter goes false and the whole query silently matches NOTHING.
+    # Measured 2026-08-26 on dev: outside 0 rows, inside 50 rows, same data.
+    VALUES ?ns { "https://w3id.org/murtenpanorama/resource/ImageRegion/" }  # <- from t02_1_inventory
     ?s rdf:value ?old .
     FILTER(CONTAINS(STR(?old), 'id="sam_') && STRSTARTS(STR(?s), ?ns))
   }

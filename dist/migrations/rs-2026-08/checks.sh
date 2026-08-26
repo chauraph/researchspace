@@ -90,7 +90,8 @@ EOF
 q_S3() { cat <<'EOF'
 # S3 — TOOL CENSUS. Totals must be conserved across the rewrite: every
 #      sam-server region becomes a samlocal one, nothing else moves.
-#      Dev 2026-08-25: before 23/25/32, after 0/48/32 (80 throughout).
+#      Dev  2026-08-25: before 23/25/32, after 0/48/32 (80 throughout).
+#      Prod 2026-08-26: before 176/0/25, after 0/176/25 (201 throughout).
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?tool (COUNT(*) AS ?n) WHERE {
   GRAPH ?g { ?s rdf:value ?v . FILTER(isLiteral(?v) && CONTAINS(STR(?v), "<svg")) }
