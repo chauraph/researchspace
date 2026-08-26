@@ -1,7 +1,7 @@
 /**
- * Live probe for the $.SamLocal Mirador tool (plan-doc phases 3-4) against a
+ * Live probe for the $.Sam Mirador tool (plan-doc phases 3-4) against a
  * running stack. Opens rsp:IIIFSingleImageView on an image found via SPARQL,
- * then reports: toolbar gate (SamLocal button present iff WebGPU), engine
+ * then reports: toolbar gate (the SAM button present iff WebGPU), engine
  * global, the phase-4 hover preview (mask painted on the dedicated overlay
  * canvas, changing with the cursor, surviving a viewport change, one encode for
  * the whole hover session), and a driven segmentation — click the image, wait
@@ -41,9 +41,9 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     if (msg.type() === 'error') {
       console.log(`  [browser error] ${msg.text().slice(0, 250)}`);
     }
-    // $.SamLocal warns when it has to repair an overlay the annotation state
+    // $.Sam warns when it has to repair an overlay the annotation state
     // machine left inert; seeing it is how we know that path fired.
-    if (msg.type() === 'warning' && msg.text().indexOf('SamLocal') >= 0) {
+    if (msg.type() === 'warning' && /^Sam[: ]/.test(msg.text())) {
       console.log(`  [tool warn] ${msg.text().slice(0, 200)}`);
     }
   });
@@ -148,27 +148,29 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   console.log(`  [probe] palette: ${JSON.stringify(palette)}`);
   await page.screenshot({ path: 'output/samlocal-palette.png' });
 
+  // 'flare' was the retired server-side tool's icon (removed 2026-08); it must
+  // now be absent, and 'flash_on' — the promoted $.Sam — must be the only one.
   for (const [name, selector] of [
-    ['Sam (server)', '.mirador-osd-flare-mode'],
-    ['SamLocal', '.mirador-osd-flash_on-mode'],
+    ['Sam (retired server tool, must be ABSENT)', '.mirador-osd-flare-mode'],
+    ['Sam', '.mirador-osd-flash_on-mode'],
   ]) {
     const count = await page.locator(selector).count();
     console.log(`  [probe] toolbar ${name}: ${count ? 'present' : 'ABSENT'}`);
   }
 
-  const samLocal = page.locator('.mirador-osd-flash_on-mode').first();
-  if (!(await samLocal.count())) {
-    console.log('  [probe] SamLocal button missing — gate closed or registration broken');
+  const samTool = page.locator('.mirador-osd-flash_on-mode').first();
+  if (!(await samTool.count())) {
+    console.log('  [probe] SAM button missing — gate closed or registration broken');
     return;
   }
-  const toolBox = await samLocal.boundingBox();
-  console.log(`  [probe] samLocal box: ${JSON.stringify(toolBox)}`);
+  const toolBox = await samTool.boundingBox();
+  console.log(`  [probe] sam button box: ${JSON.stringify(toolBox)}`);
   if (toolBox && toolBox.width > 0) {
     await page.mouse.move(toolBox.x + toolBox.width / 2, toolBox.y + toolBox.height / 2);
     await page.waitForTimeout(300);
     await page.mouse.click(toolBox.x + toolBox.width / 2, toolBox.y + toolBox.height / 2);
   } else {
-    console.log('  [probe] samLocal button has no box — palette still hidden, aborting drive');
+    console.log('  [probe] sam button has no box — palette still hidden, aborting drive');
     return;
   }
   await page.waitForTimeout(500);
@@ -620,7 +622,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   // Saving returns the annotation state machine to pointer mode (overlay
   // publishes SET_STATE_MACHINE_POINTER, which lands in enterDisplayAnnotations
   // -> disable()/checkToRemoveFocus and clears currentTool) WITHOUT publishing
-  // toggleDrawingTool — the only signal $.SamLocal listens for. Report whether
+  // toggleDrawingTool — the only signal $.Sam listens for. Report whether
   // the panel is still on screen, and whether it still does anything.
   const afterSave = await panelLine('after-save');
   console.log(
@@ -645,7 +647,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
       editorOpen: document.querySelectorAll('.mirador-annotation-editor, [class*=annotation-tooltip]').length,
     }));
   console.log(`  [re-arm] HUD before re-arm: ${JSON.stringify(await hudState())}`);
-  const toolBox3 = await samLocal.boundingBox();
+  const toolBox3 = await samTool.boundingBox();
   if (toolBox3 && toolBox3.width > 0) {
     await page.mouse.click(toolBox3.x + toolBox3.width / 2, toolBox3.y + toolBox3.height / 2);
     await page.waitForTimeout(500);
@@ -689,7 +691,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   //
   // Reload first. After a save the overlay is left owning the annotation
   // tooltip, and a mousedown on the image then never reaches the tool at all —
-  // no temp_samlocal_box is drawn, which puts it upstream of $.SamLocal (the
+  // no temp_samlocal_box is drawn, which puts it upstream of $.Sam (the
   // overlay's own hit test and disabled flag). Driving the box prompt through
   // that state measures the wrong thing.
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -702,13 +704,13 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
     await page.mouse.move(controlsBox2.x + 10, controlsBox2.y + 10);
     await page.waitForTimeout(500);
   }
-  const toolBox2 = await samLocal.boundingBox();
+  const toolBox2 = await samTool.boundingBox();
   if (toolBox2 && toolBox2.width > 0) {
     await page.mouse.click(toolBox2.x + toolBox2.width / 2, toolBox2.y + toolBox2.height / 2);
     await page.waitForTimeout(500);
-    console.log('  [box] SamLocal re-armed');
+    console.log('  [box] Sam re-armed');
   } else {
-    console.log('  [box] SamLocal button has no box — cannot re-arm, skipping box test');
+    console.log('  [box] Sam button has no box — cannot re-arm, skipping box test');
     return;
   }
 
@@ -785,7 +787,7 @@ test('samlocal tool in mirador', async ({ page, baseURL }) => {
   if (!boxPanel || boxPanel.acceptDisabled !== false) {
     // The drag never became a prompt. Every run of this probe leaves another
     // region on the image, and a mousedown that lands on an existing shape is
-    // swallowed before $.SamLocal sees it (no temp_samlocal_box is drawn),
+    // swallowed before $.Sam sees it (no temp_samlocal_box is drawn),
     // so an accumulated image eventually leaves nowhere to start a box.
     console.log(
       `  [box] no locked mask to accept — the drag never reached the tool` +

@@ -55,9 +55,8 @@ export const SOURCES = [
   'js/src/annotations/osd-svg-freehand.js',
   'js/src/annotations/osd-svg-overlay.js',
   'js/src/annotations/osd-svg-pin.js',
-  // RS-local: SAM2 segmentation tool. Pinned here rather than in alphabetical
-  // position so the output stays byte-comparable with the 2020-built artifact.
-  'js/src/annotations/osd-svg-sam.js',
+  // RS-local: the SAM2 segmentation tool. Pinned here rather than in
+  // alphabetical position, where the retired server-side tool used to sit.
   'js/src/annotations/osd-svg-sam-local.js',
   'js/src/annotations/osd-svg-polygon.js',
   'js/src/annotations/osd-svg-rectangle.js',
@@ -116,9 +115,10 @@ function checkNoUnlistedSources() {
 }
 
 // Grunt joined every part with a single "\n". A source file ending in "\n\n"
-// therefore contributes a blank line at the join -- two files rely on this
-// (annotationTooltip.js and osd-svg-sam.js). Do not "tidy" their trailing
-// whitespace: it is load-bearing for byte-identity.
+// therefore contributes a blank line at the join -- annotationTooltip.js relies
+// on this. Do not "tidy" its trailing whitespace: it is load-bearing for
+// byte-identity. (osd-svg-sam.js was the other such file until the server-side
+// SAM tool was removed in 2026-08.)
 export function build(existingOnly = false) {
   if (!existingOnly) checkNoUnlistedSources();
   const parts = [];

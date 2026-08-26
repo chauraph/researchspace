@@ -65,11 +65,11 @@ For behaviour, use `probes/`.
 | Source | Lines | What |
 |---|---|---|
 | `tools/upstream-bundle-delta.patch` | 78 | RS platform team, 2020–2025: `highlightAnnotation` + bus subscription, qtip `container`, `DialogBuilder(jQuery('body'))`, `btn-primary`→`btn-action`, `<rs-…>` share control, workspace drag/drop disabled, hit tolerance. Authors: Artem Kozlov, Cristina Giancristofaro, Diana T. |
-| `tools/rs-local.patch` | 566 | This fork, 2025, chauraph: the `$.Sam` SAM2 segmentation tool (`js/src/annotations/osd-svg-sam.js`, 559 lines) + its registration in `settings.js` and `osd-svg-overlay.js`, session support in `miradorDualStrategy.js`. |
+| `tools/rs-local.patch` | 566 | This fork, 2025, chauraph: the server-side `$.Sam` SAM2 segmentation tool (`js/src/annotations/osd-svg-sam.js`, 559 lines) + its registration in `settings.js` and `osd-svg-overlay.js`, and per-path region parsing in `miradorDualStrategy.js`. **That tool was removed in 2026-08** — the patch describes the tree at `0206ecf6f`, not the current one; the in-browser `$.Sam` (`osd-svg-sam-local.js`) is what remains, and the `miradorDualStrategy.js` hunk stayed because both tools need it. |
 | `tools/f1ac332ee-iiif-default-jpg.patch` | 2 | Upstream fix this branch lacked: `/0/native.jpg` → `/0/default.jpg` (IIIF Image API 2.x) and a tag placeholder. |
 
-Two files must end with a **blank line** — `annotationTooltip.js` and
-`osd-svg-sam.js`. Grunt joined parts with `\n`, so their `\n\n` produces the blank
+`annotationTooltip.js` must end with a **blank line** (until 2026-08
+`osd-svg-sam.js` did too). Grunt joined parts with `\n`, so its `\n\n` produces the blank
 line at the join. Stripping it shifts every later byte. `verify.mjs` will tell you.
 
 ## Vendor libraries

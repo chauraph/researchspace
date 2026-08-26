@@ -4,7 +4,7 @@
       return this.svgOverlayTools;
     }
     options.partOfPrefix = '_partOf';
-    this.svgOverlayTools = [new $.Rectangle(options), new $.Freehand(options), new $.Polygon(options), new $.Ellipse(options), new $.Pin(options), new $.Sam(options), new $.SamLocal(options)];
+    this.svgOverlayTools = [new $.Rectangle(options), new $.Freehand(options), new $.Polygon(options), new $.Ellipse(options), new $.Pin(options), new $.Sam(options)];
     return this.svgOverlayTools;
   };
 

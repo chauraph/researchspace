@@ -1,16 +1,27 @@
 /**
- * $.SamLocal — in-browser Segment Anything drawing tool.
+ * $.Sam — the Segment Anything drawing tool.
+ *
+ * Segmentation runs in the browser (SAM2 via WebGPU). It used to run on a
+ * server behind ../proxy/segmentation/*; that tool was retired in 2026-08 and
+ * this one took its name. Two identifiers deliberately did NOT follow:
+ *   - idPrefix stays 'samlocal_'. It is written into every stored shape's SVG
+ *     id, and osd-svg-overlay.js maps a shape back to its tool by that prefix
+ *     (:654, :818) — a rename would orphan existing regions. The retired
+ *     tool's own 'sam_' regions were migrated to it instead
+ *     (dist/migrations/rs-2026-08, task 02).
+ *   - this file, and the internal samlocal ids/classes, keep their names so
+ *     they read consistently with that prefix.
  *
  * Interaction: hover previews a mask, the first click LOCKS it (hover stops
  * re-segmenting), further clicks refine it, and an explicit Accept stores it.
  * Include/exclude is a control on the panel with shift as a momentary flip.
  *
- * Deliberately no longer $.Sam's grammar. Double-click-to-commit is gone:
- * the overlay recognises a double-click on the second mousedown (see
- * osd-svg-overlay.js), by which point the first click's mouseup has already
- * added a positive point and re-decoded — so the mask that got saved was
- * never the mask the user was looking at when they decided to save it.
- * alt/cmd+click survives as an accelerator, alongside Enter.
+ * There is deliberately no double-click-to-commit. The overlay recognises a
+ * double-click on the second mousedown (see osd-svg-overlay.js), by which
+ * point the first click's mouseup has already added a positive point and
+ * re-decoded — so the mask that got saved would never be the mask the user
+ * was looking at when they decided to save it. alt/cmd+click is an
+ * accelerator for Accept, alongside Enter.
  *
  * All inference happens client-side through window.RsSamEngine (a
  * SamClientEngine set up by ImageRegionEditor before Mirador boots; see
@@ -18,9 +29,8 @@
  * docs/features/sam2-client-side-plan.md).
  *
  * Image capture goes through a same-origin IIIF region request, NOT the OSD
- * drawer canvas: tiles can taint that canvas (the server tool's snapshot
- * branch fails the same way, which is why it grew an IIIF fallback), and a
- * tainted canvas can neither be transferred to the worker nor snapshotted
+ * drawer canvas: tiles can taint that canvas, and a tainted canvas can
+ * neither be transferred to the worker nor snapshotted
  * for preview restore. The mask preview therefore also paints onto our own
  * overlay canvas, never the drawer canvas.
  *
@@ -49,23 +59,25 @@
      */
     var SIMPLIFY_RATIO = 0.0005;
 
-    $.SamLocal = function(options) {
+    $.Sam = function(options) {
         jQuery.extend(this, {
-            name: 'SamLocal',
+            name: 'Sam',
             // Ligature must exist in Mirador's own vendored Material Icons font
             // (lib/mirador/fonts/MaterialIcons-Regular.*, a 2016-era cut) — the
             // toolbar renders <i class="material-icons">{{logoClass}}</i> against
             // that @font-face, not the newer npm material-icons package, so
             // post-2016 names like auto_awesome render as raw text.
             logoClass: 'flash_on',
+            // Frozen: stored shape ids carry it, and the retired server tool's
+            // regions were migrated onto it. See the header.
             idPrefix: 'samlocal_',
-            tooltip: 'samLocalTooltip',
+            tooltip: 'samTooltip',
         }, options);
 
         this.init();
     };
 
-    $.SamLocal.prototype = {
+    $.Sam.prototype = {
         init: function() {
             this.statusOverlay = null;
             this.statusTimeout = null;
@@ -1541,7 +1553,7 @@
                 if (!_this.panel || _this.panel.hidden) {
                     return; // another tool won in the meantime
                 }
-                console.warn('SamLocal: overlay left inert after the previous annotation; re-arming.');
+                console.warn('Sam: overlay left inert after the previous annotation; re-arming.');
                 overlay.inEditOrCreateMode = false;
                 overlay.disabled = false;
                 overlay.currentTool = _this;
@@ -1870,7 +1882,7 @@
             this.requestDecode(overlay, engine, enginePoint).catch(function(error) {
                 // Hover decodes fail transiently (e.g. viewport changed mid-flight);
                 // click decodes surface their own errors in the status pill.
-                console.warn('SamLocal hover decode: ' + error.message);
+                console.warn('Sam hover decode: ' + error.message);
             });
         },
 

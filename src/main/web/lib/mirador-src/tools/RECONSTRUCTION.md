@@ -30,7 +30,7 @@ platform repo and never pushed back to the mirador fork. Both bundles still adve
 |---|---|
 | `upstream-bundle-delta.patch` | 13 hunks / 8 files — `ec049bcd2` → the bundle in `researchspace/researchspace@master` |
 | `rs-bundle-delta.patch` | 17 hunks / 8 files — `ec049bcd2` → the bundle on this branch |
-| `osd-svg-sam.js` | 559 lines, the `$.Sam` SAM2 segmentation drawing tool (new file) |
+| `osd-svg-sam.js` | 559 lines, the server-side `$.Sam` SAM2 segmentation drawing tool (new file). Removed 2026-08; this document describes the reconstruction as of `0206ecf6f`. |
 
 Both patches apply cleanly to a fresh `researchspace/mirador@ec049bcd2` checkout. Blank-line-only
 hunks at concat boundaries were dropped as build noise.
@@ -44,9 +44,11 @@ hunks at concat boundaries were dropped as build noise.
   `viewer/mainMenu.js`, `annotations/annotationTooltip.js`, `annotations/osd-region-draw-tool.js`,
   `annotations/osd-svg-overlay.js`, `annotations/tinymce-annotation-editor.js`, `workspaces/slot.js`,
   `utils/iiif.js`.
-- **This branch only** (never upstreamed): the `$.Sam` tool + its registration in `js/src/settings.js`
-  (`availableAnnotationDrawingTools`), the session/viewport work in
-  `annotations/miradorDualStrategy.js` (+35), and the SAM entries in `osd-region-draw-tool.js`.
+- **This branch only** (never upstreamed): the server-side `$.Sam` tool + its registration in
+  `js/src/settings.js` (`availableAnnotationDrawingTools`), the per-path `parseRegion` rewrite in
+  `annotations/miradorDualStrategy.js` (+35, mislabelled "session support" in earlier notes — it
+  splits a multi-path mask into one region per `<path>`), and the SAM entries in
+  `osd-region-draw-tool.js`.
   Repo commits `d27d25a5b`, `f3c98d1bd`, `a5cfe05b5`, `0fcea98af`, `66b8312d0`, `6a561c211`.
 - **Upstream only — missing here.** `f1ac332ee` (2025-05-21) is not an ancestor of this branch and
   changed two bundle lines: the thumbnail URL builder in `utils/iiif.js`

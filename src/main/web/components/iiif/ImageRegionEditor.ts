@@ -130,10 +130,12 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
   }
 
   componentDidMount() {
-    // In-browser SAM2 segmentation (docs/features/sam2-client-side-plan.md):
-    // expose the engine to the plain-JS Mirador tool ($.SamLocal) and resolve
-    // the cheap WebGPU-availability gate before Mirador is configured. The
-    // heavy model download only happens on first use of the tool.
+    // SAM2 segmentation, in-browser (docs/features/sam2-client-side-plan.md):
+    // expose the engine to the plain-JS Mirador tool ($.Sam) and resolve the
+    // cheap WebGPU-availability gate before Mirador is configured. The heavy
+    // model download only happens on first use of the tool. Since the
+    // server-side tool was retired (2026-08) this gate gates SAM entirely:
+    // no adapter, no segmentation tool in the toolbar.
     const samEngine = getSamClientEngine();
     (window as any).RsSamEngine = samEngine;
     this.samAvailability = samEngine.isAvailable().catch(() => false);
@@ -624,8 +626,8 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
         },
       },
       availableAnnotationDrawingTools: samAvailable
-        ? ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam', 'SamLocal']
-        : ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam'],
+        ? ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin', 'Sam']
+        : ['Rectangle', 'Ellipse', 'Freehand', 'Polygon', 'Pin'],
       windowObjects,
       annotationBodyEditor: {
         module: 'researchspaceAnnotationBodyEditor',
