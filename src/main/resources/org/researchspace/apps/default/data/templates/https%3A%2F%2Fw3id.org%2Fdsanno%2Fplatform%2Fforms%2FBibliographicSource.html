@@ -14,7 +14,6 @@
                         expression_is_derivative_of="http://iflastandards.info/ns/lrm/lrmoo/R76_is_derivative_of"
                         
                         expression_realises="http://iflastandards.info/ns/lrm/lrmoo/R3i_realises"
-                        expression_is_embodied_in="http://iflastandards.info/ns/lrm/lrmoo/R4i_is_embodied_in"
                         information_object_is_incorporated_in="https://w3id.org/dsanno/platform/pattern/information_object/is_incorporated_in/information_object"
                         expression_is_component_of="http://iflastandards.info/ns/lrm/lrmoo/R5i_is_component_of"
                         expression_was_created_by="http://iflastandards.info/ns/lrm/lrmoo/R17i_was_created_by"
@@ -89,8 +88,16 @@
                         entity_citation="https://w3id.org/dsanno/platform/pattern/entity/is_identified_by/citation"
 
                         representation_attributed_by_segment_observation="https://w3id.org/dsanno/platform/pattern/representation/attributed_by_segment_observation"
-                        is_embodied_in_range="https://w3id.org/dsanno/platform/pattern/entity/is_embodied_in/range"
                         entity_is_identified_by_identifier="https://w3id.org/dsanno/platform/pattern/entity/is_identified_by/identifier"
+                        entity_forms_part_of_segment="https://w3id.org/dsanno/platform/pattern/entity/forms_part_of/segment"
+                        expression_embodied_in_manifestation="https://w3id.org/dsanno/platform/pattern/expression/embodied_in/manifestation"
+                        entity_is_identified_by_range_designation="https://w3id.org/dsanno/platform/pattern/entity/is_identified_by/range_designation"
+                        range_beginning="https://w3id.org/dsanno/platform/pattern/symbolic_object/composed_of/range_beginning"
+                        range_end="https://w3id.org/dsanno/platform/pattern/symbolic_object/composed_of/range_end"
+                        segment_kind="https://w3id.org/dsanno/platform/pattern/entity/has_type/segment_kind"
+                        range_role="https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role"
+                        embodies_location_unit="https://w3id.org/dsanno/platform/pattern/entity/has_type/embodies_location_unit"
+                        range_rendered="https://w3id.org/dsanno/platform/pattern/symbolic_object/has_symbolic_content_max1"
                ]]'
 >
 
@@ -275,90 +282,113 @@
               </div>
             </div>
 
+
             <div class="form-essentials-section-container">
-              <div class="page__section-container formHierarchyInputs-container">    
+              <div class="page__section-container formHierarchyInputs-container">
                 <div class="form-header-withButtons">
-                  <h4>Source embodiment</h4>
+                  <h4>Source location</h4>
                 </div>
-                  <semantic-form-composite-input  for='is_embodied_in_range' 
-                                                label="Is embodied in"
-                                                new-subject-template="{{{{raw}}}}{{FIELD_VALUE_RAW is_embodied_in_domain}}{{{{/raw}}}}/RC4_embodies/{{{{raw}}}}{{UUID}}{{{{/raw}}}}"
+
+                <semantic-form-composite-input  for='entity_forms_part_of_segment'
+                                                label="Laid out at"
+                                                new-subject-template="{{{{raw}}}}{{FIELD_VALUE_RAW symbolic_object_part_of_manifestation}}{{{{/raw}}}}/segment/{{{{raw}}}}{{UUID}}{{{{/raw}}}}"
                                                 fields='[[fieldDefinitions
                                                             classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-                                                            
-                                                            is_embodied_in_domain="https://w3id.org/dsanno/platform/pattern/entity/is_embodied_in/domain"
-                                                            entity_isDescribedBy="https://w3id.org/food/ontology/dir/isDescribedBy"
-
-                                                            entity_primary_appellation="http://www.researchspace.org/pattern/system/entity/primary_appellation"
+                                                            segment_kind="https://w3id.org/dsanno/platform/pattern/entity/has_type/segment_kind"
+                                                            symbolic_object_part_of_manifestation="https://w3id.org/dsanno/platform/pattern/symbolic_object/part_of/manifestation"
+                                                            entity_is_identified_by_range_designation="https://w3id.org/dsanno/platform/pattern/entity/is_identified_by/range_designation"
                                                             ]]'>
 
-                    <semantic-form-hidden-input for="classtype" default-value='https://w3id.org/dsanno/ontology/core#RC4_embodies'> </semantic-form-hidden-input>
+                  <semantic-form-hidden-input for="classtype"
+                      default-value='http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object'></semantic-form-hidden-input>
+                  <semantic-form-hidden-input for="segment_kind"
+                      default-value='https://w3id.org/dsanno/ontology/sourcing/Container_Segment'></semantic-form-hidden-input>
+
+                  <semantic-form-autocomplete-input for='symbolic_object_part_of_manifestation'
+                                                    label="Manifestation"
+                                                    placeholder="Select the manifestation this expression is laid out in"
+                                                    nested-form-templates='[
+                                                        {
+                                                            "label": "Manifestation",
+                                                            "nestedForm": "{{{{raw}}}}{{> \"https://w3id.org/dsanno/platform/forms/Manifestation\" nested=true editable=true mode=\"new\" }}{{{{/raw}}}}"
+                                                        }
+                                                    ]'>
+                  </semantic-form-autocomplete-input>
+
+                  <semantic-form-composite-input  for='entity_is_identified_by_range_designation'
+                                                  label="Range designation"
+                                                  new-subject-template="/range_designation/{{{{raw}}}}{{UUID}}{{{{/raw}}}}"
+                                                  fields='[[fieldDefinitions
+                                                              classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                              range_role="https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role"
+                                                              embodies_location_unit="https://w3id.org/dsanno/platform/pattern/entity/has_type/embodies_location_unit"
+                                                              range_beginning="https://w3id.org/dsanno/platform/pattern/symbolic_object/composed_of/range_beginning"
+                                                              range_end="https://w3id.org/dsanno/platform/pattern/symbolic_object/composed_of/range_end"
+                                                              range_rendered="https://w3id.org/dsanno/platform/pattern/symbolic_object/has_symbolic_content_max1"
+                                                              ]]'>
+
+                    <semantic-form-hidden-input for="classtype"
+                        default-value='http://www.cidoc-crm.org/cidoc-crm/E41_Appellation'></semantic-form-hidden-input>
+                    <semantic-form-hidden-input for="range_role"
+                        default-value='https://w3id.org/dsanno/ontology/sourcing/Range_Designation'></semantic-form-hidden-input>
 
                     <div class="form-inline-inputs">
                       <div style="flex: 1;">
-                        <semantic-form-autocomplete-input   for='is_embodied_in_domain' 
-                                                          label="Manifestation"
-                                                          placeholder="Select the manifestation" 
-                                                          nested-form-templates='[ 
-                                                                        {
-                                                                            "label": "Manifestation",
-                                                                            "nestedForm": "{{{{raw}}}}{{> \"https://w3id.org/dsanno/platform/forms/Manifestation\" nested=true editable=true mode=\"new\" }}{{{{/raw}}}}"
-                                                                        }
-                                                                    ]'> 
-                        </semantic-form-autocomplete-input>
-
-                          <semantic-form-composite-input  for='entity_isDescribedBy' 
-                                                      label="Has location"
-                                                      new-subject-template="/location/{{{{raw}}}}{{UUID}}{{{{/raw}}}}"
-                                                      fields='[[fieldDefinitions
-                                                                  classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-                                                                  
-                                                                  dir_hasInclusiveLowerBoundValue="https://w3id.org/dsanno/platform/pattern/dir/hasInclusiveLowerBoundValue"
-                                                                  dir_hasInclusiveUpperBoundValue="https://w3id.org/dsanno/platform/pattern/dir/hasInclusiveUpperBoundValue"
-                                                                  embodies_location_type="https://w3id.org/dsanno/platform/pattern/embodies_location/type"
-
-                                                                  entity_primary_appellation="http://www.researchspace.org/pattern/system/entity/primary_appellation"
-                                                                  ]]'>
-
-                            <semantic-form-hidden-input for="classtype" default-value='https://w3id.org/food/ontology/dir/DescriptionInRange'> </semantic-form-hidden-input>
-
-                            <div class="form-inline-inputs">
-                              <div style="flex: 1;">
-                                <semantic-form-text-input for="dir_hasInclusiveLowerBoundValue" label="Inclusive lower bound" placeholder="Enter inclusive lower bound value"></semantic-form-text-input>
-                              </div>
-                              <div style="flex: 1;">
-                                <semantic-form-text-input for="dir_hasInclusiveUpperBoundValue" label="Inclusive upper bound" placeholder="Enter inclusive upper bound value"></semantic-form-text-input>
-                              </div>
-                              <div style="flex: 1;">
-                                <semantic-form-tree-picker-input for="embodies_location_type" 
-                                                    label="Embodies location type" 
-                                                    placeholder="Select type" 
-                                                    close-dropdown-on-selection='true'
-                                                    tree-patterns='{"scheme": "<https://w3id.org/dsanno/platform/resource/vocab/embodies_location_type>", 
-                                                                    "schemePattern": "?item <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <https://w3id.org/dsanno/platform/resource/vocab/embodies_location_type>",
-                                                                    "relationPattern": "?item crm:P127_has_broader_term ?parent"}'
-
-                                                    scheme-page-button-config='{"iri": "http://www.researchspace.org/resource/ThinkingFrames",
-                                                                                "view": "authority-list",
-                                                                                "scheme": "https://w3id.org/dsanno/platform/resource/vocab/embodies_location_type",
-                                                                                "tooltip": "Open list of embodies location types"
-                                                                              }'
-                                                    
-                                                    nested-form-template='{{{{raw}}}}{{> forms:Type nested=true editable=true mode="new"
-                                                                                          scheme="https://w3id.org/dsanno/platform/resource/vocab/embodies_location_type"
-                                                                                          entityType="embodies location type" }}{{{{/raw}}}}'
-
-                                                    query-item-label='SELECT ?label WHERE {
-                                                                        ?item skos:prefLabel ?label .
-                                                                      }'
-                                                
-                                ></semantic-form-tree-picker-input>
-                              </div>
-                            </div>
-                          </semantic-form-composite-input>
+                        <semantic-form-tree-picker-input for="embodies_location_unit"
+                                                         label="Unit"
+                                                         placeholder="Select unit"
+                                                         close-dropdown-on-selection='true'
+                                                         scheme-page-button-config='{"iri": "http://www.researchspace.org/resource/ThinkingFrames",
+                                                                                     "view": "authority-list",
+                                                                                     "scheme": "https://w3id.org/murtenpanorama/resource/vocab/embodies_location_type",
+                                                                                     "tooltip": "Open list of units"}'
+                                                         query-item-label='SELECT ?label WHERE { ?item skos:prefLabel ?label . }'>
+                        </semantic-form-tree-picker-input>
                       </div>
                     </div>
+                    <semantic-form-text-input for="range_rendered"
+                                              label="Range designation (as printed)"
+                                              placeholder="optional — e.g. pp. 50–55"></semantic-form-text-input>
+
+                    <div class="form-inline-inputs">
+                      <div style="flex: 1;">
+                        <semantic-form-composite-input  for='range_beginning'
+                                                        label="Beginning"
+                                                        new-subject-template="/beginning"
+                                                        fields='[[fieldDefinitions
+                                                                    classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                                    range_role="https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role"
+                                                                    bound_content="http://www.researchspace.org/pattern/system/symbolic_object/has_symbolic_contentMin1Max1"
+                                                                    ]]'>
+                          <semantic-form-hidden-input for="classtype"
+                              default-value='http://www.cidoc-crm.org/cidoc-crm/E41_Appellation'></semantic-form-hidden-input>
+                          <semantic-form-hidden-input for="range_role"
+                              default-value='https://w3id.org/dsanno/ontology/sourcing/Beginning_of_Range'></semantic-form-hidden-input>
+                          <semantic-form-text-input for="bound_content" label="From"
+                                                    placeholder="e.g. 50"></semantic-form-text-input>
+                        </semantic-form-composite-input>
+                      </div>
+                      <div style="flex: 1;">
+                        <semantic-form-composite-input  for='range_end'
+                                                        label="End"
+                                                        new-subject-template="/end"
+                                                        fields='[[fieldDefinitions
+                                                                    classtype="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                                                                    range_role="https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role"
+                                                                    bound_content="http://www.researchspace.org/pattern/system/symbolic_object/has_symbolic_contentMin1Max1"
+                                                                    ]]'>
+                          <semantic-form-hidden-input for="classtype"
+                              default-value='http://www.cidoc-crm.org/cidoc-crm/E41_Appellation'></semantic-form-hidden-input>
+                          <semantic-form-hidden-input for="range_role"
+                              default-value='https://w3id.org/dsanno/ontology/sourcing/End_of_Range'></semantic-form-hidden-input>
+                          <semantic-form-text-input for="bound_content" label="To"
+                                                    placeholder="e.g. 55"></semantic-form-text-input>
+                        </semantic-form-composite-input>
+                      </div>
+                    </div>
+
                   </semantic-form-composite-input>
+                </semantic-form-composite-input>
               </div>
             </div>
 
@@ -536,7 +566,7 @@
                                                   ]'>
         </semantic-form-autocomplete-input>
 
-        <semantic-form-autocomplete-input   for='expression_is_embodied_in' 
+        <semantic-form-autocomplete-input   for='expression_embodied_in_manifestation' 
                                           label="Is embodied in"
                                           placeholder="Select the manifestation this expression is embodied in" 
                                           nested-form-templates='[ 

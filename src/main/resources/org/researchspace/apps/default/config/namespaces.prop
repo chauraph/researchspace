@@ -37,8 +37,12 @@ la = https://linked.art/ns/terms/
 
 assets = http://www.researchspace.org/resource/assets/
 
-# dsanno — locally authored artefacts, kept out of the researchspace.org IRI space.
-# Mirrors upstream's layout: dsanno: is the general template space (cf. rsp:),
-# dsannop: the semantic-form segment (cf. forms: = rsp:system/forms/).
+
 dsanno = https://w3id.org/dsanno/platform/
 dsannop = https://w3id.org/dsanno/platform/forms/
+
+dsarg = https://w3id.org/dsanno/ontology/argumentation/
+dsfam = https://w3id.org/dsanno/ontology/fam/
+dsargsh = https://w3id.org/dsanno/shapes/argumentation/
+dsfamsh = https://w3id.org/dsanno/shapes/fam/
+dssrc = https://w3id.org/dsanno/ontology/sourcing/

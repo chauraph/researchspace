@@ -1,0 +1,65 @@
+
+<https://w3id.org/dsanno/platform/pattern/entity/has_type/embodies_location_unit/context> {
+  <https://w3id.org/dsanno/platform/pattern/entity/has_type/embodies_location_unit>
+    a <http://www.researchspace.org/resource/system/fields/Field>, <http://www.w3.org/ns/prov#Entity>,
+      <http://www.w3.org/ns/ldp#Resource>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Unit (embodies location type)";
+    <http://www.researchspace.org/resource/system/fields/domain> <http://www.cidoc-crm.org/cidoc-crm/E41_Appellation>;
+    <http://www.researchspace.org/resource/system/fields/range> <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.researchspace.org/resource/system/fields/minOccurs> "1";
+    <http://www.researchspace.org/resource/system/fields/maxOccurs> "1";
+    <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
+    <http://www.researchspace.org/resource/system/fields/insertPattern> _:node1k1u1mdf7x870;
+    <http://www.researchspace.org/resource/system/fields/selectPattern> _:node1k1u1mdf7x871;
+    <http://www.researchspace.org/resource/system/fields/deletePattern> _:node1k1u1mdf7x872;
+    <http://www.researchspace.org/resource/system/fields/autosuggestionPattern> _:node1k1u1mdf7x873;
+    <http://www.researchspace.org/resource/system/fields/valueSetPattern> _:node1k1u1mdf7x874;
+    <http://www.researchspace.org/resource/system/fields/treePatterns> """{
+  \"type\": \"simple\",
+  \"schemePattern\": \"?item a crm:E55_Type . ?item crm:P71i_is_listed_in <https://w3id.org/murtenpanorama/resource/vocab/embodies_location_type> .\",
+  \"relationPattern\": \"?item crm:P127_has_broader_term ?parent .\"
+}"""^^<http://www.researchspace.org/resource/system/syntheticJson>;
+    <http://www.w3.org/ns/prov#wasAttributedTo> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.w3.org/ns/prov#generatedAtTime> "2026-09-10T16:40:43.552+02:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  _:node1k1u1mdf7x870 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """INSERT {
+  $subject crm:P2_has_type $value .
+  $value crm:P2i_is_type_of $subject .
+} WHERE {}""" .
+  
+  _:node1k1u1mdf7x871 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value WHERE {
+  $subject crm:P2_has_type ?value .
+  ?value crm:P71i_is_listed_in <https://w3id.org/murtenpanorama/resource/vocab/embodies_location_type> .
+}""" .
+  
+  _:node1k1u1mdf7x872 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """DELETE {
+  $subject crm:P2_has_type $value .
+  $value crm:P2i_is_type_of $subject .
+} WHERE {
+  { $subject crm:P2_has_type $value }
+  UNION
+  { $value crm:P2i_is_type_of $subject }
+}""" .
+  
+  _:node1k1u1mdf7x873 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value ?label WHERE {
+  ?value crm:P71i_is_listed_in <https://w3id.org/murtenpanorama/resource/vocab/embodies_location_type> .
+  ?value skos:prefLabel ?label .
+  MINUS { ?value crm:P71i_is_listed_in|skos:inScheme ?systemAuthority .
+          ?systemAuthority crm:P2_has_type Platform:System_Resource . }
+  FILTER REGEX(LCASE(STR(?label)), \"?token\", \"i\")
+} ORDER BY ASC(?label)
+  LIMIT 10""" .
+  
+  _:node1k1u1mdf7x874 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value ?label WHERE {
+  ?value crm:P71i_is_listed_in <https://w3id.org/murtenpanorama/resource/vocab/embodies_location_type> .
+  ?value skos:prefLabel ?label .
+} ORDER BY ASC(LCASE(STR(?label)))""" .
+  
+  <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
+      <https://w3id.org/dsanno/platform/pattern/entity/has_type/embodies_location_unit> .
+}

@@ -1,0 +1,42 @@
+
+<https://w3id.org/dsanno/platform/pattern/entity/has_type/segment_kind/context> {
+  <https://w3id.org/dsanno/platform/pattern/entity/has_type/segment_kind> a <http://www.researchspace.org/resource/system/fields/Field>,
+      <http://www.w3.org/ns/prov#Entity>, <http://www.w3.org/ns/ldp#Resource>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Segment kind";
+    <http://www.researchspace.org/resource/system/fields/domain> <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object>;
+    <http://www.researchspace.org/resource/system/fields/range> <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.researchspace.org/resource/system/fields/minOccurs> "1";
+    <http://www.researchspace.org/resource/system/fields/maxOccurs> "1";
+    <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
+    <http://www.researchspace.org/resource/system/fields/insertPattern> _:node1k264i12vx1135;
+    <http://www.researchspace.org/resource/system/fields/selectPattern> _:node1k264i12vx1136;
+    <http://www.researchspace.org/resource/system/fields/deletePattern> _:node1k264i12vx1137;
+    <http://www.w3.org/ns/prov#wasAttributedTo> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.w3.org/ns/prov#generatedAtTime> "2026-09-11T00:18:41.587+02:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  _:node1k264i12vx1135 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """INSERT {
+  $subject crm:P2_has_type $value .
+  $value crm:P2i_is_type_of $subject .
+} WHERE {}""" .
+  
+  _:node1k264i12vx1136 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value WHERE {
+  $subject crm:P2_has_type ?value .
+  FILTER (?value IN (<https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment>,
+                     <https://w3id.org/dsanno/ontology/sourcing/Container_Segment>))
+}""" .
+  
+  _:node1k264i12vx1137 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """DELETE {
+  $subject crm:P2_has_type $value .
+  $value crm:P2i_is_type_of $subject .
+} WHERE {
+  $subject crm:P2_has_type $value .
+  FILTER (?value IN (<https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment>,
+                     <https://w3id.org/dsanno/ontology/sourcing/Container_Segment>))
+}""" .
+  
+  <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
+      <https://w3id.org/dsanno/platform/pattern/entity/has_type/segment_kind> .
+}

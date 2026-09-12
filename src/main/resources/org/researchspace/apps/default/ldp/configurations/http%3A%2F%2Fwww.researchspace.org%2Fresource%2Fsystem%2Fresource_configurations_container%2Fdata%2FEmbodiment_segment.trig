@@ -1,0 +1,38 @@
+
+<http://www.researchspace.org/resource/system/resource_configurations_container/data/Embodiment_segment> {
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Embodiment_segment>
+    a <http://www.cidoc-crm.org/cidoc-crm/E73_Information_Object>, <http://www.researchspace.org/resource/system/resource_configuration>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_name>
+      "Container segment";
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/resource_configurations_container>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_view_type>
+      <http://www.researchspace.org/resource/system/vocab/search_view_type/list>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_form>
+      <https://w3id.org/dsanno/platform/forms/BibliographicSource>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_ontology_class>
+      <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_label_sparql_pattern>
+      """?item crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Container_Segment> .
+?item crm:P106i_forms_part_of ?manif .
+?manif rdf:type lrmoo:F3_Manifestation .
+?manif crm:P1_is_identified_by ?manifAppellation .
+?manifAppellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> .
+?manifAppellation crm:P190_has_symbolic_content ?manifLabel .
+?item crm:P1_is_identified_by ?range .
+?range crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Range_Designation> .
+?range crm:P2_has_type ?unit .
+?unit crm:P71i_is_listed_in <https://w3id.org/murtenpanorama/resource/vocab/embodies_location_type> .
+?unit skos:prefLabel ?unitLabel .
+?range crm:P106_is_composed_of ?from .
+?from crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Beginning_of_Range> .
+?from crm:P190_has_symbolic_content ?fromValue .
+?range crm:P106_is_composed_of ?to .
+?to crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/End_of_Range> .
+?to crm:P190_has_symbolic_content ?toValue .
+BIND(CONCAT(STR(?manifLabel), \", \", STR(?unitLabel), \" \", STR(?fromValue), \"-\", STR(?toValue)) AS ?label)""";
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_card_icon>
+      "straighten";
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_type>
+      <https://w3id.org/dsanno/ontology/sourcing/Container_Segment>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Container segment configuration (label pattern only, not in the Finder)" .
+}

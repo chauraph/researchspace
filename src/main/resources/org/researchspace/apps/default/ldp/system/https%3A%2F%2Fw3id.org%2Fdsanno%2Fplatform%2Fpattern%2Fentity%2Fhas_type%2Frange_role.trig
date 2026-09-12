@@ -1,0 +1,44 @@
+
+<https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role/context> {
+  <https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role> a <http://www.researchspace.org/resource/system/fields/Field>,
+      <http://www.w3.org/ns/prov#Entity>, <http://www.w3.org/ns/ldp#Resource>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Range role";
+    <http://www.researchspace.org/resource/system/fields/domain> <http://www.cidoc-crm.org/cidoc-crm/E41_Appellation>;
+    <http://www.researchspace.org/resource/system/fields/range> <http://www.cidoc-crm.org/cidoc-crm/E55_Type>;
+    <http://www.researchspace.org/resource/system/fields/minOccurs> "1";
+    <http://www.researchspace.org/resource/system/fields/maxOccurs> "1";
+    <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
+    <http://www.researchspace.org/resource/system/fields/insertPattern> _:node1k1u1mdf7x867;
+    <http://www.researchspace.org/resource/system/fields/selectPattern> _:node1k1u1mdf7x868;
+    <http://www.researchspace.org/resource/system/fields/deletePattern> _:node1k1u1mdf7x869;
+    <http://www.w3.org/ns/prov#wasAttributedTo> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.w3.org/ns/prov#generatedAtTime> "2026-09-10T16:40:43.258+02:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  _:node1k1u1mdf7x867 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """INSERT {
+  $subject crm:P2_has_type $value .
+  $value crm:P2i_is_type_of $subject .
+} WHERE {}""" .
+  
+  _:node1k1u1mdf7x868 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value WHERE {
+  $subject crm:P2_has_type ?value .
+  FILTER (?value IN (<https://w3id.org/dsanno/ontology/sourcing/Range_Designation>,
+                     <https://w3id.org/dsanno/ontology/sourcing/Beginning_of_Range>,
+                     <https://w3id.org/dsanno/ontology/sourcing/End_of_Range>))
+}""" .
+  
+  _:node1k1u1mdf7x869 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """DELETE {
+  $subject crm:P2_has_type $value .
+  $value crm:P2i_is_type_of $subject .
+} WHERE {
+  $subject crm:P2_has_type $value .
+  FILTER (?value IN (<https://w3id.org/dsanno/ontology/sourcing/Range_Designation>,
+                     <https://w3id.org/dsanno/ontology/sourcing/Beginning_of_Range>,
+                     <https://w3id.org/dsanno/ontology/sourcing/End_of_Range>))
+}""" .
+  
+  <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
+      <https://w3id.org/dsanno/platform/pattern/entity/has_type/range_role> .
+}

@@ -1,0 +1,71 @@
+
+<https://w3id.org/dsanno/platform/pattern/expression/embodied_in/manifestation/context> {
+  <https://w3id.org/dsanno/platform/pattern/expression/embodied_in/manifestation> a
+      <http://www.researchspace.org/resource/system/fields/Field>, <http://www.w3.org/ns/prov#Entity>,
+      <http://www.w3.org/ns/ldp#Resource>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Is embodied in";
+    <http://www.researchspace.org/resource/system/fields/domain> <http://iflastandards.info/ns/lrm/lrmoo/F2_Expression>;
+    <http://www.researchspace.org/resource/system/fields/range> <http://iflastandards.info/ns/lrm/lrmoo/F3_Manifestation>;
+    <http://www.researchspace.org/resource/system/fields/minOccurs> "0";
+    <http://www.researchspace.org/resource/system/fields/maxOccurs> "unbound";
+    <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
+    <http://www.researchspace.org/resource/system/fields/insertPattern> _:node1k28dunb9x1099;
+    <http://www.researchspace.org/resource/system/fields/selectPattern> _:node1k28dunb9x1100;
+    <http://www.researchspace.org/resource/system/fields/deletePattern> _:node1k28dunb9x1101;
+    <http://www.researchspace.org/resource/system/fields/autosuggestionPattern> _:node1k28dunb9x1102;
+    <http://www.w3.org/ns/prov#wasAttributedTo> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.w3.org/ns/prov#generatedAtTime> "2026-09-11T20:31:53.386+02:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  _:node1k28dunb9x1099 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """INSERT {
+  $subject lrmoo:R4i_is_embodied_in $value .
+  $value   lrmoo:R4_embodies        $subject .
+} WHERE {}""" .
+  
+  _:node1k28dunb9x1100 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value ?label WHERE {
+  $subject lrmoo:R4i_is_embodied_in ?value .
+  ?value rdf:type lrmoo:F3_Manifestation .
+  OPTIONAL {
+    ?value crm:P1_is_identified_by ?appellation .
+    ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                 crm:P190_has_symbolic_content ?label .
+  }
+}""" .
+  
+  _:node1k28dunb9x1101 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """DELETE {
+  $subject lrmoo:R4i_is_embodied_in $value .
+  $value   lrmoo:R4_embodies        $subject .
+} WHERE {
+  $subject lrmoo:R4i_is_embodied_in $value .
+  # L3 (subclass-reach 6.2): no rdf:type gate here — insert is ungated, so delete
+  # must be able to retract exactly what insert wrote.
+  # MR-49 guard: keep the pair if it is the materialised shortcut of a live
+  # container segment of $subject sitting under $value
+  FILTER NOT EXISTS {
+    $subject crm:P106i_forms_part_of ?segment .
+    ?segment crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Container_Segment> .
+    ?segment crm:P106i_forms_part_of $value .
+  }
+}""" .
+  
+  _:node1k28dunb9x1102 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value ?label WHERE {
+  ?value rdf:type lrmoo:F3_Manifestation .
+  {
+    ?value crm:P1_is_identified_by ?appellation .
+    ?appellation crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/primary_appellation> ;
+                 crm:P190_has_symbolic_content ?label .
+  } UNION {
+    ?value crm:P190_has_symbolic_content ?label .
+  }
+  MINUS { ?value crm:P71i_is_listed_in|skos:inScheme ?systemAuthority .
+          ?systemAuthority crm:P2_has_type Platform:System_Resource . }
+  FILTER REGEX(LCASE(STR(?label)), \"?token\", \"i\")
+} ORDER BY ASC(?label)
+  LIMIT 10""" .
+  
+  <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
+      <https://w3id.org/dsanno/platform/pattern/expression/embodied_in/manifestation> .
+}

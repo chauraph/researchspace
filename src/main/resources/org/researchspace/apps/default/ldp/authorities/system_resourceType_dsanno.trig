@@ -1,0 +1,18 @@
+@prefix crm:  <http://www.cidoc-crm.org/cidoc-crm/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dssrc: <https://w3id.org/dsanno/ontology/sourcing/> .
+
+# dsanno additions to the platform resource_type vocabulary (same graph as system_resourceType.trig and
+# system_resourceType_extra.trig; the loader merges the three files before loading). Lists the two segment
+# kinds of the dsanno sourcing module as platform resource types, so the resource-configuration Type input
+# (field resource_configuration/resource_type: member of this vocabulary + skos:prefLabel) resolves them.
+# The terms themselves ship in ldp/ontologies/dsanno-sourcing.trig. On an existing instance the runtime copy
+# of this graph (rs-ldp) governs and must carry the same four triples.
+<http://www.researchspace.org/resource/system/vocab/resource_type> {
+  dssrc:Expression_Fragment
+    crm:P71i_is_listed_in <http://www.researchspace.org/resource/system/vocab/resource_type> ;
+    skos:prefLabel "expression fragment"@en .
+  dssrc:Container_Segment
+    crm:P71i_is_listed_in <http://www.researchspace.org/resource/system/vocab/resource_type> ;
+    skos:prefLabel "container segment"@en .
+}

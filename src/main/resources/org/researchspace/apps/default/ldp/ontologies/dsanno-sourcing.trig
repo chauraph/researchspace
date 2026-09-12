@@ -1,0 +1,47 @@
+# dsanno-sourcing.trig — deployment form of chad-ap/model-development/release/dsanno-sourcing.ttl, release content only (31 triples).
+# Graph = <https://w3id.org/dsanno/ontology/sourcing/context>. Loads only into an EMPTY store (fresh install); on an existing
+# instance load once by graph-store PUT. Regenerate from the release TTL; do not hand-edit. Platform glue lives in
+# ldp/system/…resource_type_binding%2Fsourcing.trig.
+PREFIX aat:     <http://vocab.getty.edu/aat/>
+PREFIX crm:     <http://www.cidoc-crm.org/cidoc-crm/>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX dssrc:   <https://w3id.org/dsanno/ontology/sourcing/>
+PREFIX owl:     <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs:    <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sio:     <http://semanticscience.org/resource/>
+PREFIX skos:    <http://www.w3.org/2004/02/skos/core#>
+PREFIX wd:      <http://www.wikidata.org/entity/>
+
+<https://w3id.org/dsanno/ontology/sourcing/context> {
+    dssrc:Container_Segment
+            a             crm:E55_Type;
+            rdfs:comment  "Kind of an E90 segment that is an address unit only: the symbolic part of an F3 manifestation at which an F2 expression is embodied (the reification of R4 at a range). Not a record; its label is computed from the manifestation, the unit and the range. Alignments: owner-adjudicated, pending."@en;
+            rdfs:label    "container segment"@en .
+    dssrc:Expression_Fragment
+            a             crm:E55_Type;
+            rdfs:comment  "Kind of an E90 segment that is a record in its own right: a fragment of an F2 expression (R15i), labelled by a person, such as one page of a manuscript or a passage of a poem. Successor of FRBRoo F23 Expression Fragment, deleted by the CIDOC CRM SIG (40th meeting, 2018-01) in favour of E90 with R15. Alignments: owner-adjudicated, pending."@en;
+            rdfs:label    "expression fragment"@en .
+    dssrc:Range_Designation
+            a                crm:E55_Type;
+            rdfs:comment     "Intension of an E41 appellation that identifies a segment by a closed range of units within a manifestation layout (Doerr 2011 'METS:areaType' slot). Unit-neutral: the unit is a separate P2 type on the same appellation."@en;
+            rdfs:label       "range designation"@en;
+            skos:closeMatch  aat:300435441 , aat:300435440;
+            skos:exactMatch  sio:SIO_001249 , wd:Q78240777 .
+    dssrc:End_of_Range  a    crm:E55_Type;
+            rdfs:comment     "Role of the component appellation whose symbolic content names the last unit of the range: the distal extremity in reading order. Equal in content to the beginning for a single unit (degenerate range)."@en;
+            rdfs:label       "end of range"@en;
+            skos:closeMatch  wd:Q30013662;
+            skos:exactMatch  sio:SIO_000953 , wd:Q12769393 .
+    dssrc:Beginning_of_Range
+            a                crm:E55_Type;
+            rdfs:comment     "Role of the component appellation (E41, P106-part of a range designation) whose symbolic content names the first unit of the range: the proximal extremity in reading order."@en;
+            rdfs:label       "beginning of range"@en;
+            skos:closeMatch  aat:300404050 , wd:Q19269277;
+            skos:exactMatch  sio:SIO_000943 , wd:Q529711 .
+    <https://w3id.org/dsanno/ontology/sourcing>
+            a                owl:Ontology;
+            rdfs:comment     "CRM-first module. Five E55_Type individuals: three that give the canonical CRM\nappellation form of a page/folio/column range its roles — the composite appellation is a\nrange designation; its two component appellations are the beginning and the end of the range —\nand two that name the kind of the E90 segment the range identifies (expression fragment,\ncontainer segment).\nNo property or class is minted: composition is P106, identification is P1, the rendered strings\nare P190, the unit is a P2 to an embodies_location_type member (open vocabulary, bound by the\nprofile, never by this module). Bound = beginning only under inclusiveness and order equal to\nreading direction (survey §12.2a); a P190 value is a literal, so 'i', 'a', '12r' are valid."@en;
+            rdfs:label       "dssrc — dsanno sourcing: role and kind types for extent appellations"@en;
+            dcterms:license  <https://creativecommons.org/licenses/by/4.0/>;
+            owl:versionIRI   dssrc:0.2 .
+}

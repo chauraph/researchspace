@@ -1,0 +1,28 @@
+
+<http://www.researchspace.org/resource/system/resource_configurations_container/data/Expression_fragment> {
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Expression_fragment>
+    a <http://www.cidoc-crm.org/cidoc-crm/E73_Information_Object>, <http://www.researchspace.org/resource/system/resource_configuration>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_form>
+      <https://w3id.org/dsanno/platform/forms/BibliographicSourceFragment>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_name>
+      "Bibliographic source fragment";
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_ontology_class>
+      <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/resource_configurations_container>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_card_icon>
+      "note_stack";
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_view_type>
+      <http://www.researchspace.org/resource/system/vocab/search_view_type/list>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_type>
+      <https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Bibliographic source fragment configuration" .
+  
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Expression_fragment/navigation_item/8b3f2a10-6c41-4d9e-9f22-1a7d5e0c3b64>
+    a <http://www.researchspace.org/resource/system/FinderNavigationItem>;
+    <http://www.researchspace.org/pattern/system/navigation_item/resource_icon> "note_stack";
+    <http://www.researchspace.org/pattern/system/navigation_item/order_in_menu_section>
+      1;
+    <http://www.cidoc-crm.org/cidoc-crm/P67_refers_to> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Expression_fragment>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Finder/navigation_menu>;
+    <http://www.researchspace.org/pattern/system/navigation_item/menu_section_type> <http://www.researchspace.org/resource/system/vocab/navigation_menu_section/sources> .
+}

@@ -1,0 +1,109 @@
+
+<https://w3id.org/dsanno/platform/pattern/entity/forms_part_of/segment/context> {
+  <https://w3id.org/dsanno/platform/pattern/entity/forms_part_of/segment> a <http://www.researchspace.org/resource/system/fields/Field>,
+      <http://www.w3.org/ns/prov#Entity>, <http://www.w3.org/ns/ldp#Resource>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Laid out at (container segment)";
+    <http://www.researchspace.org/resource/system/fields/domain> <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object>;
+    <http://www.researchspace.org/resource/system/fields/range> <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object>;
+    <http://www.researchspace.org/resource/system/fields/minOccurs> "0";
+    <http://www.researchspace.org/resource/system/fields/maxOccurs> "unbound";
+    <http://www.researchspace.org/resource/system/fields/xsdDatatype> <http://www.w3.org/2001/XMLSchema#anyURI>;
+    <http://www.researchspace.org/resource/system/fields/insertPattern> _:node1k26mt6dax825;
+    <http://www.researchspace.org/resource/system/fields/selectPattern> _:node1k26mt6dax826;
+    <http://www.researchspace.org/resource/system/fields/deletePattern> _:node1k26mt6dax827;
+    <http://www.w3.org/ns/prov#wasAttributedTo> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.w3.org/ns/prov#generatedAtTime> "2026-09-11T10:43:42.941+02:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  _:node1k26mt6dax825 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """INSERT {
+  # (1) the two segment legs — unconditional, exactly as before
+  $subject   crm:P106i_forms_part_of  $value .
+  $value     crm:P106_is_composed_of  $subject .
+  # (2) shortcut, EXPRESSION subject: F2 R4i F3 / F3 R4 F2
+  $subject   lrmoo:R4i_is_embodied_in ?manifExpr .
+  ?manifExpr lrmoo:R4_embodies        $subject .
+  # (3) shortcut, FRAGMENT subject: fragment P106i F3 / F3 P106 fragment
+  $subject   crm:P106i_forms_part_of  ?manifFrag .
+  ?manifFrag crm:P106_is_composed_of  $subject .
+} WHERE {
+  OPTIONAL {
+    BIND(IRI(STRBEFORE(STR($value), \"/segment/\")) AS ?manifExpr)
+    ?manifExpr rdf:type lrmoo:F3_Manifestation .
+    FILTER(!STRSTARTS(STR($subject),
+      \"https://w3id.org/murtenpanorama/resource/expression_fragment/\"))
+    FILTER NOT EXISTS {
+      $subject crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment> .
+    }
+  }
+  OPTIONAL {
+    BIND(IRI(STRBEFORE(STR($value), \"/segment/\")) AS ?manifFrag)
+    ?manifFrag rdf:type lrmoo:F3_Manifestation .
+    {
+      FILTER(STRSTARTS(STR($subject),
+        \"https://w3id.org/murtenpanorama/resource/expression_fragment/\"))
+    } UNION {
+      $subject crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment> .
+    }
+  }
+}""" .
+  
+  _:node1k26mt6dax826 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """SELECT DISTINCT ?value WHERE {
+  $subject crm:P106i_forms_part_of ?value .
+  ?value rdf:type crm:E90_Symbolic_Object .
+  ?value crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Container_Segment> .
+}""" .
+  
+  _:node1k26mt6dax827 a <http://spinrdf.org/sp#Query>;
+    <http://spinrdf.org/sp#text> """DELETE {
+  $subject   crm:P106i_forms_part_of  $value .
+  $value     crm:P106_is_composed_of  $subject .
+  $subject   lrmoo:R4i_is_embodied_in ?manifExpr .
+  ?manifExpr lrmoo:R4_embodies        $subject .
+  $subject   crm:P106i_forms_part_of  ?manifFrag .
+  ?manifFrag crm:P106_is_composed_of  $subject .
+} WHERE {
+  $subject crm:P106i_forms_part_of $value .
+  $value   crm:P106_is_composed_of $subject .
+  $value   crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Container_Segment> .
+
+  # EXPRESSION subject — retract R4/R4i only if no OTHER container segment of $subject
+  # remains under the same F3
+  OPTIONAL {
+    $value crm:P106i_forms_part_of ?manifExpr .
+    ?manifExpr rdf:type lrmoo:F3_Manifestation .
+    FILTER(!STRSTARTS(STR($subject),
+      \"https://w3id.org/murtenpanorama/resource/expression_fragment/\"))
+    FILTER NOT EXISTS {
+      $subject crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment> .
+    }
+    FILTER NOT EXISTS {
+      $subject  crm:P106i_forms_part_of ?otherSeg .
+      FILTER(?otherSeg != $value)
+      ?otherSeg crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Container_Segment> .
+      ?otherSeg crm:P106i_forms_part_of ?manifExpr .
+    }
+  }
+
+  # FRAGMENT subject — same guard, but the shortcut being retracted is a P106i
+  OPTIONAL {
+    $value crm:P106i_forms_part_of ?manifFrag .
+    ?manifFrag rdf:type lrmoo:F3_Manifestation .
+    {
+      FILTER(STRSTARTS(STR($subject),
+        \"https://w3id.org/murtenpanorama/resource/expression_fragment/\"))
+    } UNION {
+      $subject crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Expression_Fragment> .
+    }
+    FILTER NOT EXISTS {
+      $subject  crm:P106i_forms_part_of ?otherSeg .
+      FILTER(?otherSeg != $value)
+      ?otherSeg crm:P2_has_type <https://w3id.org/dsanno/ontology/sourcing/Container_Segment> .
+      ?otherSeg crm:P106i_forms_part_of ?manifFrag .
+    }
+  }
+}""" .
+  
+  <http://www.researchspace.org/resource/system/fieldDefinitionContainer> <http://www.w3.org/ns/ldp#contains>
+      <https://w3id.org/dsanno/platform/pattern/entity/forms_part_of/segment> .
+}
