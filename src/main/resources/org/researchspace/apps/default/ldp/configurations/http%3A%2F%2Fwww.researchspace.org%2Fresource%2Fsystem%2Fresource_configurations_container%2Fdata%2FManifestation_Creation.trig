@@ -1,0 +1,49 @@
+
+<http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation> {
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record/entity_formRecord_creation/at_some_time_within>
+    a <http://www.cidoc-crm.org/cidoc-crm/E52_Time-Span>;
+    <http://www.cidoc-crm.org/cidoc-crm/P82_at_some_time_within> "2025-02-03T21:47:26.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+  
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation>
+    a <http://www.cidoc-crm.org/cidoc-crm/E73_Information_Object>, <http://www.researchspace.org/resource/system/resource_configuration>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_card_icon>
+      "library_books";
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_search_view_type>
+      <http://www.researchspace.org/resource/system/vocab/search_view_type/list>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_name>
+      "Manifestation Creation";
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_form>
+      <https://w3id.org/dsanno/platform/forms/ManifestationCreation>;
+    <http://www.researchspace.org/pattern/system/resource_configuration/resource_ontology_class>
+      <http://iflastandards.info/ns/lrm/lrmoo/F30_Manifestation_Creation>;
+    <http://www.w3.org/2000/01/rdf-schema#label> "Manifestation Creation configuration";
+    <http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/resource_configurations_container> .
+  
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/navigation_item/18e354f5-e5c3-4fa6-8cde-2637c64bc470>
+    a <http://www.researchspace.org/resource/system/FinderNavigationItem>;
+    <http://www.cidoc-crm.org/cidoc-crm/P71i_is_listed_in> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Finder/navigation_menu>;
+    <http://www.cidoc-crm.org/cidoc-crm/P67_refers_to> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation> .
+  
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record>
+    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record/entity_formRecord_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
+    <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation> .
+  
+  <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record/entity_formRecord_creation>
+    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record/entity_formRecord_creation/at_some_time_within>;
+    <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
+    <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin>;
+    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record> .
+  
+  <http://www.researchspace.org/resource/user/admin> <http://www.cidoc-crm.org/cidoc-crm/P14i_performed>
+      <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>
+    <http://www.cidoc-crm.org/cidoc-crm/P2i_is_type_of> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record/entity_formRecord_creation> .
+  
+  <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>
+    <http://www.cidoc-crm.org/cidoc-crm/P2i_is_type_of> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Manifestation_Creation/entity_form_record> .
+}

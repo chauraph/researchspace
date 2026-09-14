@@ -7,7 +7,10 @@
 # kinds of the dsanno sourcing module as platform resource types, so the resource-configuration Type input
 # (field resource_configuration/resource_type: member of this vocabulary + skos:prefLabel) resolves them.
 # The terms themselves ship in ldp/ontologies/dsanno-sourcing.trig. On an existing instance the runtime copy
-# of this graph (rs-ldp) governs and must carry the same four triples.
+# of this graph (rs-ldp) governs and must carry the same triples.
+# 2026-09-14: also lists resource_type/source, the type of the sourcing configurations shipped in
+# ldp/configurations (…/data/Expression and …/data/Object_source); copied from rs-ldp (label "source", no language
+# tag, as there), so a new instance built from this image resolves those configurations without the runtime copy.
 <http://www.researchspace.org/resource/system/vocab/resource_type> {
   dssrc:Expression_Fragment
     crm:P71i_is_listed_in <http://www.researchspace.org/resource/system/vocab/resource_type> ;
@@ -15,4 +18,8 @@
   dssrc:Container_Segment
     crm:P71i_is_listed_in <http://www.researchspace.org/resource/system/vocab/resource_type> ;
     skos:prefLabel "container segment"@en .
+  <http://www.researchspace.org/resource/system/vocab/resource_type/source>
+    a crm:E55_Type ;
+    crm:P71i_is_listed_in <http://www.researchspace.org/resource/system/vocab/resource_type> ;
+    skos:prefLabel "source" .
 }
