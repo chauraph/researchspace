@@ -62,7 +62,8 @@
               <template id='actions'>
                 <div>
                     <mp-event-trigger id='{{viewId}}-select-api-resource-trigger'
-                                      type='apiResourceSelect'
+                                      [[!-- upstream renamed apiResourceSelect to apiResourceImportInModal (its listeners sit in SimpleCollectionBrowser) --]]
+                                      type='apiResourceImportInModal'
                                       data='{"apiResourceName": "{{canvaslabel.value}}",
                                              "apiResourceIIIFManifest": "{{proxied_manifest.value}}",
                                              "apiResourceIIIFCanvasId": "{{canvasid.value}}",

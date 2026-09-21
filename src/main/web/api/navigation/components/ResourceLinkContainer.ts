@@ -17,7 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { Props as ReactProps, createElement, cloneElement, Children, MouseEvent } from 'react';
+import { Props as ReactProps, createElement, cloneElement, Children, 
+  MouseEvent, isValidElement, ReactElement, Fragment } from 'react';
 
 import { Rdf } from 'platform/api/rdf';
 import { navigateToResource, NavigationUtils, openResourceInNewWindow } from 'platform/api/navigation';
@@ -27,9 +28,7 @@ import { isSimpleClick } from './ResourceLink';
 import { BuiltInEvents, trigger } from 'platform/api/events';
 import { ConfigHolder } from 'platform/api/services/config-holder';
 
-/**
- * See 'Link'.
- */
+
 export interface ResourceLinkContainerConfig {
   /**
    * resource IRI to navigate
@@ -39,7 +38,7 @@ export interface ResourceLinkContainerConfig {
   /**
    * Specify if link should be draggable, e.g. into sets.
    *
-   * @default true
+   * @default false
    */
   draggable?: boolean;
 
@@ -59,6 +58,7 @@ export type ResourceLinkContainerProps = ResourceLinkContainerConfig & ReactProp
 export class ResourceLinkContainer extends Component<ResourceLinkContainerProps, {}> {
   static defaultProps = {
     target: '_self',
+    draggable: false,
   };
 
   onClick = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -86,15 +86,23 @@ export class ResourceLinkContainer extends Component<ResourceLinkContainerProps,
     const props = {
       onClick: this.onClick,
     };
-    if (this.props.draggable === false) {
-      return cloneElement(<any>Children.only(this.props.children), props);
-    } else {
-      return createElement(
-        Draggable,
-        { iri: this.props.uri },
-        cloneElement(<any>Children.only(this.props.children), props)
-      );
-    }
+  
+    const modifiedChildren = Children.map(this.props.children, (child) => {
+      if (isValidElement(child)) {
+        if (this.props.draggable === false) {
+          return cloneElement(child as ReactElement, props);
+        } else {
+          return createElement(
+            Draggable,
+            { iri: this.props.uri },
+            cloneElement(child as ReactElement, props)
+          );
+        }
+      }
+      return child;
+    });
+  
+    return createElement(Fragment, null, modifiedChildren);
   }
 }
 export default ResourceLinkContainer;

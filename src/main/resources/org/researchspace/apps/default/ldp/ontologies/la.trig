@@ -30,7 +30,7 @@ la:context {
     la:DigitalService a rdfs:Class ;
         rdfs:label "Digital Service"@en ;
         rdfs:comment ""@en ;
-        rdfs:subClassOf <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> .
+        rdfs:subClassOf <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> .
 
     la:Payment a rdfs:Class ;
         rdfs:label "Payment"@en ;
@@ -65,8 +65,8 @@ la:context {
         rdfs:label "access point"@en ;
         rdfs:comment """From an ur- digital object to a single concrete representation.
         A locator as opposed to an identifier, similar to the approximated_by for Place."""@en ;
-        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
-        rdfs:range <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> .
+        rdfs:domain <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
+        rdfs:range <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> .
 
     la:equivalent a owl:ObjectProperty ;
         rdfs:label "has equivalent instance"@en ;
@@ -174,7 +174,7 @@ la:context {
     la:digitally_available_via a owl:ObjectProperty ;
         rdfs:label "digitally available via"@en ;
         rdfs:comment ""@en ;
-        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:domain <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
         rdfs:range la:DigitalService ;
         owl:inverseOf la:digitally_makes_available .
 
@@ -182,20 +182,20 @@ la:context {
         rdfs:label "digitally carried by"@en ;
         rdfs:comment ""@en ;
         rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object> ;
-        rdfs:range <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
         owl:inverseOf la:digitally_carries .
 
     la:digitally_carries a owl:ObjectProperty ;
         rdfs:label "digitally carries"@en ;
         rdfs:comment ""@en ;
-        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:domain <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
         rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E90_Symbolic_Object> ;
         owl:inverseOf la:digitally_carried_by .
 
     la:digitally_makes_available a owl:ObjectProperty ;
         rdfs:label "digitally makes available"@en ;
         rdfs:comment ""@en ;
-        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:domain <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
         rdfs:range la:DigitalService ;
         owl:inverseOf la:digitally_available_via .
 
@@ -203,13 +203,13 @@ la:context {
         rdfs:label "digitally shown by"@en ;
         rdfs:comment ""@en ;
         rdfs:domain <http://www.cidoc-crm.org/cidoc-crm/E36_Visual_Item> ;
-        rdfs:range <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:range <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
         owl:inverseOf la:digitally_shows .
 
     la:digitally_shows a owl:ObjectProperty ;
         rdfs:label "digitally shows"@en ;
         rdfs:comment ""@en ;
-        rdfs:domain <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object> ;
+        rdfs:domain <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object> ;
         rdfs:range <http://www.cidoc-crm.org/cidoc-crm/E36_Visual_Item> ;
         owl:inverseOf la:digitally_shown_by .
 

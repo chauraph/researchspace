@@ -19,34 +19,44 @@
         <h1>Data import</h1>
         <hr style="margin-top:0px;" />
         [[#if (hasPermission "sparql:update")]]
-        <div class="documentation-section documentation-section-withIcon" style="margin: 20px 0;">
-          <div class="documentation-section-icon-container">
-            <i class="fa fa-info"></i>
-          </div>
+          <div class="documentation-section documentation-section-withIcon" style="margin: 20px 0;">
+            <div class="documentation-section-icon-container">
+              <i class="fa fa-info"></i>
+            </div>
 
-          <div style="flex: 1;"> 
-            <div class="documentation-section-title" style="margin-bottom: 5px;">Info</div>
-            <div class="documentation-section-content" style="margin-bottom: 5px;"> 
-              The data import via drag&amp;drop file upload should only be used for smaller files.
+            <div style="flex: 1;"> 
+              <div class="documentation-section-title" style="margin-bottom: 5px;">Info</div>
+              <div class="documentation-section-content" style="margin-bottom: 5px;"> 
+                The data import via drag&amp;drop file upload should only be used for smaller files.
+              </div>
+              <div class="documentation-section-content" style="margin-bottom: 5px;"> 
+                All communication is done via HTTP and as such there are several limiting parameters, for example,
+                the maximum body size a client may post against the webserver (e.g. tomcat, jetty or nginx default
+                configuration
+                is usually around 2 MBs).
+                
+              </div>
+              <div class="documentation-section-content">
+                For loading larger datasets it is generally recommended to load the data via dedicated (but usually
+                proprietary)
+                graph database APIs. See also 
+                <semantic-link iri='[[resolvePrefix "Help:WorkingWithData"]]' class="text-underline" target="_blank">Working with data</semantic-link>.
+              </div>
             </div>
-            <div class="documentation-section-content" style="margin-bottom: 5px;"> 
-              All communication is done via HTTP and as such there are several limiting parameters, for example,
-              the maximum body size a client may post against the webserver (e.g. tomcat, jetty or nginx default
-              configuration
-              is usually around 2 MBs).
-              
+          </div> 
+          <mp-rdf-upload></mp-rdf-upload>
+        [[else]]
+          <div class="warning-documentation-section warning-documentation-section-withIcon" style="margin: 20px 0;">
+            <div class="warning-documentation-section-icon-container">
+              <rs-icon icon-type="rounded" icon-name="lock" symbol="true"></rs-icon>
             </div>
-            <div class="documentation-section-content">
-              For loading larger datasets it is generally recommended to load the data via dedicated (but usually
-              proprietary)
-              graph database APIs. See also <semantic-link iri="http://help.researchspace.org/resource/WorkingWithData">
-              </semantic-link>.
+            <div> 
+              <div class="warning-documentation-section-title">Permission denied!</div>
+              <div class="warning-documentation-section-content">
+                <div>You don't have permission to upload data in the system</div>
+              </div>
             </div>
           </div>
-        </div> 
-        <mp-rdf-upload></mp-rdf-upload>
-        [[else]]
-        <i>No permission for uploading or modifying data.</i>
         [[/if]]
 
 
@@ -68,15 +78,15 @@
         <mp-event-target-refresh id='{{viewId}}-data-export-table'>
           <div>
             <semantic-query
-              query='SELECT (COUNT(*) as ?number) WHERE { { SELECT DISTINCT ?g WHERE{ GRAPH ?g {?s ?p ?o} } LIMIT 1000 } }'
-              template='{{#each bindings}}{{#ifCond number.value ">=" 1000}}<bs-alert bs-style="warning"> The following table is limited to show only <strong>1000</strong> named graphs.</bs-alert> {{else}} <div class="page__section-container"> The repository contains <strong> {{number.value}} </strong> distinct named graphs.</div> {{/ifCond}}{{/each}}'>
+              query='SELECT (COUNT(*) as ?number) WHERE { { SELECT DISTINCT ?g WHERE{ GRAPH ?g {?s ?p ?o} } LIMIT 10000 } }'
+              template='{{#each bindings}}{{#ifCond number.value ">=" 10000}}<bs-alert bs-style="warning"> The following table is limited to show only <strong>10000</strong> named graphs.</bs-alert> {{else}} <div class="page__section-container"> The repository contains <strong> {{number.value}} </strong> distinct named graphs.</div> {{/ifCond}}{{/each}}'>
             </semantic-query>
             
             <semantic-table query='SELECT ?graph WHERE {
                                       {
                                         SELECT DISTINCT ?graph WHERE {
                                           { GRAPH ?graph { ?subject ?predicate ?object. } }
-                                        } LIMIT 1000
+                                        } LIMIT 10000
                                       }
                                   }' 
                             column-configuration='[ {"variableName":"graph", "displayName":"Named Graph", "cellTemplate":"{{> link}}"},
@@ -94,7 +104,7 @@
                   SELECT ?size WHERE {
                     {
                       SELECT (COUNT(*) as ?number) WHERE {
-                        GRAPH <{{graph.value}}> { { SELECT * WHERE{ ?s ?p ?o}  LIMIT 1000 } }
+                        GRAPH <{{graph.value}}> { { SELECT * WHERE{ ?s ?p ?o}  LIMIT 10000 } }
                       } LIMIT 1
                     }
                     BIND(IF(?number>=1000, &apos;>=1000&apos;, ?number) as ?size)
@@ -113,23 +123,23 @@
                       <bs-dropdown-menu>
                         
                         <mp-graph-store-action title="Download" action="GET" graphuri="{{graph.value}}" file-ending="trig">
-                          <bs-menu-item event-key=1>TRIG</bs-menu-item>
+                          <bs-menu-item event-key=1 draggable="false">TRIG</bs-menu-item>
                         </mp-graph-store-action>
                       
                         <mp-graph-store-action title="Download" action="GET" graphuri="{{graph.value}}" file-ending="ttl">
-                          <bs-menu-item event-key=2>TURTLE</bs-menu-item>
+                          <bs-menu-item event-key=2 draggable="false">TURTLE</bs-menu-item>
                         </mp-graph-store-action>
                       
                         <mp-graph-store-action title="Download" action="GET" graphuri="{{graph.value}}" file-ending="nt">
-                          <bs-menu-item event-key=3>NTRIPLES</bs-menu-item>
+                          <bs-menu-item event-key=3 draggable="false">NTRIPLES</bs-menu-item>
                         </mp-graph-store-action>
                         
                         <mp-graph-store-action title="Download" action="GET" graphuri="{{graph.value}}" file-ending="rdf">
-                          <bs-menu-item event-key=4>RDF/XML</bs-menu-item>
+                          <bs-menu-item event-key=4 draggable="false">RDF/XML</bs-menu-item>
                         </mp-graph-store-action>
                         
                         <mp-graph-store-action title="Download" action="GET" graphuri="{{graph.value}}" file-ending="owl">
-                          <bs-menu-item event-key=4>OWL</bs-menu-item>
+                          <bs-menu-item event-key=5 draggable="false">OWL</bs-menu-item>
                         </mp-graph-store-action>
                         
                       </bs-dropdown-menu>

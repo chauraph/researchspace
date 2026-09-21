@@ -74,7 +74,7 @@ export interface SemanticTreeConfig {
   query: string;
 
   /**
-   * <semantic-link iri='http://help.researchspace.org/resource/FrontendTemplating'>Template</semantic-link>
+   * <semantic-link iri='http://help.researchspace.org/resource/TemplatingSystem' target="_blank">Template</semantic-link>
    * which is used to render every tree node. Template has access to all projection
    * variables for a single result tuple.
    * By default `<semantic-link>` component is used for node visualization.
@@ -82,7 +82,7 @@ export interface SemanticTreeConfig {
   tupleTemplate?: string;
 
   /**
-   * <semantic-link iri='http://help.researchspace.org/resource/FrontendTemplating'>Template</semantic-link>
+   * <semantic-link iri='http://help.researchspace.org/resource/TemplatingSystem' target="_blank">Template</semantic-link>
    * which is applied when the query returns no results.
    */
   noResultTemplate?: string;
@@ -170,7 +170,7 @@ export class SemanticTree extends Component<Props, State> {
     nodeBindingName: 'node',
     roots: [],
     keysOpened: [],
-    tupleTemplate: '<semantic-link iri="{{node.value}}"></semantic-link>',
+    tupleTemplate: '<semantic-link iri="{{node.value}}" draggable="true"></semantic-link>',
   };
 
   private readonly cancellation = new Cancellation();

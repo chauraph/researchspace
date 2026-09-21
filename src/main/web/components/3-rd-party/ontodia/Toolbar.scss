@@ -24,15 +24,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 5px;
   border-bottom: 1px solid $color-border;
   background-color: $color-km-bg;
   flex-wrap: wrap;
 
-  padding: 4px 10px;
+  width: 100%;
+  --reactodia-viewport-dock-margin: 0;
 
-/*   :global(.btn-action) {
-    padding: 7px 10px;
-  } */
+  padding: 4px 10px;
+  
 
   :global(.dropdown-menu) {
     right: 0;

@@ -38,7 +38,7 @@ const HARNESS =
 
 const PREFIXES = `
 PREFIX crm:    <http://www.cidoc-crm.org/cidoc-crm/>
-PREFIX crmdig: <http://www.ics.forth.gr/isl/CRMdig/>
+PREFIX crmdig: <http://www.cidoc-crm.org/extensions/crmdig/>
 PREFIX crminf: <http://www.cidoc-crm.org/extensions/crminf/>
 PREFIX skos:   <http://www.w3.org/2004/02/skos/core#>
 PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>

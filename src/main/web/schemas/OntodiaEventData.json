@@ -6,8 +6,7 @@
             "properties": {
                 "elementData": {
                     "description": "New entity data.",
-                    "properties": {
-                    },
+                    "properties": {},
                     "type": "object"
                 },
                 "targets": {
@@ -66,18 +65,15 @@
             "description": "Event which should be triggered when diagram has been changed.",
             "properties": {
                 "authoringState": {
-                    "properties": {
-                    },
+                    "properties": {},
                     "type": "object"
                 },
                 "model": {
-                    "properties": {
-                    },
+                    "properties": {},
                     "type": "object"
                 },
                 "temporaryState": {
-                    "properties": {
-                    },
+                    "properties": {},
                     "type": "object"
                 }
             },
@@ -90,6 +86,24 @@
                 "authoringState",
                 "model",
                 "temporaryState"
+            ],
+            "type": "object"
+        },
+        "Ontodia.DiagramDataPersisted": {
+            "description": "Event which should be triggered when diagram has been changed.\niris stores the iri of a resource in the system that has just been changed.",
+            "properties": {
+                "iris": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "propertyOrder": [
+                "iris"
+            ],
+            "required": [
+                "iris"
             ],
             "type": "object"
         },
@@ -130,8 +144,7 @@
             "properties": {
                 "elementData": {
                     "description": "New data of an entity.",
-                    "properties": {
-                    },
+                    "properties": {},
                     "type": "object"
                 },
                 "targetIri": {
@@ -155,13 +168,32 @@
                 "iri": {
                     "description": "IRI of an entity to be focused on.",
                     "type": "string"
+                },
+                "iris": {
+                    "description": "IRIs of an entities to be focused on.",
+                    "type": "string"
                 }
             },
             "propertyOrder": [
-                "iri"
+                "iri",
+                "iris"
+            ],
+            "type": "object"
+        },
+        "Ontodia.HighlightElements": {
+            "properties": {
+                "iris": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "propertyOrder": [
+                "iris"
             ],
             "required": [
-                "iri"
+                "iris"
             ],
             "type": "object"
         }
@@ -169,20 +201,24 @@
     "propertyOrder": [
         "Ontodia.DiagramSaved",
         "Ontodia.DiagramChanged",
+        "Ontodia.DiagramDataPersisted",
         "Ontodia.DiagramIsDirty",
         "Ontodia.CreateElement",
         "Ontodia.EditElement",
         "Ontodia.DeleteElement",
-        "Ontodia.FocusOnElement"
+        "Ontodia.FocusOnElement",
+        "Ontodia.HighlightElements"
     ],
     "required": [
         "Ontodia.CreateElement",
         "Ontodia.DeleteElement",
         "Ontodia.DiagramChanged",
+        "Ontodia.DiagramDataPersisted",
         "Ontodia.DiagramIsDirty",
         "Ontodia.DiagramSaved",
         "Ontodia.EditElement",
-        "Ontodia.FocusOnElement"
+        "Ontodia.FocusOnElement",
+        "Ontodia.HighlightElements"
     ],
     "type": "object"
 }

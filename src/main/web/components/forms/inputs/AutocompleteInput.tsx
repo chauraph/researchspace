@@ -1,6 +1,6 @@
 /**
  * ResearchSpace
- * Copyright (C) 2022-2024, © Kartography Community Interest Company
+ * Copyright (C) 2022-2025, © Kartography Community Interest Company
  * Copyright (C) 2020, © Trustees of the British Museum
  * Copyright (C) 2015-2019, metaphacts GmbH
  *
@@ -20,9 +20,12 @@
 import * as React from 'react';
 import { Button } from 'react-bootstrap';
 import * as _ from 'lodash';
+import * as classNames from 'classnames';
 
 import { Rdf } from 'platform/api/rdf';
 import { AutoCompletionInput } from 'platform/components/ui/inputs';
+import { AutoCompletionInputProps } from 'platform/components/ui/inputs/AutoCompletionInput';
+import { BaseProps } from 'platform/components/ui/inputs/AbstractAutoCompletionInput';
 import {getResourceConfigurationEditForm} from './ResourceConfigHelper';
 
 import { FieldDefinition, getPreferredLabel } from '../FieldDefinition';
@@ -36,22 +39,25 @@ import { ValidationMessages } from './Decorations';
 import Icon from 'platform/components/ui/icon/Icon';
 import ResourceLinkContainer from 'platform/api/navigation/components/ResourceLinkContainer';
 import { SparqlClient, SparqlUtil } from 'platform/api/sparql';
-import { DropdownButton, MenuItem } from 'react-bootstrap';
-import { RdfLiteral } from 'platform/ontodia/src/ontodia';
+
+import { DropdownWithFilter } from './dropdown/DropdownWithFilter';
 import { ConfigHolder } from 'platform/api/services/config-holder';
 
 
 type nestedFormEl = {
   label?: string,
   nestedForm?: string,
-  modalId?: string
+  modalId?: string,
+  parentIri?: string,
+  passValuesFor?: string[]
 }
 
-export interface AutocompleteInputProps extends AtomicValueInputProps {
+export interface AutocompleteInputProps
+  extends AtomicValueInputProps,
+    Omit<BaseProps, 'value' | 'actions' | 'templates'> {
   template?: string;
   placeholder?: string;
   nestedFormTemplate?: string;
-  minimumInput?: number;
   nestedFormTemplates?: nestedFormEl[];
   /**
    * @default false
@@ -59,6 +65,16 @@ export interface AutocompleteInputProps extends AtomicValueInputProps {
    */
   readonlyResource?: boolean;
   readonly?: boolean;
+  /**
+   * If set to false, the filter input in the dropdown will be hidden
+   * @default true
+   */
+  showDropdownFilter?: boolean;
+  /**
+   * Droppable configuration for drag-and-drop support.
+   * Note: droppable.query is always set internally and cannot be overridden.
+   */
+  droppable?: AutoCompletionInputProps['droppable'];
 }
 
 interface SelectValue {
@@ -74,10 +90,12 @@ interface State {
   nestedFormTemplates?: nestedFormEl[];
   labelFormSelected?: string;
   modalId?: string;
+  parentIri?: string;
+  passValuesFor?: string[];
+  filterValue?: string;
 }
 
 const CLASS_NAME = 'autocomplete-text-field';
-const MINIMUM_LIMIT = 3;
 const DEFAULT_TEMPLATE = `<span title="{{label.value}}">{{label.value}}</span>{{{getNodeTypes value}}}`;
 
 export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, State> {
@@ -89,7 +107,8 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
     super(props, context);
     this.state = { 
       nestedFormOpen: false ,
-      nestedFormTemplates: []
+      nestedFormTemplates: [],
+      filterValue: ''
     };
     this.tupleTemplate = this.tupleTemplate || this.compileTemplate();
   }
@@ -111,9 +130,9 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
           .then(binding=>{
             if (binding.resourceFormIri) {
               if (binding.scheme)
-                this.setState({activeForm: `{{> "${binding.resourceFormIri.value}" nested=true editable=true mode="edit" scheme="${binding.scheme.value}"}}`});
+                this.setState({activeForm: `{{> "${binding.resourceFormIri.value}" nested=true editable=true mode="edit" subject="${rdfNode.value}" scheme="${binding.scheme.value}"}}`});
               else  
-                this.setState({activeForm: `{{> "${binding.resourceFormIri.value}" nested=true editable=true mode="edit"}}`});
+                this.setState({activeForm: `{{> "${binding.resourceFormIri.value}" nested=true editable=true mode="edit" subject="${rdfNode.value}"}}`});
             }
             else
                 {this.setState({activeForm: undefined, valueSelectedWithoutEditForm: true});}})
@@ -123,8 +142,9 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
     }
   }
 
-  public openSelectedNestedForm(formTemplate: string) {
-    tryExtractNestedForm(this.props.children, this.context, formTemplate)
+  openSelectedNestedForm = (formTemplate: string, parentIri?: string, passValuesFor?: string[]) => {
+    
+    tryExtractNestedForm(this.props.children, this.context, formTemplate, Rdf.iri(parentIri), passValuesFor)
       .then(nestedForm => {
         if (nestedForm != undefined) {
          this.setState({nestedForm});
@@ -147,13 +167,15 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
   private onDropdownSelectHandler(label: string) {
     const nestedFormTemplateSelected = this.state.nestedFormTemplates.filter((e) => e.label === label)[0].nestedForm
     const modalId = this.state.nestedFormTemplates.filter((e) => e.label === label)[0].modalId
-    
+    const parentIri = this.state.nestedFormTemplates.filter((e) => e.label === label)[0].parentIri
+    const passValuesFor = this.state.nestedFormTemplates.filter((e) => e.label === label)[0].passValuesFor
     this.setState({
       labelFormSelected: label,
-      modalId
+      modalId: modalId,
+      parentIri: parentIri,
+      passValuesFor: passValuesFor
     })
-    
-    this.openSelectedNestedForm(nestedFormTemplateSelected)
+    this.openSelectedNestedForm(nestedFormTemplateSelected, parentIri, passValuesFor)
   }
 
   render() {
@@ -183,6 +205,8 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
             onSubmit={this.onNestedFormSubmit}      
             onCancel={() => {this.setState({ nestedFormOpen: false });}}
             parent={this.htmlElement}
+            parentIri={this.state.parentIri}
+            passValuesFor={this.state.passValuesFor}
           >
             {this.state.nestedForm}
           </NestedModalForm>
@@ -219,7 +243,16 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
       typeof this.props.placeholder === 'undefined'
         ? this.createDefaultPlaceholder(definition)
         : this.props.placeholder;
-    
+
+    // Runtime: warn if user tries to override droppable.query
+    if (this.props.droppable?.query) {
+      console.warn(
+        'AutocompleteInput: droppable.query cannot be overridden, it is set internally.'
+      );
+    }
+
+    const current_value = FieldValue.isAtomic(this.props.value)
+      ? (this.props.value.value as Rdf.Iri).value: undefined;
     const isFieldValueEmpty = FieldValue.isEmpty(this.props.value)
     
     const showLinkResourceButton = !isFieldValueEmpty && !this.props.readonlyResource
@@ -230,23 +263,28 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
     return (
       <div className={`${CLASS_NAME}__main-row`}>
         <AutoCompletionInput
+          {...this.props}
           key={definition.id}
-          className={`${CLASS_NAME}__select`}
-          autofocus={false}
+          className={classNames(`${CLASS_NAME}__select`, this.props.className)}
+          autofocus={this.props.autofocus ?? false}
           query={this.props.definition.autosuggestionPattern}
           placeholder={placeholder}
           droppable={{
-            // enable droppable for autocomplete input
+            // query is always set internally — not overridable
             query: createDropAskQueryForField(definition),
             styles: {
               enabled: {
-                outline: '2px dashed var(--color-dark)'
+                outline: '2px dashed var(--color-dark)',
+                ...this.props.droppable?.styles?.enabled,
               },
               enabledHover: {
-                outline: '4px dashed var(--color-dark)'
+                outline: '4px dashed var(--color-dark)',
+                ...this.props.droppable?.styles?.enabledHover,
               },
-              disabled: {}
-            }
+              disabled: {
+                ...this.props.droppable?.styles?.disabled,
+              },
+            },
           }}
           value={value}
           templates={{ suggestion: this.tupleTemplate }}
@@ -255,22 +293,26 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
             // however, what will be passed in is a SelectValue
             onSelected: this.onChange as (val: any) => void,
           }}
-          minimumInput={this.props.minimumInput || MINIMUM_LIMIT}
           disabled={!this.canEdit()}
         />
         { showCreateNewButton && (
           <Button className={`${CLASS_NAME}__create-button btn-textAndIcon`} onClick={() => this.onDropdownSelectHandler(this.state.nestedFormTemplates[0].label)}>
-            <Icon iconType='round' iconName='add_box'/>
-            <span>New</span>
+            <Icon iconType='round' iconName='add'/>
           </Button>
         )}
         { showCreateNewDropdown && (
-          <DropdownButton title="New" pullRight id="add-form" onSelect={(label) => this.onDropdownSelectHandler(label)}>
-            {this.state.nestedFormTemplates.map((e) => {
-                return (<MenuItem key={e.label} eventKey={e.label}>{e.label}</MenuItem>)
-              }
-            )}
-          </DropdownButton>
+          <DropdownWithFilter
+            id="add-form"
+            icon="add"
+            items={this.state.nestedFormTemplates}
+            filterValue={this.state.filterValue || ''}
+            onFilterChange={v => this.setState({ filterValue: v })}
+            onSelect={item => this.onDropdownSelectHandler(String(item.label))}
+            getLabel={item => String(item.label)}
+            placeholder="Filter..."
+            noResultsText="No results"
+            showFilter={this.props.showDropdownFilter}
+          />
         )}
         { showEditButton && 
           <Button className={`${CLASS_NAME}__create-button btn-textAndIcon`} title='Edit' onClick={() => {this.onEditHandler(value.value as Rdf.Iri)}}>
@@ -282,8 +324,7 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
             uri={ConfigHolder.getDashboard().value} 
             urlqueryparam-view="resource-editor"
             urlqueryparam-open-as-drag-and-drop="true"
-            urlqueryparam-resource={(this.props.value.value as Rdf.Iri).value}
-            draggable={false}
+            urlqueryparam-resource={current_value}
           >
             <Button className={`${CLASS_NAME}__open-in-new-tab`} title='Edit in new draggable tab'>
               <Icon iconType='rounded' iconName='read_more' symbol={true} />
@@ -328,7 +369,7 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
 
   private createDefaultPlaceholder(definition: FieldDefinition): string {
     const fieldName = (getPreferredLabel(definition.label) || 'entity').toLocaleLowerCase();
-    return `Search and select ${fieldName} here...`;
+    return `Search and select ${fieldName}`;
   }
 
   static makeHandler = AtomicValueInput.makeAtomicHandler;
@@ -337,3 +378,4 @@ export class AutocompleteInput extends AtomicValueInput<AutocompleteInputProps, 
 SingleValueInput.assertStatic(AutocompleteInput);
 
 export default AutocompleteInput;
+

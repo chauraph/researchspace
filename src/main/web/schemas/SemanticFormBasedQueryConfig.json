@@ -107,9 +107,7 @@
                 "maxOccurs": {
                     "anyOf": [
                         {
-                            "enum": [
-                                "unbound"
-                            ],
+                            "const": "unbound",
                             "type": "string"
                         },
                         {
@@ -120,9 +118,7 @@
                 "minOccurs": {
                     "anyOf": [
                         {
-                            "enum": [
-                                "unbound"
-                            ],
+                            "const": "unbound",
                             "type": "string"
                         },
                         {
@@ -133,9 +129,7 @@
                 "order": {
                     "anyOf": [
                         {
-                            "enum": [
-                                "unbound"
-                            ],
+                            "const": "unbound",
                             "type": "string"
                         },
                         {
@@ -180,14 +174,7 @@
                     ]
                 },
                 "treePatterns": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/SimpleTreeConfig"
-                        },
-                        {
-                            "$ref": "#/definitions/FullTreeConfig"
-                        }
-                    ]
+                    "$ref": "#/definitions/TreeQueriesConfig"
                 },
                 "valueSetPattern": {
                     "type": "string"
@@ -237,6 +224,9 @@
                     "description": "Children query with [?parent] input and [?item, ?label, ?hasChildren] output variables.",
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "parentsQuery": {
                     "description": "Parent nodes query with [?item] inputs through VALUES(...) clause\nand [?item, ?parent, ?parentLabel] outputs.",
                     "type": "string"
@@ -250,14 +240,13 @@
                     "type": "string"
                 },
                 "type": {
-                    "enum": [
-                        "full"
-                    ],
+                    "const": "full",
                     "type": "string"
                 }
             },
             "propertyOrder": [
                 "type",
+                "id",
                 "rootsQuery",
                 "childrenQuery",
                 "parentsQuery",
@@ -278,9 +267,7 @@
                     "type": "string"
                 },
                 "termType": {
-                    "enum": [
-                        "NamedNode"
-                    ],
+                    "const": "NamedNode",
                     "type": "string"
                 },
                 "value": {
@@ -319,15 +306,15 @@
                     "type": "string"
                 },
                 "datatype": {
-                    "$ref": "#/definitions/Iri"
+                    "$ref": "#/definitions/Iri",
+                    "description": "A NamedNode whose IRI represents the datatype of the literal."
                 },
                 "language": {
+                    "description": "the language as lowercase BCP47 string (examples: en, en-gb)\nor an empty string if the literal has no language.",
                     "type": "string"
                 },
                 "termType": {
-                    "enum": [
-                        "Literal"
-                    ],
+                    "const": "Literal",
                     "type": "string"
                 },
                 "value": {
@@ -369,8 +356,7 @@
                         "$ref": "#/definitions/QueryTemplateArgument"
                     },
                     "description": "A map of query arguments.\nThe key of every map entry must be equal to the query variable in the SPARQL queryString.",
-                    "propertyOrder": [
-                    ],
+                    "propertyOrder": [],
                     "type": "object"
                 },
                 "queryString": {
@@ -411,6 +397,14 @@
         },
         "SimpleTreeConfig": {
             "properties": {
+                "labelPattern": {
+                    "description": "Input bindings: `?item`\nOutput bindings: `?label`",
+                    "type": "string"
+                },
+                "orderByPattern": {
+                    "description": "Input bindings: `?item`\nOutput bindings: `?order`",
+                    "type": "string"
+                },
                 "relationPattern": {
                     "description": "Output bindings: `?item`, `?parent`",
                     "type": "string"
@@ -424,9 +418,7 @@
                     "type": "string"
                 },
                 "type": {
-                    "enum": [
-                        "simple"
-                    ],
+                    "const": "simple",
                     "type": "string"
                 }
             },
@@ -434,20 +426,40 @@
                 "type",
                 "scheme",
                 "schemePattern",
-                "relationPattern"
+                "relationPattern",
+                "orderByPattern",
+                "labelPattern"
             ],
             "required": [
                 "type"
             ],
             "type": "object"
+        },
+        "TreeQueriesConfig": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/SimpleTreeConfig"
+                },
+                {
+                    "$ref": "#/definitions/FullTreeConfig"
+                }
+            ]
         }
     },
     "properties": {
+        "defaultQuery": {
+            "description": "Default query that should be executed when no input values are provided.",
+            "type": "string"
+        },
         "domain": {
             "description": "Specifies the search domain category IRI (full IRI enclosed in <>).\nRequired, if component is used together with facets.",
             "type": "string"
         },
         "domainField": {
+            "type": "string"
+        },
+        "elementIdToHideAfterSearch": {
+            "description": "ID of the DOM element in the template to hide when query search has been executed",
             "type": "string"
         },
         "fields": {
@@ -456,6 +468,9 @@
                 "$ref": "#/definitions/FieldDefinitionProp"
             },
             "type": "array"
+        },
+        "id": {
+            "type": "string"
         },
         "multi": {
             "default": false,
@@ -468,11 +483,14 @@
         }
     },
     "propertyOrder": [
+        "id",
         "queryTemplate",
         "fields",
         "domain",
         "domainField",
-        "multi"
+        "multi",
+        "defaultQuery",
+        "elementIdToHideAfterSearch"
     ],
     "required": [
         "fields",

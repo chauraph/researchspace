@@ -33,8 +33,7 @@ module.exports = function() {
             "platform/components": "components",
             "platform/styling": "styling",
             "platform": "",
-            "basic-styles.scss": "styling/basic.scss",
-            "ontodia": "ontodia/src/ontodia"
+            "basic-styles.scss": "styling/basic.scss"
         },
         "cssModulesBasedComponents": [
             "components/admin/config-manager",
@@ -73,6 +72,19 @@ module.exports = function() {
             "components/forms/inputs/drop"
         ],
         jsonSchemTypes: [
+            "SparqlDownloadProps",
+            "ConfigDocProps",
+            "CodeBlockProps", 
+            "CodeExampleProps",
+            "CodeHighlightProps",
+        //    "OverlayDialogProps",
+            "TwoSidePanelProps",
+            "BaseLazyTreeProps",
+            "SemanticIfProps",
+            "SemanticSwitchProps",
+         //   "ResourceLinkProps",
+            "ResourceLinkContainerConfig",
+            "DraggableProps",
             "TextAnnotationTemplateBindings",
             "TextAnnotationTypeOptions",
             "TextAnnotationWorkspaceProps",
@@ -108,6 +120,8 @@ module.exports = function() {
             "SemanticTimelineConfig",
             "SemanticTreeConfig",
             "SplitPaneConfig",
+            "BaseSplitPaneConfig",
+            "SplitPaneConfigWithDock",
             "BuiltInEventData",
             "EventProxyConfig",
             "EventTargetRefreshConfig",

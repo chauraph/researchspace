@@ -630,8 +630,5 @@
     <http://www.researchspace.org/pattern/system/inference_logic/applied_by_inference_making> <http://www.researchspace.org/resource/system/fields/type> <http://www.researchspace.org/resource/system/type/system> .
 
     # LOCAL EXTENSIONS (not in upstream)
-    <http://www.researchspace.org/pattern/system/entity/file_identifierMin0> <http://www.researchspace.org/resource/system/fields/type> <http://www.researchspace.org/resource/system/type/system> .
-
-    <http://www.researchspace.org/pattern/system/entity/web_URL_embed_Max1> <http://www.researchspace.org/resource/system/fields/type> <http://www.researchspace.org/resource/system/type/system> .
 
 } 

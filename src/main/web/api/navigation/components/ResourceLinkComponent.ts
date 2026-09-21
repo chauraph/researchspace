@@ -115,6 +115,9 @@ interface ParamMap {
  */
 export class ResourceLinkComponent extends Component<ResourceLinkProps, State> {
   private cancellation = new Cancellation();
+  static defaultProps = {
+    draggable: false,
+  };
 
   constructor(props: ResourceLinkProps, context) {
     super(props, context);
@@ -140,26 +143,36 @@ export class ResourceLinkComponent extends Component<ResourceLinkProps, State> {
   };
 
   public componentDidMount() {
-    const iri = this.getIri();
-
-    if (!iri) {
-      return;
-    }
-
-    this.getRepository().onValue((repository) => {
-      this.fetchLabel(Rdf.iri(iri), this.props.children, repository).onValue((label) =>
-        this.setState({
-          label: maybe.Just(label),
-          repository: maybe.Just(repository),
-        })
-      );
-    });
+    this.loadLabel(this.props);
   }
 
   public componentWillReceiveProps(nextProps: ResourceLinkProps) {
     if (this.props.uri !== nextProps.uri) {
       this.checkDeprecated(nextProps);
     }
+    const nextIri = nextProps.iri || nextProps.uri;
+    if (nextIri !== this.getIri()) {
+      this.setState({ label: maybe.Nothing<string>() });
+      this.loadLabel(nextProps);
+    }
+  }
+
+  private loadLabel(props: ResourceLinkProps) {
+    const iri = props.iri || props.uri;
+    if (!iri) {
+      return;
+    }
+
+    this.getRepository().onValue((repository) => {
+      this.fetchLabel(Rdf.iri(iri), props.children, repository).onValue((label) => {
+        if (this.getIri() === iri) {
+          this.setState({
+            label: maybe.Just(label),
+            repository: maybe.Just(repository),
+          });
+        }
+      });
+    });
   }
 
   public componentWillUnmount() {

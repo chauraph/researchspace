@@ -26,15 +26,15 @@
       <http://www.researchspace.org/resource/system/vocab/search_view_type/list> .
   
   <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record/entity_formRecord_creation>
-    a <http://www.ics.forth.gr/isl/CRMdig/D7_Digital_Machine_Event>;
-    <http://www.ics.forth.gr/isl/CRMdig/L11_had_output> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record>;
+    a <http://www.cidoc-crm.org/extensions/crmdig/D7_Digital_Machine_Event>;
+    <http://www.cidoc-crm.org/extensions/crmdig/L11_had_output> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record>;
     <http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record/entity_formRecord_creation/at_some_time_within>;
     <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record_creation>;
     <http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by> <http://www.researchspace.org/resource/user/admin> .
   
   <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record>
-    a <http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object>;
-    <http://www.ics.forth.gr/isl/CRMdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record/entity_formRecord_creation>;
+    a <http://www.cidoc-crm.org/extensions/crmdig/D1_Digital_Object>;
+    <http://www.cidoc-crm.org/extensions/crmdig/L11i_was_output_of> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation/entity_form_record/entity_formRecord_creation>;
     <http://www.cidoc-crm.org/cidoc-crm/P2_has_type> <http://www.researchspace.org/resource/system/vocab/resource_type/entity_form_record>;
     <http://www.cidoc-crm.org/cidoc-crm/P129_is_about> <http://www.researchspace.org/resource/system/resource_configurations_container/data/Citation> .
   

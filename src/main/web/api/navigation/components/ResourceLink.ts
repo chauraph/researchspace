@@ -17,14 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { ReactElement, createElement, Props, MouseEvent, CSSProperties } from 'react';
+import { createElement, Props, MouseEvent, CSSProperties } from 'react';
 import * as D from 'react-dom-factories';
 import { assign } from 'lodash';
 import * as classNames from 'classnames';
-import * as Maybe from 'data.maybe';
 import * as _ from 'lodash';
 
-import { Cancellation } from 'platform/api/async';
 import { Component } from 'platform/api/components';
 import { Rdf } from 'platform/api/rdf';
 import { Draggable } from 'platform/components/dnd';
@@ -33,7 +31,7 @@ import {
   navigateToResource,
   getCurrentUrl,
   constructUrlForResource,
-  construcUrlForResourceSync,
+  constructUrlForResourceSync,
 } from '../Navigation';
 
 export enum ResourceLinkAction {
@@ -55,21 +53,22 @@ interface ResourceLinkProps extends Props<ResourceLink> {
 }
 
 interface State {
-  readonly url?: uri.URI;
+  readonly url: uri.URI;
 }
 
 export class ResourceLink extends Component<ResourceLinkProps, State> {
-  private readonly cancellation = new Cancellation();
-
   constructor(props: ResourceLinkProps, context: any) {
     super(props, context);
     this.state = {
-      url: construcUrlForResourceSync(
-        this.props.resource,
-        this.props.params,
-        this.getRepository(),
-        this.props.fragment
-      ),
+      url:
+        this.props.resource && this.props.resource.value
+          ? constructUrlForResourceSync(
+              this.props.resource,
+              this.props.params,
+              this.getRepository(),
+              this.props.fragment
+            )
+          : undefined,
     };
   }
 
@@ -78,21 +77,31 @@ export class ResourceLink extends Component<ResourceLinkProps, State> {
   };
 
   componentDidMount() {
-    this.cancellation
-      .map(constructUrlForResource(this.props.resource, this.props.params, this.getRepository(), this.props.fragment))
-      .observe({
-        value: (url) => this.setState({ url }),
-        error: (error) => console.error(error),
+    if (this.props.resource && this.props.resource.value) {
+      this.setState({
+        url: constructUrlForResource(this.props.resource, this.props.params, this.getRepository(), this.props.fragment),
       });
-  }
-
-  componentWillUnmount() {
-    this.cancellation.cancelAll();
+    }
   }
 
   public render() {
     const { title, className, activeClassName, style, resource, draggable, target } = this.props;
     const { url } = this.state;
+
+    // It doesn't make sense to render a link without a resource
+    // so it shouldn't ever happen. We have this check here just to make sure that
+    // the template doesn't crash, because it actually happens time to time
+    if (!resource || !resource.value || !url) {
+      console.warn('ResourceLink: resource is undefined or null', this.props);
+      // Render a plain anchor without href if resource is missing
+      return D.a({
+        className,
+        style,
+        title,
+        draggable: false
+      }, this.props.children);
+    }
+
     const props = {
       href: url.toString(),
       title: title,
@@ -106,7 +115,7 @@ export class ResourceLink extends Component<ResourceLinkProps, State> {
 
     // by default all links are draggable, but sometimes we want to disable this behavior
     if (draggable === false) {
-      return D.a(props, this.props.children);
+      return D.a({...props, 'draggable': false}, this.props.children);
     } else {
       return createElement(Draggable, { iri: resource.value }, D.a(props, this.props.children));
     }

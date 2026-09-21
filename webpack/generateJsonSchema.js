@@ -23,14 +23,14 @@
 // Instead we create it only once and then go through the list of types for which we
 // need schema, generate it and store into the file
 //
-// inspired by https://github.com/YousefED/typescript-json-schema/blob/v0.42.0/typescript-json-schema.ts#L1331
+// inspired by https://github.com/YousefED/typescript-json-schema/blob/v0.67.1/typescript-json-schema.ts#L1331
 
 
 const tjs = require('typescript-json-schema');
 const defaults = require('./defaults')();
 const fs = require('fs');
 const path = require('path');
-const stringify = require('json-stable-stringify');
+const { stringify } = require('safe-stable-stringify');
 
 const args = {
     ...tjs.getDefaultArgs(),
@@ -43,17 +43,15 @@ const base = path.join(__dirname, '../src/main/web/schemas');
 
 defaults.PROJECT.jsonSchemTypes.forEach(
     t => {
-        console.log('Generateing JSON Schema for: ' + t);
+        console.log('Generating JSON Schema for: ' + t);
         const definition = tjs.generateSchema(program, t, args);
         if (definition === null) {
-            throw new Error(`Can't generae JSON Schema for ${t}, make sure that there are no typescript compilation errors`);
+            throw new Error(`Can't generate JSON Schema for ${t}, make sure that there are no typescript compilation errors`);
         }
 
-        const json = stringify(definition, {space: 4}) + "\n\n";
+        const json = stringify(definition, null, 4) + "\n\n";
         fs.writeFileSync(path.join(base, t + '.json'), json);
     }
 );
 
 //./node_modules/.bin/typescript-json-schema tsconfig.json OntodiaConfig --out ./src/main/web/schemas/OntodiaConfig.json --required --propOrder true
-
-

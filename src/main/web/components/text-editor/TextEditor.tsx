@@ -19,7 +19,7 @@
 
 import * as _ from 'lodash';
 import * as Kefir from 'kefir';
-import { Editor, RenderMarkProps, RenderNodeProps } from 'slate-react';
+import { Editor, RenderMarkProps, RenderBlockProps, RenderInlineProps } from 'slate-react';
 import { FormControl, FormGroup } from 'react-bootstrap';
 import PlaceholderPlugin from 'slate-react-placeholder';
 import * as Slate from 'slate';
@@ -70,7 +70,7 @@ interface TextEditorProps {
   readonly?: boolean;
 
   /**
-   * ID of the <semantic-link iri='http://help.researchspace.org/resource/Storage'>
+   * ID of the <semantic-link iri='http://help.researchspace.org/resource/Storage' class='text-link-action' target='_blank'>
    * storage</semantic-link> to load text document content.
    */
   storage: string;
@@ -122,7 +122,7 @@ interface TextEditorState {
 const plugins = [
   {
     queries: {
-      isEmptyFirstParagraph: (editor: Slate.Editor, node: Slate.Block) =>
+      isEmptyFirstParagraph: (editor: Editor, node: Slate.Block) =>
         editor.value.document.nodes.size === 1 &&
         node.type === Block.empty &&
         node.text === ''
@@ -139,6 +139,7 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
   private editorRef: React.RefObject<Editor>;
   private readonly cancellation = new Cancellation();
   private templateSelection = this.cancellation.derive();
+  private documentLoading = this.cancellation.derive();
 
   static defaultProps: Partial<TextEditorProps> = {
     resourceTemplates: [],
@@ -146,13 +147,13 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
     resourceQuery: `
       PREFIX mp: <http://www.researchspace.org/resource/system/>
       PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-      PREFIX crmdig: <http://www.ics.forth.gr/isl/CRMdig/>
+      PREFIX crmdig: <http://www.cidoc-crm.org/extensions/crmdig/>
       PREFIX rs: <http://www.researchspace.org/ontology/>
-      PREFIX frbroo: <http://iflastandards.info/ns/fr/frbr/frbroo/>
+      PREFIX lrmoo: <http://iflastandards.info/ns/lrm/lrmoo/>
 
       CONSTRUCT {
         ?__resourceIri__ a crm:E33_Linguistic_Object,
-                frbroo:F2_Expression.
+                lrmoo:F2_Expression.
         ?__resourceIri__ crm:P190_has_symbolic_content ?__label__ .
         ?__resourceIri__ crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/semantic_narrative> .
         ?__resourceIri__ mp:fileName ?__fileName__.
@@ -254,7 +255,7 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
 
   // - drag and drop
 
-  emptyBlock = (props: RenderNodeProps) => {
+  emptyBlock = (props: RenderBlockProps) => {
     return (
       <div {...props.attributes}>
       {
@@ -271,12 +272,12 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
     );
   }
 
-  renderTextBlock = (tag: string, props: RenderNodeProps): any => {
+  renderTextBlock = (tag: string, props: RenderBlockProps) => {
     const attributes = props.node.data.get('attributes', {});
     return React.createElement(tag, { ...props.attributes, ...attributes }, props.children);
   }
 
-  renderBlock = (props: RenderNodeProps, editor: Slate.Editor, next: () => any): any => {
+  renderBlock = (props: RenderBlockProps, editor: Editor, next: () => any) => {
     const { node: { type }, attributes, children } = props;
     switch (type) {
       case Block.empty: return this.emptyBlock(props);
@@ -292,18 +293,24 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
       case Block.ul:
       case Block.li:
         return React.createElement(type, attributes, children);
-
-      case Inline.externalLink:
-        return <ExternalLink {...props} editor={editor} />;
-      case Inline.internalLink:
-        return <InternalLink {...props} editor={editor} />;
-
       default:
         return next();
     }
   }
 
-  renderMark = (props: RenderMarkProps, _editor: Slate.Editor, next: () => any): any => {
+  renderInline = (props: RenderInlineProps, editor: Editor, next: () => any) => {
+    const { node: { type } } = props;
+    switch (type) {
+      case Inline.externalLink:
+        return <ExternalLink {...props} editor={editor} />;
+      case Inline.internalLink:
+        return <InternalLink {...props} editor={editor} />;
+      default:
+        return next();
+    }
+  }
+
+  renderMark = (props: RenderMarkProps, _editor: Editor, next: () => any): any => {
     const { children, mark: { type }, attributes } = props;
 
     switch (type) {
@@ -316,9 +323,9 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
     }
   }
 
-  private onKeyDown = (event: KeyboardEvent, editor: Slate.Editor, next: () => void) => {
+  private onKeyDown = (event: React.KeyboardEvent, editor: Editor, next: () => void) => {
     const { value } = editor;
-    if (isHotkey('enter', event)) {
+    if (isHotkey('enter', event.nativeEvent)) {
       if (
         value.selection.isCollapsed &&
         value.endBlock.type === Block.li &&
@@ -338,7 +345,7 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
       } else {
         next();
       }
-    } else if (isHotkey('tab', event)) {
+    } else if (isHotkey('tab', event.nativeEvent)) {
       event.preventDefault();
       if (value.selection.end.isInNode(value.document.nodes.last())) {
         editor
@@ -363,10 +370,14 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
   } 
 
   componentDidMount() {
+    this.loadDocument();
+  }
+
+  private loadDocument() {
     if (this.props.documentIri) {
       const documentIri = Rdf.iri(this.props.documentIri);
-      this.cancellation.map(
-        this.fetchDocument(documentIri)        
+      this.documentLoading.map(
+        this.fetchDocument(documentIri)
       ).observe({
         value: this.onDocumentLoad,
         error: error => console.error(error)
@@ -374,7 +385,19 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
     }
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps: TextEditorProps) {
+    if (this.props.documentIri !== prevProps.documentIri) {
+      this.documentLoading = this.cancellation.deriveAndCancel(this.documentLoading);
+      this.setState(
+        {
+          documentIri: this.props.documentIri,
+          loading: !!this.props.documentIri,
+        },
+        () => this.loadDocument()
+      );
+      return;
+    }
+
     // when slate Value is rendered we need to find top most block for sidebar positioning
 
     const { value, anchorBlock } = this.state;
@@ -435,7 +458,8 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
                   spellCheck={false}
                   value={this.state.value}
                   renderMark={this.renderMark}
-                  renderNode={this.renderBlock}
+                  renderBlock={this.renderBlock}
+                  renderInline={this.renderInline}
                   onKeyDown={this.onKeyDown}
                   onDrop={() => {/**/ } }
                   onFocus={this.onFocus}
@@ -560,8 +584,9 @@ export class TextEditor extends Component<TextEditorProps, TextEditorState> {
         .filter(
           n => n.object === 'block' && n.type === Block.embed
         ).forEach(block => {
+            const blockNode = block as Slate.Block;
             this.state.blockEmbedReferences
-                  .push({resourceIri:Rdf.iri(block.data["_root"]["entries"]["0"]["1"]["src"]),
+                  .push({resourceIri:Rdf.iri(blockNode.data["_root"]["entries"]["0"]["1"]["src"]),
                          embedded:true});})  
  
     const blob = new Blob([content]);

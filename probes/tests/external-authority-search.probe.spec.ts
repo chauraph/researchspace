@@ -72,7 +72,7 @@ test('external authority search: per-source tabs and union', async ({ page }) =>
     // then types into the wrong tab and reports zero rows for a healthy service. Tried
     // replacing this with a wait on aria-selected; the attribute flips before the pane does,
     // so the race came back. Keep the tick.
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(1000);
 
     const pane = activePane(page);
     const input = pane.getByRole('textbox').first();

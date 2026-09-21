@@ -4,15 +4,10 @@
         "JSX.Element": {
             "properties": {
                 "key": {
-                    "type": [
-                        "string",
-                        "number"
-                    ]
+                    "$ref": "#/definitions/React.Key"
                 },
-                "props": {
-                },
-                "type": {
-                }
+                "props": {},
+                "type": {}
             },
             "propertyOrder": [
                 "type",
@@ -25,12 +20,22 @@
                 "type"
             ],
             "type": "object"
+        },
+        "React.Key": {
+            "type": [
+                "string",
+                "number"
+            ]
         }
     },
     "properties": {
         "children": {
             "$ref": "#/definitions/JSX.Element",
             "description": "Semantic form override. If developer wants to override auto-generated form,\nit should be placed inside <ontodia-entity-metadata>."
+        },
+        "enableOntodiaContextFields": {
+            "description": "Enable extending the list of fields using the fields where the xsdDatatype is to xsd:anyURI in the ontodia-field-configuration \nThis is useful for controlling the form generated but enabling all the other connections available for those entity types.",
+            "type": "boolean"
         },
         "entityTypeIri": {
             "description": "Iri of the type to be configured. For example, 'http://xmlns.com/foaf/0.1/person'",
@@ -59,6 +64,7 @@
     "propertyOrder": [
         "entityTypeIri",
         "fields",
+        "enableOntodiaContextFields",
         "labelIri",
         "imageIri",
         "newSubjectTemplate",
