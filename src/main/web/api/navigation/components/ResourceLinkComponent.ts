@@ -4,6 +4,8 @@
  * Copyright (C) 2020, © Trustees of the British Museum
  * Copyright (C) 2015-2019, metaphacts GmbH
  *
+ * Modified 2026 by Tsz Kin Chau (eM+ / EPFL).
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -146,14 +148,16 @@ export class ResourceLinkComponent extends Component<ResourceLinkProps, State> {
     this.loadLabel(this.props);
   }
 
-  public componentWillReceiveProps(nextProps: ResourceLinkProps) {
-    if (this.props.uri !== nextProps.uri) {
-      this.checkDeprecated(nextProps);
+  // Reload in componentDidUpdate, not componentWillReceiveProps: loadLabel and its helpers (the stale-answer
+  // guard, getlabel, the guess-repository query) read this.props, which holds the previous IRI until the update
+  // is applied. A reused instance (e.g. a table row after paging) otherwise drops its own label and renders nothing.
+  public componentDidUpdate(prevProps: ResourceLinkProps) {
+    if (prevProps.uri !== this.props.uri) {
+      this.checkDeprecated(this.props);
     }
-    const nextIri = nextProps.iri || nextProps.uri;
-    if (nextIri !== this.getIri()) {
+    if ((prevProps.iri || prevProps.uri) !== this.getIri()) {
       this.setState({ label: maybe.Nothing<string>() });
-      this.loadLabel(nextProps);
+      this.loadLabel(this.props);
     }
   }
 
