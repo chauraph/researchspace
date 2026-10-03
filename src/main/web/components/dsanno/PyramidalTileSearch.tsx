@@ -210,7 +210,7 @@ const ID_WHERE = `
 
 const ID_PREFIXES = `
   PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>
-  PREFIX crmdig: <http://www.ics.forth.gr/isl/CRMdig/>
+  PREFIX crmdig: <http://www.cidoc-crm.org/extensions/crmdig/>
 `;
 
 // A projected variable must stay a variable, so each direction projects only the unknown

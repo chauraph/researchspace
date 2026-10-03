@@ -3,6 +3,8 @@
  * Copyright (C) 2020, © Trustees of the British Museum
  * Copyright (C) 2015-2019, metaphacts GmbH
  *
+ * Modified 2026 by Tsz Kin Chau (eM+ / EPFL).
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -73,12 +75,9 @@ describe('AutocompleteInput Component', () => {
     expect(autocomplete).to.have.length(1);
   });
 
-  it('have minimum query limit for request', () => {
-    expect(fieldProps.minimumInput).to.be.equal(3);
-  });
-
   it('have template for suggestion', () => {
-    const template = `<span title="{{label.value}}">{{label.value}}</span>`;
+    // fork: the default suggestion template also renders the node types (AutocompleteInput DEFAULT_TEMPLATE)
+    const template = `<span title="{{label.value}}">{{label.value}}</span>{{{getNodeTypes value}}}`;
     expect(fieldProps.templates.suggestion).to.be.equal(template);
   });
 

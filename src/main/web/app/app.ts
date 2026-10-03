@@ -42,7 +42,6 @@ import {
 import { renderOverlaySystem, registerOverlaySystem, getOverlaySystem } from 'platform/components/ui/overlay';
 import { listen, init as initNavigation, getCurrentUrl, getCurrentResource } from 'platform/api/navigation';
 import { ConfigHolder } from 'platform/api/services/config-holder';
-import { initEntityConfig } from 'platform/api/services/EntityViewConfig';
 import { getRegisteredPrefixes } from 'platform/api/services/namespace';
 import * as TemplateService from 'platform/api/services/template';
 import * as SecurityService from 'platform/api/services/security';
@@ -57,6 +56,7 @@ customElements.define('mp-template-item', TemplateItemComponent);
 
 import * as Cookies from 'js-cookie';
 import { localeStorageTabs } from 'platform/components/ui/tabs/LocalStorageTab';
+import { initResourceConfig } from 'platform/api/services/resource-config';
 const WINDOW_SESSION_TIMEOUT = 'sessionTimeout';
 const WINDOW_LAST_REQUEST_TIME = 'lastRequestTime';
 const WINDOW_ANONYMOUS_WARNING = 'anonymousWarning';
@@ -354,24 +354,23 @@ listen({
 
 window.addEventListener('DOMContentLoaded', function () {
   Kefir.combine({
-    url: initNavigation(),
     prefixes: getRegisteredPrefixes(),
     rawConfig: ConfigHolder.fetchConfig(),
     repositories: DefaultRepositoryInfo.init(),
   })
-    .flatMap(({ url, prefixes, rawConfig }) => {
+    .flatMap(({ prefixes, rawConfig }) => {
       try {
         SparqlUtil.init(prefixes);
         ConfigHolder.initializeConfig(rawConfig);
+        return initNavigation().map((url) => ({ url, prefixes, rawConfig }));
       } catch (e) {
         return Kefir.constantError<any>(e);
       }
-      return Kefir.constant(url);
     })
     .flatMap(() => {
-      return initEntityConfig();
+      return initResourceConfig();
     })
-    .onValue(() => {
+    .onValue(() => {     
       render(createElement(MainAppComponent), document.getElementById('application'));
     })
     .onError((e) => {
@@ -385,4 +384,14 @@ window.addEventListener('DOMContentLoaded', function () {
         render(D.div({ style: { color: 'red' } }, message), document.getElementById('application'));
       }
     });
+});
+window.addEventListener('storage', (event) => {
+  if (event.key === 'resourceConfigurations')
+    initResourceConfig();
+  
+  console.log('Key changed:',    event.key);
+  console.log('Old value:',      event.oldValue);
+  console.log('New value:',      event.newValue);
+  console.log('URL of change:',  event.url);
+  console.log('Storage area:',   event.storageArea); // localStorage or sessionStorage
 });

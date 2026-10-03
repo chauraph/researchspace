@@ -26,7 +26,7 @@
     &.homepage-button {
 
          .flexlayout__#{$frameType}_button_content::before {
-            @include materialIconSymbol('\e88a', 15px);
+            @include materialIconSymbol('\e871', 15px);
         }
     }
     
@@ -44,6 +44,13 @@
         }
     }
 
+    &.archive {
+    
+        .flexlayout__#{$frameType}_button_content::before {
+            @include materialIconSymbol('\e149', 15px);
+        }
+    }
+
     &.finance {
     
         .flexlayout__#{$frameType}_button_content::before {
@@ -55,6 +62,13 @@
     
         .flexlayout__#{$frameType}_button_content::before {
             @include materialIconSymbol('\e922', 15px);
+        }
+    }
+
+    &.slideshow {
+    
+        .flexlayout__#{$frameType}_button_content::before {
+            @include materialIconSymbol('\e41b', 15px);
         }
     }
 
@@ -128,6 +142,13 @@
         }
     }
 
+    &.download {
+    
+        .flexlayout__#{$frameType}_button_content::before {
+            @include materialIconSymbol('\f090', 15px);
+        }
+    }
+
     &.wallpaper {
     
         .flexlayout__#{$frameType}_button_content::before {
@@ -178,6 +199,13 @@
 
     }
 
+    &.add_comment {
+
+        .flexlayout__#{$frameType}_button_content::before {
+            @include materialIconSymbol('\e266', 15px);
+        }
+
+    }
     
 }
 

@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import org.apache.tools.ant.taskdefs.condition.Os
+
 plugins {
     // Apply the war plugin to add support for Java webpapp build
     id 'war'
@@ -39,6 +41,35 @@ plugins {
 
 
 version = findProperty('buildVersion') ?: '4.0-SNAPSHOT'
+
+// Load local secrets from gradle-local.properties file
+def localPropertiesFile = rootProject.file('gradle-local.properties')
+def localProperties = new Properties()
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+
+// Helper function to get property from local file, environment variable, or default
+def getSecretProperty = { key, defaultValue = '' ->
+    return localProperties.getProperty(key) ?: System.getenv(key) ?: defaultValue
+}
+
+// Function to convert all properties from local file to JVM arguments
+def getSecretJvmArgs = {
+    def secretArgs = []
+    localProperties.each { key, value ->
+        secretArgs.add("-D${key}=${value}")
+    }
+    return secretArgs
+}
+
+def npmExecutable() {
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+        return 'npm.cmd'
+    } else {
+        return 'npm'
+    }
+}
 
 // currently we use Java 11 for development
 sourceCompatibility = JavaVersion.VERSION_11
@@ -109,6 +140,7 @@ products {
             "./bundle-config/digilib-config.xml": "./bundle-config/digilib-config.xml",
             "./bundle-config/digilib-log4j-config.xml": "./bundle-config/digilib-log4j-config.xml",
             "./bundle-config/ZipReadme.txt": "./README.txt",
+            "./bundle-config/Java11PrerequisitesCheckAndInstallationSteps.txt":"./Java11PrerequisitesCheckAndInstallationSteps.txt",
             "./LICENSE": "./LICENSE.txt",
             "./COPYING": "./COPYING",
             "./COPYING": "./COPYING.GPLv3",
@@ -129,11 +161,18 @@ def defaultJvmArgs = [
     // for properties that get value from project.properties see gradle.properties file for more details
     "-Dconfig.environment.sparqlEndpoint=${project.properties['sparqlEndpoint']}",
     "-Dconfig.proxy.IIIF.targetUri=${project.properties['iiifScaler']}",
+    "-Dconfig.proxy.iiif-server.targetUri=${project.properties['iiifScaler']}",
+    "-Dconfig.proxy.iiif-server.stripPathPrefix=/iiif/2",
     "-Dconfig.environment.upload-iiifFolder=file://${projectDir.getAbsolutePath()}${project.properties['iiifFolder']}",
 
     // delopment storages for image upload functionality
     "-Dconfig.storage.images.type=nonVersionedFile",
     "-Dconfig.storage.images.mutable=true",
+
+    // delopment storages for other media upload functionality
+    "-Dconfig.storage.media.type=nonVersionedFile",
+    "-Dconfig.storage.media.mutable=true",
+
 
     // tmp storage is needed for image upload functionality
     "-Dconfig.storage.tmp.type=nonVersionedFile",
@@ -175,6 +214,8 @@ gretty {
             "-Dconfig.storage.images.root=./runtime-data/images",
             "-Dconfig.storage.tmp.root=./runtime-data/tmp",
 
+            "-Dconfig.storage.media.root=./runtime-data/media",
+
             "-Dlog4j.configurationFile=classpath:org/researchspace/logging/log4j2.xml",
         ]
     } else {
@@ -182,6 +223,8 @@ gretty {
             "-Dconfig.storage.images.root=${project.properties['imageStorageRoot']}",
             "-Dconfig.storage.tmp.root=${java.nio.file.Files.createTempDirectory('images-tmp')}",
 
+            "-Dconfig.storage.media.root=${project.properties['mediaStorageRoot']}",
+          
             // set development mode to true to make sure that assets are always up to date
             // see bindings for AssetsMapProvider in MainGuiceModule.java
             "-DisDevelopmentMode=true",
@@ -202,27 +245,27 @@ gretty {
             "-Dlog4j.configurationFile=classpath:org/researchspace/logging/${findProperty('logLevel')}.xml",
 
             "-Dconfig.environment.shiroConfig=${projectDir.getAbsolutePath()}/src/main/resources/org/researchspace/apps/default/config/shiro.ini"
-        ]
+        ] + getSecretJvmArgs()
     }
 }
 
 
 // install npm dependencies in development mode
 task npmInstall(type: Exec) {
-    executable 'npm'
+    executable npmExecutable()
     args 'i', '--no-audit', '--no-fund', '--loglevel=error'
 }
 
 // we want to get clean node_modules when we are building on CI or production version locally
 // see https://docs.npmjs.com/cli/ci
 task npmInstallCi(type: Exec) {
-    executable 'npm'
+    executable npmExecutable()
     args 'ci', '--no-audit', '--no-fund', '--loglevel=error'
 }
 
 // execute webpack in production mode with minifications, etc
 task runProdWebpack(type: Exec) {
-    executable 'npm'
+    executable npmExecutable()
     args 'run', 'prod'
 }
 tasks.runProdWebpack.dependsOn npmInstallCi
@@ -233,7 +276,7 @@ task startWebpack(type: com.github.psxpaul.task.ExecFork) {
     // see also https://github.com/springdoc/springdoc-openapi-gradle-plugin/pull/142
     workingDir = java.nio.file.Files.createTempDirectory('webpack').toFile()
 
-    executable = 'npm'
+    executable = npmExecutable()
     args = [ 'run', '--prefix', projectDir.getAbsolutePath(), 'dev' ]
     timeout = 1200
 
@@ -276,7 +319,7 @@ project.afterEvaluate {
 // execute frontend tests
 task testKarma(type: Exec) {
     workingDir "$projectDir/webpack"
-    executable 'npm'
+    executable npmExecutable()
     args 'run', 'test-ci'
 }
 tasks.testKarma.dependsOn npmInstall
@@ -298,15 +341,18 @@ repositories {
 
     // needed for SMAL2 integration
     maven { url 'https://build.shibboleth.net/nexus/content/repositories/releases/' }
+
+    // needed for unrelesead dependencies
+    maven { url "https://jitpack.io" }
 }
 
 ext {
     RDF4J_VERSION = '3.5.1'
-    LOG4J_VERSION = '2.15.0'
+    LOG4J_VERSION = '2.24.3'
     JERSEY_VERSION = '2.30.1'
     JACKSON_VERSION = '2.10.3'
-    GUICE_VERSION = '4.2.3'
-    SHIRO_VERSION = '1.7.1'
+    GUICE_VERSION = '6.0.0'
+    SHIRO_VERSION = '2.0.2'
     IMAGEIO_VERSION = '3.5'
 }
 
@@ -368,6 +414,7 @@ dependencies {
         "org.apache.logging.log4j:log4j-web:${LOG4J_VERSION}",
         "org.apache.logging.log4j:log4j-1.2-api:${LOG4J_VERSION}",
         "org.apache.logging.log4j:log4j-slf4j-impl:${LOG4J_VERSION}",
+        "org.apache.logging.log4j:log4j-slf4j2-impl:${LOG4J_VERSION}",
         "org.apache.logging.log4j:log4j-jul:${LOG4J_VERSION}",
         "org.apache.logging.log4j:log4j-jcl:${LOG4J_VERSION}",
 
@@ -393,16 +440,17 @@ dependencies {
         "org.glassfish.hk2:guice-bridge:2.6.1",
 
 
-        "io.buji:buji-pac4j:6.0.0-RC1",
-        "org.pac4j:pac4j-oidc:5.0.0-RC1",
-        "org.pac4j:pac4j-saml:5.0.0-RC1",
+        "io.buji:buji-pac4j:8.2.0",
+        "org.pac4j:javaee-pac4j:7.1.0",
+        "org.pac4j:pac4j-oidc:5.7.7",
+        "org.pac4j:pac4j-saml:5.7.7",
 
         // Apache commons stuff
         "org.apache.commons:commons-compress:1.20",
         "org.apache.commons:commons-lang3:3.10",
 
         // configuration
-        "org.apache.commons:commons-configuration2:2.7",
+        "org.apache.commons:commons-configuration2:2.11.0",
         "commons-beanutils:commons-beanutils:1.9.4",
 
         //guava
@@ -449,8 +497,11 @@ dependencies {
         "com.novocode:junit-interface:0.11",
         "org.mockito:mockito-core:1.9.5",
         "junit:junit:4.10",
-        "com.github.sdorra:shiro-unit:1.0.1",
         "org.jukito:jukito:1.4.1",
+
+        "com.github.researchspace:shiro-unit:c7205e5a65",
+        //"com.github.sdorra:shiro-unit:1.0.1",
+
         "org.skyscreamer:jsonassert:1.5.0",
         "com.github.tomakehurst:wiremock-jre8:2.27.2"
     )

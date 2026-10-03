@@ -64,6 +64,42 @@ public class UIConfiguration extends ConfigurationGroupBase {
 
     private NamespaceRegistry namespaceRegistry;
 
+    /*
+     * Strategy for preferredLabel resolution.
+     */
+    public static enum LabelsResolutionStrategy {
+        /*
+         * When entity has multiple labels it will favour the one that has higher rank
+         * according to preferredLanguages list, even so it can have lower rank
+         * according to preferredLabels list.
+         * 
+         * For example when the following config is used: preferredLanguages=en,it
+         * preferredLabels=<http://www.w3.org/2004/02/skos/core#prefLabel>,<http://www.
+         * w3.org/2004/02/skos/core#altLabel>
+         * 
+         * And for a given entity there is a prefLabel in italian and altLabel in
+         * english this strategy will choose altLabel.
+         * 
+         * @see LabelCache#chooseLabelWithPreferredLanguage
+         */
+        PREFER_LANGUAGE,
+
+        /*
+         * When entity has multiple labels it will favour the one that has higher rank
+         * according to preferredLabels list, even so it can have lower rank according
+         * to preferredLanguages list.
+         * 
+         * For example when the following config is used: preferredLanguages=en,it
+         * preferredLabels=<http://www.w3.org/2004/02/skos/core#prefLabel>,<http://www.
+         * w3.org/2004/02/skos/core#altLabel>
+         * 
+         * And for a given entity there is a prefLabel in italian and altLabel in
+         * english this strategy will choose prefLabel, even so it has lower language
+         * match rank.
+         */
+        PREFER_PROPERTY
+    }
+
     @Inject
     public UIConfiguration(PlatformStorage platformStorage, NamespaceRegistry namespaceRegistry)
             throws InvalidConfigurationException {
@@ -89,6 +125,15 @@ public class UIConfiguration extends ConfigurationGroupBase {
     @ConfigurationParameter
     public List<String> getPreferredLanguages() {
         return getStringList("preferredLanguages", Lists.newArrayList(DEFAULT_LANGUAGE));
+    }
+
+    /*
+     * @see LabelsResolutionStrategy
+     */
+    @ConfigurationParameter
+    public LabelsResolutionStrategy getPreferredLabelsResolutionStrategy() {
+        return getEnum("preferredLabelsResolutionStrategy", LabelsResolutionStrategy.class,
+                LabelsResolutionStrategy.PREFER_LANGUAGE);
     }
 
     public String resolvePreferredLanguage(@Nullable String preferredLanguage) {
@@ -122,19 +167,24 @@ public class UIConfiguration extends ConfigurationGroupBase {
     public Boolean getEnableUiComponentBasedSecurity() {
         return getBoolean("enableUiComponentBasedSecurity", false);
     }
-//    @ConfigurationParameter
-//    public String getDatePattern() {
-//        return getString("datePattern"); // TODO: this is not yet in use
-//    }
-//
-//    @ConfigurationParameter
-//    public String getTimePattern() {
-//        return getString("timePattern"); // TODO: this is not yet in use
-//    }
+    // @ConfigurationParameter
+    // public String getDatePattern() {
+    // return getString("datePattern"); // TODO: this is not yet in use
+    // }
+    //
+    // @ConfigurationParameter
+    // public String getTimePattern() {
+    // return getString("timePattern"); // TODO: this is not yet in use
+    // }
 
     @ConfigurationParameter
     public String getDeploymentTitle() {
         return getString("deploymentTitle", "ResearchSpace");
+    }
+
+    @ConfigurationParameter
+    public List<String> getResourceConfigurations() {
+        return getStringList("resourceConfigurations", Lists.newArrayList());
     }
 
     @ConfigurationParameter
@@ -178,6 +228,19 @@ public class UIConfiguration extends ConfigurationGroupBase {
         }
     }
 
+    @ConfigurationParameterHook
+    public void onUpdateResourceConfigurations(String configIdInGroup, List<String> configValues,
+            PropertiesConfiguration targetConfig) throws ConfigurationException {
+        try {
+            for (String singlePreferredLabel : configValues) {
+                PropertyPattern.parse(singlePreferredLabel, namespaceRegistry);
+            }
+        } catch (MalformedQueryException e) {
+            throw new ConfigurationException(
+                    "The \"resourceConfigurations\" that you have entered is invalid. Please add a valid value. \n Details: "
+                            + e.getMessage());
+        }
+    }
     @ConfigurationParameterHook
     public void onUpdatePreferredThumbnails(String configIdInGroup, List<String> configValues,
             PropertiesConfiguration targetConfig) throws ConfigurationException {

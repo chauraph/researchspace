@@ -142,6 +142,27 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
     this.queryAllImagesInfo();
   }
 
+  componentDidUpdate(prevProps: ImageRegionEditorProps) {
+    if (
+      !isEqual(prevProps.imageOrRegion, this.props.imageOrRegion) ||
+      prevProps.imageIdPattern !== this.props.imageIdPattern ||
+      prevProps.iiifServerUrl !== this.props.iiifServerUrl
+    ) {
+      removeMirador(this.miradorInstance, this.miradorElement);
+      this.miradorInstance = undefined;
+      this.setState(
+        {
+          loading: true,
+          allImages: this.normalizeImageProps(this.props),
+          info: undefined,
+          iiifImageId: undefined,
+          errorMessage: undefined,
+        },
+        () => this.queryAllImagesInfo()
+      );
+    }
+  }
+
   private triggerManifestUpdatedEvent = (resources: IiifManifestResource[]) => {
     trigger({
       eventType: ManifestUpdatedEvent,
@@ -170,11 +191,20 @@ export class ImageRegionEditorComponentMirador extends Component<ImageRegionEdit
   }
 
   private queryAllImagesInfo() {
-    this.queryImagesInfo(this.state.allImages).observe({
+    const { allImages } = this.state;
+    this.queryImagesInfo(allImages).observe({
       value: ({ info, iiifImageId }) => {
+        if (this.state.allImages !== allImages) {
+          return;
+        }
         this.setState({ loading: false, iiifImageId, info });
       },
-      error: (error) => this.setState({ loading: false, errorMessage: error }),
+      error: (error) => {
+        if (this.state.allImages !== allImages) {
+          return;
+        }
+        this.setState({ loading: false, errorMessage: error });
+      },
     });
   }
 
@@ -715,7 +745,7 @@ class AnnotationEndpointProxy implements AnnotationEndpoint {
 
   remove(annotation: OARegionAnnotation) {
     return this.endpoint.remove(annotation)
-      .onValue(() => {console.log("annotation");this.onRemoved(Rdf.iri(annotation['@id']), annotation); });
+      .onValue(() => {this.onRemoved(Rdf.iri(annotation['@id']), annotation); });
   }
 
   userAuthorize = this.endpoint.userAuthorize ? (action: any, annotation: OARegionAnnotation) => {

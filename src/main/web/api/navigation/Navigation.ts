@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const h = require('history');
+import * as h from 'history';
 import * as React from 'react';
 import * as _ from 'lodash';
 import * as Kefir from 'kefir';
@@ -107,7 +107,7 @@ export function getCurrentUrl(): uri.URI {
  * are redirected to frame component.
  */
 let inFrame = false;
-let inFrameNavigationHandler: (iri: Rdf.Iri, props?: {}) => boolean;
+let inFrameNavigationHandler: (iri: Rdf.Iri, props?: {}, repository?: string) => boolean;
 export function setFrameNavigation(enable: boolean, handler?: typeof inFrameNavigationHandler) {
   inFrame = enable;
   inFrameNavigationHandler = handler;
@@ -123,10 +123,10 @@ export function navigateToResource(
   repository?: string,
   fragment?: string
 ): Kefir.Property<void> {
-  if (inFrame && inFrameNavigationHandler(iri, props)) {
+  if (inFrame && inFrameNavigationHandler(iri, props, repository)) {
     return Kefir.constant(null);
   } else {
-    return constructUrlForResource(iri, props, repository, fragment).flatMap(navigateToUrl).toProperty();
+    return navigateToUrl(constructUrlForResource(iri, props, repository, fragment));
   }
 }
 
@@ -137,7 +137,7 @@ export function navigateToResource(
  * new windows/tab not from the action triggered by the user
  */
 export function openResourceInNewWindow(iri: Rdf.Iri, props?: {}, repository?: string): void {
-  window.open(construcUrlForResourceSync(iri, props, repository).toString(), '_blank');
+  window.open(constructUrlForResourceSync(iri, props, repository).toString(), '_blank');
 }
 
 export function openExternalLink(url: uri.URI, target = '_blank') {
@@ -189,28 +189,74 @@ export function constructUrlForResource(
   props: {} = {},
   repository = 'default',
   fragment = ''
-): Kefir.Property<uri.URI> {
-  return getPrefixedUri(iri).map((mUri) => {
-    const baseQuery = repository === 'default' ? {} : { repository: repository };
-    const resourceUrl = ConfigHolder.getEnvironmentConfig().resourceUrlMapping.value;
+): uri.URI {
+  const simpleUrl = constructSimpleUrl(iri, props, repository, fragment);
+  if (simpleUrl) {
+    return simpleUrl;
+  } else {
+    const mUri = getPrefixedUri(iri);
     if (mUri.isJust) {
-      const url = uri(`${resourceUrl}${mUri.get()}`);
-      url.setQuery({ ...baseQuery, ...props });
-      url.fragment(fragment);
-      return url;
+      const resourcePath = ConfigHolder.getEnvironmentConfig().resourceUrlMapping.value;
+      return constructUrl(`${resourcePath}${mUri.get()}`, props, repository, fragment);
     } else {
-      return construcUrlForResourceSync(iri, props, repository, fragment);
+      return constructUrlForResourceSync(iri, props, repository, fragment);
     }
-  });
+  }
 }
 
-export function construcUrlForResourceSync(iri: Rdf.Iri, props: {} = {}, repository = 'default', fragment = '') {
+export function constructUrlForResourceSync(iri: Rdf.Iri, props: {} = {}, repository = 'default', fragment = '') {
+  const simpleUrl = constructSimpleUrl(iri, props, repository, fragment);
+  if (simpleUrl) {
+    return simpleUrl;
+  } else {
+    const resourceUrl = ConfigHolder.getEnvironmentConfig().resourceUrlMapping.value;
+    props = { ...props, uri: iri.value };
+    return constructUrl(`${resourceUrl}`, props, repository, fragment);
+  }
+}
+
+/**
+ * If IRI is a resolvable one, which means it starts with platformBaseIri, then we can construct
+ * a simple URL. E.g
+ * http://example.com/resource/123 and platform is actually running on http://example.com/resource.
+ * In this case there is no need to resolve IRI to prefixed IRI or use ?uri query parameter.
+ */
+function constructSimpleUrl(
+  iri: Rdf.Iri,
+  props: {} = {},
+  repository?: string,
+  fragment?: string
+): uri.URI | null {
+  const platformBaseIri = ConfigHolder.getEnvironmentConfig().platformBaseIri;
+  const resourcePath = ConfigHolder.getEnvironmentConfig().resourceUrlMapping.value;
+
+  if (platformBaseIri) {
+    const urlPrefix = platformBaseIri.value + resourcePath;
+    
+    if (iri.value)
+      if (iri.value.startsWith(urlPrefix)) {
+        return constructUrl(iri.value.split(platformBaseIri.value)[1], props, repository, fragment);
+      }
+  }
+
+  return null;
+}
+
+/**
+ * Construct URL with optional additional query parameters and fragment.
+ * Default repository is omitted in the URL.
+ */
+function constructUrl(
+  url: string,
+  props: {} = {},
+  repository?: string,
+  fragment?: string
+) {
   const baseQuery = repository === 'default' ? {} : { repository: repository };
-  const resourceUrl = ConfigHolder.getEnvironmentConfig().resourceUrlMapping.value;
-  const url = uri(`${resourceUrl}`);
-  url.setQuery({ ...baseQuery, ...props, uri: iri.value });
-  url.fragment(fragment);
-  return url;
+  const url_ = uri(url);
+  url_.setQuery({ ...baseQuery, ...props });
+  url_.fragment(fragment);
+  return url_;
 }
 
 /**
@@ -287,7 +333,7 @@ export function resolveResourceIri(url: uri.URI): Kefir.Property<Data.Maybe<Rdf.
     // request to http://localhost:10214/resource/person/Bob URL will be properly resolved
     // to <http://localhost:10214/resource/person/Bob> resource
     const prefixedIriStr = url.path().substring('/resource/'.length);
-    return getFullIri(prefixedIriStr);
+    return Kefir.constant(getFullIri(prefixedIriStr));
   }
 }
 

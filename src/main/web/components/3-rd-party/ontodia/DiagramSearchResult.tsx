@@ -19,21 +19,18 @@
 import * as Immutable from 'immutable';
 import * as _ from 'lodash';
 import * as React from 'react';
-import { Workspace, DiagramModel, ElementTemplateState, InternalApi } from 'ontodia';
+import * as Reactodia from '@reactodia/workspace';
 
 import { Cancellation } from 'platform/api/async';
 import { Component, SemanticContext } from 'platform/api/components';
 import { BuiltInEvents, trigger } from 'platform/api/events';
-import { Rdf } from 'platform/api/rdf';
 import { SparqlClient } from 'platform/api/sparql';
 
 import { Ontodia, OntodiaConfig } from 'platform/components/3-rd-party/ontodia/Ontodia';
-import { SemanticSearchContext, ResultContext, GraphScopeContext } from 'platform/components/semantic/search';
+import { SemanticSearchContext, ResultContext } from 'platform/components/semantic/search';
 import { Action, componentHasType } from 'platform/components/utils';
 import { ErrorNotification } from 'platform/components/ui/notification';
 import { Spinner } from 'platform/components/ui/spinner';
-
-const { TemplateProperties } = InternalApi;
 
 export interface DiagramSearchResultConfig {
   /**
@@ -64,7 +61,7 @@ export class DiagramSearchResult extends Component<DiagramSearchResultProps, {}>
 }
 
 interface InnerProps extends DiagramSearchResultProps {
-  context: ResultContext & GraphScopeContext & SemanticContext;
+  context: ResultContext & SemanticContext;
 }
 
 class DiagramSearchResultInner extends React.Component<InnerProps, State> {
@@ -153,42 +150,12 @@ class DiagramSearchResultInner extends React.Component<InnerProps, State> {
       .toArray();
   }
 
-  private onLoadWorkspace = (workspace: Workspace) => {
-    const model = workspace.getModel();
-    const onLoaded = () => pinRelevantProperties(model, this.props.context);
+  private onLoadWorkspace = (workspace: Reactodia.Workspace) => {
+    const { model } = workspace.getContext();
+    const onLoaded = () => {};
     model.events.on('loadingSuccess', onLoaded);
     this.cancellation.onCancel(() => model.events.off('loadingSuccess', onLoaded));
   };
-}
-
-function pinRelevantProperties(model: DiagramModel, context: GraphScopeContext) {
-  if (!(context.graphScopeResults && context.graphScopeResults.isJust)) {
-    return;
-  }
-
-  const propertiesToPin = new Set<string>();
-  const results = context.graphScopeResults.get();
-
-  for (const column of results.columns) {
-    if (column.type === 'var-value') {
-      propertiesToPin.add(Rdf.fullIri(column.attribute.iri).value);
-    }
-  }
-
-  for (const element of model.elements) {
-    propertiesToPin.forEach((propertyIri) => {
-      if (element.data.properties[propertyIri]) {
-        const pinned: { [propertyIri: string]: boolean } = element.elementState
-          ? element.elementState[TemplateProperties.PinnedProperties]
-          : undefined;
-        const state: ElementTemplateState = {
-          ...element.elementState,
-          [TemplateProperties.PinnedProperties]: { ...pinned, [propertyIri]: true },
-        };
-        element.setElementState(state);
-      }
-    });
-  }
 }
 
 export default DiagramSearchResult;

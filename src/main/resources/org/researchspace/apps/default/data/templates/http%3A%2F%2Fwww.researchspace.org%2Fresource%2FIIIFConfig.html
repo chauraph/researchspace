@@ -6,4 +6,4 @@
             ?externalIIIFService a crmdig:D1_Digital_Object .
             ?externalIIIFService crm:P2_has_type <http://iiif.io/api/image#ImageService> .  }  
       BIND(COALESCE(?carrierImageID, ?externalIIIFService, REPLACE(STR(?imageIRI), "^.*/(.*)$", "$1")) AS ?imageID)'
-      iiif-server-url='/proxy/iiif-server/iiif/1'
+      iiif-server-url='/proxy/iiif-server/iiif/2'
