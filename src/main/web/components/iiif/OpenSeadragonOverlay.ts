@@ -22,12 +22,15 @@ import * as OpenSeadragon from 'openseadragon';
 import * as Immutable from 'immutable';
 
 import * as ImageApi from '../../data/iiif/ImageAPI';
+import { applyTileSourceShim } from '../../data/iiif/ImageApiCompat';
 import { ImageOrRegionInfo } from '../../data/iiif/ImageAnnotationService';
 
 import './image-overlay.scss';
 import * as block from 'bem-cn';
 
 const b = block('open-seadragon-overlay');
+
+applyTileSourceShim(OpenSeadragon);
 
 export interface OverlayProps {
   metadata: Immutable.List<ImageOrRegionInfo>;

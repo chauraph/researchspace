@@ -31,6 +31,7 @@ import { researchspaceAnnotationBodyEditor } from './AnnotationBodyEditor';
 import 'script-loader!../../../lib/mirador/mirador.js';
 import '../../../lib/mirador/css/mirador.scss';
 import { ConfigHolder } from 'platform/api/services/config-holder';
+import { applyTileSourceShim } from '../../../data/iiif/ImageApiCompat';
 
 interface EmitterMixin extends Mirador.EventEmitter {
   bus?: JQuery;
@@ -182,6 +183,9 @@ Mirador.AnnotationTooltip.prototype.editorTemplate = globalHandlebars.compile(
   </form>
   `
 );
+
+// the bundled OpenSeadragon 2.4.1 is a global (UMD under script-loader) and reads Image API 1.x/2.x only
+applyTileSourceShim((window as any).OpenSeadragon);
 
 /**
  * override OpenSeadragon default settings
