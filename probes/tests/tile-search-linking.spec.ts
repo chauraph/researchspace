@@ -94,6 +94,6 @@ test('probe: locator linking and pinned map', async ({ page }) => {
     console.log('place bars (diag): no diagnostics toggle on this page');
   }
 
-  await page.screenshot({ path: 'linking.png', fullPage: false });
+  await page.screenshot({ path: 'output/linking.png', fullPage: false });
   console.log('console errors:', errs.length ? errs : 'none');
 });

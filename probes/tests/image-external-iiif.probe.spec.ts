@@ -1,5 +1,5 @@
 /**
- * Probe for review finding U7-1 (rs-2026-09 upstream merge): a new image that is served by an
+ * Probe for the Image form: a new image that is served by an
  * external IIIF service, with NO local file. Before the fix the form refused to save
  * ("Required a minimum of 1 values but 0 provided" on the image file input).
  *
@@ -13,7 +13,7 @@ import { test, Page } from '@playwright/test';
 
 const CONFIG = 'http://www.researchspace.org/resource/system/resource_configurations_container/data/Image';
 const GRAPH = 'http://www.researchspace.org/assets/images';
-const SERVICE = 'https://w3id.org/dsanno/scratch/probe-iiif-service/u7-1';
+const SERVICE = 'https://w3id.org/dsanno/scratch/probe-iiif-service/external-no-file';
 const STEP = process.env.STEP ?? 'submit';
 
 async function sparql(page: Page, baseURL: string, query: string, update = false) {
@@ -54,7 +54,7 @@ test('image with external IIIF service and no local file', async ({ page, baseUR
   });
   console.log('  [file field in form]', fieldIri);
   console.log('  [required markers]', await page.locator('.semantic-form-input-decorator__label-required').count());
-  await page.locator('.semantic-form input[placeholder="Enter image name"]').first().fill('U7-1 probe image (external IIIF, no file)');
+  await page.locator('.semantic-form input[placeholder="Enter image name"]').first().fill('Probe image (external IIIF, no file)');
   await page.locator('.semantic-form input[placeholder="Enter IIIF image service"]').first().fill(SERVICE);
   await page.waitForTimeout(1000);
   console.log('  [submit button]', await page.locator('.semantic-form button[name=submit]').first().innerText()); await page.locator('.semantic-form button[name=submit]').first().click();

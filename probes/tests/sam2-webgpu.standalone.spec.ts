@@ -1,5 +1,5 @@
 /**
- * SAM2 client-side feasibility probe — phase 1 of docs/features/sam2-client-side-plan.md.
+ * SAM2 client-side feasibility probe (phase 1 of the in-browser SAM2 work).
  *
  * Needs no ResearchSpace stack and no network: it serves onnxruntime-web and the
  * SAM2.1 hiera-tiny ONNX models (runtime-data/assets/no_auth/models/sam2/, see the plan

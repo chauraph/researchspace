@@ -53,7 +53,11 @@ Login is handled once by `tests/auth.setup.ts`, which saves the session to
 | `tests/sam2-worker.standalone.spec.ts` | Drives the **built** SAM worker asset (`npm run prod` first) over its postMessage protocol at production URLs: model download + OPFS warm start, encode/decode timings, polygon geometry vs a known ellipse in a non-square viewport, negative points, error paths. Needs no RS stack. |
 | `tests/sam2-mirador.probe.spec.ts` | The `$.Sam` tool live in Mirador, via the harness template `rsp:SamLocalTest` (runtime layer; kept under its old name). Reports the WebGPU toolbar gate, drives point → mask preview → double-click commit → Save, then queries the store for the persisted region. Writes one `EX_Digital_Image_Region` labelled "SamLocal probe region" per run. Needs the stack + GPU launch flags (in the spec). |
 | `tests/sam-migrated-regions.probe.spec.ts` | Regions migrated by `dist/migrations/rs-2026-08` task 02 (`sam_` → `samlocal_`), via `rsp:SamMigratedRegionsTest`. Runs Mirador's own prefix→tool lookups (`getTool`, the toolbar match) against every shape on the canvas, so it is mode-independent; also reports whether the retired server tool is still registered. Saves nothing. |
-| `tests/image-external-iiif.probe.spec.ts` | Review finding U7-1 (2026-09 upstream merge): creates an image served by an external IIIF service with **no local file** through the real editor, prints validation errors, the persistence status and the stored row; `STEP=cleanup` deletes what it created (scratch service IRI under `w3id.org/dsanno/scratch/`). |
+| `tests/image-external-iiif.probe.spec.ts` | Creates an image served by an external IIIF service with **no local file** through the real editor, prints validation errors, the persistence status and the stored row; `STEP=cleanup` deletes what it created (scratch service IRI under `w3id.org/dsanno/scratch/`). |
+| `tests/readonly.lib.ts` | Not a probe: helpers for probes that must not change the store. `guard()` routes every request of the browser context and aborts anything that is not a read (SPARQL update, form persistence, LDP write, upload), printing `[WRITE BLOCKED]`. Also a console and HTTP watcher, URL builders and a SPARQL SELECT helper. |
+| `tests/finder-forms.probe.spec.ts` | Every form the Finder offers, opened in create mode: whether it mounted, field count, required markers, raw IRIs shown as labels, console errors. Types nothing and submits nothing. `ONLY=<name>` runs one form. About 10 minutes for all. |
+| `tests/ontologies-paging.probe.spec.ts` | The Ontologies list across its pages: per page, rows, titles and View buttons. Guards the `semantic-link` label reload in rows re-used by paging. Aborts the page's `GET /rs/kp/…` requests, which would regenerate knowledge patterns. |
+| `tests/km-workspace.probe.spec.ts` | A saved knowledge map, in memory only: reaches the Reactodia workspace through the React fiber chain, adds an entity, opens the halo, creates a link, exports SVG and PNG, and re-counts the saved layout at the end. `MAP=<diagram IRI>` and `ADD=<entity IRI>` choose the inputs; by default the first saved diagram and the first place. |
 
 Standalone probes (`--project=standalone`, matching `*.standalone.spec.ts`) serve
 everything themselves from disk and skip the auth setup — the RS stack does not
@@ -73,7 +77,7 @@ the act it minted triple by triple. The one thing it shouts about is the timesta
 `P4_has_time-span/P82` must land as a clean `"…Z"^^xsd:dateTime`, because
 `xsd:date(NOW())` is accepted by Blazegraph and yields the malformed `"2026-08-06 CEST"`.
 
-`docs/ldp-authoring/alignment-adjudication.md` has the data shapes and the status rules.
+The data shapes and the status rules of the adjudication model are not part of this repository.
 
 ## Writing a new probe
 

@@ -6,3 +6,8 @@ test-results/
 
 # scratch
 _*.mjs
+
+# outputs that land outside output/ by mistake
+/*.png
+/private/
+__pycache__/

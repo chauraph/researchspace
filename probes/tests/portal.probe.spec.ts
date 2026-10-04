@@ -1,5 +1,5 @@
 /**
- * Diagnostic probe for the Murten Portal page — not an assertion suite.
+ * Diagnostic probe for the Portal page — not an assertion suite.
  *
  * Dumps box geometry and computed styles for every shelf so a layout bug can be
  * diagnosed from numbers rather than screenshots. Always passes; read the output.

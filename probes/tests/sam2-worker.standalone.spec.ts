@@ -1,5 +1,5 @@
 /**
- * Phase-2 probe for the SAM2 client-side engine (docs/features/sam2-client-side-plan.md).
+ * Phase-2 probe for the SAM2 client-side engine.
  *
  * Drives the *built* worker asset (src/main/webapp/assets/no_auth/sam-worker.js —
  * run `npm run prod` or `npm run dev` first) over its postMessage protocol,
