@@ -42,7 +42,7 @@ import java.io.IOException;
 
 /**
  * Endpoint to support Ephedra Federation
- * @author Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+ * @author Tsz Kin Chau
  */
 @Path("")
 public class FederationSupportEndpoint {

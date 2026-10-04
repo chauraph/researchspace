@@ -43,7 +43,7 @@ import java.util.Optional;
  * everything that is not plain http or https, refuses hosts that resolve to the machine itself or to
  * a private network, and caps how long it reads and how much it keeps.
  *
- * @author Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+ * @author Tsz Kin Chau
  */
 public class SafeHttpFetcher {
 

@@ -62,7 +62,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * Past {@link #MAX_SERVICES} or past the time budget, the remaining rows fall back to the profile
  * the manifest claims and say so in blockedreason. The fallback never claims to be a measurement.
  *
- * @author Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+ * @author Tsz Kin Chau
  */
 public class ImageServiceProbe {
 

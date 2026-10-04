@@ -35,7 +35,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * specification example and the 4.0 draft example, plus hand-made variants for the shapes that no
  * public manifest happened to exercise.
  *
- * @author Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+ * @author Tsz Kin Chau
  */
 public class IIIFManifestNormalizerTest {
 

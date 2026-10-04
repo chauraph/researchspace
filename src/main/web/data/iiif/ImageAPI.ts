@@ -48,7 +48,7 @@ export namespace Region {
   }
   export class Absolute extends Rectangular {
     constructor(x: number, y: number, width: number, height: number) {
-      // Round the values to the nearest integer using Math.round, implemented by Raphael Chau
+      // Round the values to the nearest integer
       super(Math.round(x), Math.round(y), Math.round(width), Math.round(height));
     }
   }

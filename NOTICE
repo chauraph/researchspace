@@ -8,3 +8,10 @@ This repository is licensed under the GNU Affero General Public License,
 version 3 or (at your option) any later version (SPDX: AGPL-3.0-or-later).
 
 Third-party copyright in this distribution is noted where applicable.
+
+This is a modified version of ResearchSpace, maintained at
+https://github.com/chauraph/researchspace.
+
+Modifications 2024-2026 by Tsz Kin Chau (eM+ / EPFL). Files added by this
+fork carry their own copyright notice. Changes to existing files are not
+marked.

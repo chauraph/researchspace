@@ -42,7 +42,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * Row keys are deliberately version-free: manifest, canvasid, label, imageservice, servicetype,
  * claimedprofile. {@link ImageServiceProbe} adds the measured keys.
  *
- * @author Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+ * @author Tsz Kin Chau
  */
 public class IIIFManifestNormalizer {
 

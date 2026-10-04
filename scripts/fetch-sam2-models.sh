@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
+#
+# ResearchSpace
+# Copyright (C) 2026, Tsz Kin Chau, eM+ / EPFL
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 # Provision the SAM2 client-side segmentation models.
 #
-# See docs/features/sam2-client-side-plan.md. The platform owns this recipe;
+# The platform owns this recipe;
 # the downloaded bytes are third-party artifacts (Meta SAM 2.1, Apache-2.0,
 # onnx-community ONNX export) and live in the runtime layer, outside git.
 #

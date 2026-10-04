@@ -32,7 +32,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * when a manifest exceeds the probe budget. The probe itself needs the network and is exercised by
  * hand against live services, not here.
  *
- * @author Tsz-Kin (Raphael) Chau <chauraph@gmail.com> <tszkin.chau@epfl.ch>
+ * @author Tsz Kin Chau
  */
 public class ImageServiceProbeTest {
 
